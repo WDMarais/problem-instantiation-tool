@@ -211,7 +211,7 @@ StepRating:
 |---|---|---|
 | `correct` | Matches canonical answer | Pass |
 | `ca_correct` | Wrong vs canonical; correct given student's own prior value | Arithmetic slip; light penalty |
-| `semantic_error` | Wrong vs canonical AND wrong vs CA-canonical | Conceptual gap; heavy penalty |
+| `semantic_error` | Wrong vs CA-canonical (step has a prior dependency; student did not apply the correct formula to their own prior values — this includes a coincidental match with canonical, e.g. using the canonical prior value instead of their own) | Conceptual gap; heavy penalty |
 | `computation_error` | Step 0 only (no prior); simply wrong | Standard fail |
 
 SRS scheduling should weight `semantic_error` more heavily than `ca_correct` or
