@@ -65,6 +65,8 @@ def _compute_canonicals(specs: list[dict], params: dict) -> list[Any]:
             expr = sympy.sympify(symbolic_expr_str)
             prior = {j: canonicals[j] for j in depends_on}
             canonical = _eval_symbolic(expr, prior, depends_on)
+        elif "param_key" in spec:
+            canonical = params.get(spec["param_key"], 0)
         elif kind == "mcq":
             canonical = params.get("correct", next(iter(params.values()), None))
         elif kind == "exact_equality":

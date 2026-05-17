@@ -11,6 +11,7 @@ from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.exceptions import AttemptValidationError
 from problem_instantiation_tool.registry import InMemoryRegistry
 from problem_instantiation_tool.schemas import (
+    MistakeType,
     Problem,
     ProvidedStep,
     SolutionAttempt,
@@ -111,9 +112,7 @@ def exact_equality_geo_instance():
     )
     registry = InMemoryRegistry({"country_flag": problem})
     engine = Engine(registry=registry)
-    return engine.instantiate(
-        "country_flag", params={"answer": "Tanzania"}
-    )
+    return engine.instantiate("country_flag", params={"answer": "Tanzania"})
 
 
 @pytest.fixture
@@ -133,9 +132,7 @@ def exact_equality_pinyin_instance():
     )
     registry = InMemoryRegistry({"pinyin_nihao": problem})
     engine = Engine(registry=registry)
-    return engine.instantiate(
-        "pinyin_nihao", params={"answer": "nǐ hǎo"}
-    )
+    return engine.instantiate("pinyin_nihao", params={"answer": "nǐ hǎo"})
 
 
 @pytest.fixture
@@ -273,9 +270,7 @@ def high_marks_instance():
 @pytest.mark.rate
 def test_rate_correct_answer_returns_full_solution_rating(srs_instance):
     """Correct answer on 1-step SRS card returns SolutionRating with is_correct=True."""
-    attempt = SolutionAttempt(
-        steps=[SubmittedStep({"roots": {-3, 5}})]
-    )
+    attempt = SolutionAttempt(steps=[SubmittedStep({"roots": {-3, 5}})])
     rating = srs_instance.verifier.rate(attempt)
     assert isinstance(rating, SolutionRating)
     assert rating.is_correct is True
@@ -291,9 +286,7 @@ def test_rate_correct_answer_returns_full_solution_rating(srs_instance):
 @pytest.mark.rate
 def test_one_step_correct(srs_instance):
     """Correct 1-step attempt: mistake_type=correct, marks_awarded=1."""
-    attempt = SolutionAttempt(
-        steps=[SubmittedStep({"roots": {-3, 5}})]
-    )
+    attempt = SolutionAttempt(steps=[SubmittedStep({"roots": {-3, 5}})])
     rating = srs_instance.verifier.rate(attempt)
     step = rating.steps[0]
     assert step.index == 0
@@ -306,9 +299,7 @@ def test_one_step_correct(srs_instance):
 @pytest.mark.rate
 def test_one_step_wrong_is_computation_error(srs_instance):
     """Wrong 1-step attempt (no prior steps): mistake_type=computation_error."""
-    attempt = SolutionAttempt(
-        steps=[SubmittedStep({"roots": {-3, 4}})]
-    )
+    attempt = SolutionAttempt(steps=[SubmittedStep({"roots": {-3, 4}})])
     rating = srs_instance.verifier.rate(attempt)
     step = rating.steps[0]
     assert step.mistake_type == "computation_error"
@@ -328,9 +319,7 @@ def test_two_step_ca_correct(two_step_ca_instance):
     Canonical: a=5, x=2a=10.
     Student:   a=10, x=20  (wrong a, but x=2×their_a correctly applied).
     """
-    attempt = SolutionAttempt(
-        steps=[SubmittedStep(10), SubmittedStep(20)]
-    )
+    attempt = SolutionAttempt(steps=[SubmittedStep(10), SubmittedStep(20)])
     rating = two_step_ca_instance.verifier.rate(attempt)
 
     assert rating.steps[0].mistake_type == "computation_error"
@@ -357,9 +346,7 @@ def test_two_step_coincidental_match_lenient_is_correct(two_step_ca_instance):
     Student x=10 matches canonical(10) but not ca_canonical(20).
     LENIENT: a correct answer is correct regardless of path taken.
     """
-    attempt = SolutionAttempt(
-        steps=[SubmittedStep(10), SubmittedStep(10)]
-    )
+    attempt = SolutionAttempt(steps=[SubmittedStep(10), SubmittedStep(10)])
     rating = two_step_ca_instance.verifier.rate(attempt)
 
     assert rating.steps[0].mistake_type == "computation_error"
@@ -375,9 +362,7 @@ def test_two_step_coincidental_match_strict_is_semantic_error(two_step_ca_instan
     Student x=10 matches canonical(10) but not ca_canonical(20).
     STRICT: coincidental match signals student did not apply method to their own prior value.
     """
-    attempt = SolutionAttempt(
-        steps=[SubmittedStep(10), SubmittedStep(10)]
-    )
+    attempt = SolutionAttempt(steps=[SubmittedStep(10), SubmittedStep(10)])
     rating = two_step_ca_instance.verifier.rate(
         attempt, validation_mode=ValidationMode.STRICT
     )
@@ -400,9 +385,7 @@ def test_two_step_genuine_semantic_error(two_step_ca_instance):
     Canonical: a=5, x=2a=10.  Student: a=10, x=7.
     Student x=7 ≠ canonical(10) and ≠ ca_canonical(20) → semantic_error in both modes.
     """
-    attempt = SolutionAttempt(
-        steps=[SubmittedStep(10), SubmittedStep(7)]
-    )
+    attempt = SolutionAttempt(steps=[SubmittedStep(10), SubmittedStep(7)])
     rating = two_step_ca_instance.verifier.rate(attempt)
 
     assert rating.steps[0].mistake_type == "computation_error"
@@ -476,9 +459,7 @@ def test_provided_step_breaks_ca_chain_in_noncontiguous_gap_fill(
     With reset:    ProvidedStep(10) breaks chain; step2 ca_canonical = 10+5 = 15.
                    Student step2=21 ≠ 15 → computation_error (not ca_correct).
     """
-    provided_s1 = ca_gap_noncontiguous_instance.presented_attempt.steps[
-        1
-    ].value
+    provided_s1 = ca_gap_noncontiguous_instance.presented_attempt.steps[1].value
 
     attempt = SolutionAttempt(
         steps=[
@@ -623,6 +604,54 @@ def test_self_graded_non_bool_raises_attempt_validation_error(self_graded_instan
     with pytest.raises(AttemptValidationError) as exc_info:
         self_graded_instance.verifier.rate(attempt)
     assert exc_info.value.step_index == 0
+
+
+@pytest.fixture
+def multi_step_independent_instance():
+    """3-step problem with independent answers selected by param_key.
+    Answers: ans_a=3, ans_b=7, ans_c=-2 — each step routes to its own param.
+    """
+    problem = Problem(
+        id="multi_step_independent",
+        type_id="geometry",
+        name="Three independent sub-answers",
+        artifact_type="practice",
+        problem_spec={"kind": "fixed", "ans_a": 3, "ans_b": 7, "ans_c": -2},
+        verifier_spec=[
+            {"kind": "symbolic_equality", "marks_possible": 1, "param_key": "ans_a"},
+            {"kind": "symbolic_equality", "marks_possible": 1, "param_key": "ans_b"},
+            {"kind": "symbolic_equality", "marks_possible": 1, "param_key": "ans_c"},
+        ],
+    )
+    registry = InMemoryRegistry({"multi_step_independent": problem})
+    engine = Engine(registry=registry)
+    return engine.instantiate(
+        "multi_step_independent", params={"ans_a": 3, "ans_b": 7, "ans_c": -2}
+    )
+
+
+def test_param_key_all_correct(multi_step_independent_instance):
+    """All three independent steps correct via param_key routing."""
+    attempt = SolutionAttempt(
+        steps=[SubmittedStep(3), SubmittedStep(7), SubmittedStep(-2)]
+    )
+    r = multi_step_independent_instance.verifier.rate(attempt)
+    assert r.is_correct
+    assert r.marks_awarded == 3
+    assert r.marks_possible == 3
+
+
+def test_param_key_step_wrong_does_not_affect_others(multi_step_independent_instance):
+    """Wrong step 0 does not contaminate step 1 or step 2 canonicals."""
+    attempt = SolutionAttempt(
+        steps=[SubmittedStep(99), SubmittedStep(7), SubmittedStep(-2)]
+    )
+    r = multi_step_independent_instance.verifier.rate(attempt)
+    assert r.marks_awarded == 2
+    assert r.marks_possible == 3
+    assert r.steps[0].mistake_type == MistakeType.computation_error
+    assert r.steps[1].mistake_type == MistakeType.correct
+    assert r.steps[2].mistake_type == MistakeType.correct
 
 
 # === SPEC GAPS ===
