@@ -8,76 +8,20 @@ Spec section: ## Core object schemas
 import json
 import pytest
 
-# Stubs — one block for all unimplemented production imports.
-# As each module is implemented: move its imports above this block as bare imports,
-# delete the corresponding stub classes from the except clause.
-# When the except clause is empty, delete the whole try/except.
-try:
-    from pydantic import ValidationError
-    from problem_instantiation_tool.schemas import (
-        Problem,
-        ProblemInstance,
-        SolutionAttempt,
-        SolutionRating,
-        StepRating,
-        ProvidedStep,
-        SubmittedStep,
-    )
-    from problem_instantiation_tool.registry import InMemoryRegistry
-    from problem_instantiation_tool.engine import Engine
-    from problem_instantiation_tool.exceptions import ProblemNotFoundError
-except ImportError:
+from pydantic import ValidationError
 
-    class ValidationError(Exception):
-        pass
-
-    class Problem:
-        def __init__(self, **kwargs):
-            raise NotImplementedError
-
-    class ProblemInstance:
-        pass
-
-    class SolutionAttempt:
-        def __init__(self, **kwargs):
-            raise NotImplementedError
-
-    class SolutionRating:
-        def __init__(self, **kwargs):
-            raise NotImplementedError
-
-    class StepRating:
-        def __init__(self, **kwargs):
-            raise NotImplementedError
-
-    class ProvidedStep:
-        def __init__(self, value):
-            raise NotImplementedError
-
-    class SubmittedStep:
-        def __init__(self, value):
-            raise NotImplementedError
-
-    class InMemoryRegistry:
-        def __init__(self, problems):
-            raise NotImplementedError
-
-        def get(self, problem_id):
-            raise NotImplementedError
-
-        def version(self):
-            raise NotImplementedError
-
-    class Engine:
-        def __init__(self, registry):
-            raise NotImplementedError
-
-        def instantiate(self, spec_or_id, seed=None, params=None):
-            raise NotImplementedError
-
-    class ProblemNotFoundError(Exception):
-        def __init__(self, problem_id):
-            super().__init__(problem_id)
+from problem_instantiation_tool.engine import Engine
+from problem_instantiation_tool.exceptions import ProblemNotFoundError
+from problem_instantiation_tool.registry import InMemoryRegistry
+from problem_instantiation_tool.schemas import (
+    Problem,
+    ProblemInstance,
+    ProvidedStep,
+    SolutionAttempt,
+    SolutionRating,
+    StepRating,
+    SubmittedStep,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -88,7 +32,7 @@ except ImportError:
 @pytest.mark.schemas
 def test_engine_with_in_memory_registry_resolves_problem_by_id():
     """Full roundtrip: Engine built with InMemoryRegistry; problem fetched and instantiated."""
-    problem = Problem(  # TODO: wire up
+    problem = Problem(
         id="quad_factor",
         type_id="algebra",
         name="Factor a quadratic",
@@ -100,9 +44,9 @@ def test_engine_with_in_memory_registry_resolves_problem_by_id():
         },
         verifier_spec={"kind": "set_equality", "marks_possible": 1},
     )
-    registry = InMemoryRegistry({"quad_factor": problem})  # TODO: wire up
-    engine = Engine(registry=registry)  # TODO: wire up
-    instance = engine.instantiate("quad_factor", seed=1)  # TODO: wire up
+    registry = InMemoryRegistry({"quad_factor": problem})
+    engine = Engine(registry=registry)
+    instance = engine.instantiate("quad_factor", seed=1)
     assert instance.spec.id == "quad_factor"
     assert isinstance(instance.params, dict)
     assert instance.solution is not None
@@ -117,7 +61,7 @@ def test_engine_with_in_memory_registry_resolves_problem_by_id():
 @pytest.mark.schemas
 def test_problem_minimal_required_fields():
     """Problem with only required fields constructs without error."""
-    p = Problem(  # TODO: wire up
+    p = Problem(
         id="simple_add",
         type_id="arithmetic",
         name="Simple addition",
@@ -132,7 +76,7 @@ def test_problem_minimal_required_fields():
 @pytest.mark.schemas
 def test_problem_difficulty_defaults_to_none():
     """difficulty is None when not authored."""
-    p = Problem(  # TODO: wire up
+    p = Problem(
         id="simple_add",
         type_id="arithmetic",
         name="Simple addition",
@@ -146,7 +90,7 @@ def test_problem_difficulty_defaults_to_none():
 @pytest.mark.schemas
 def test_problem_all_optional_fields():
     """Problem with every optional field constructs and exposes those fields."""
-    p = Problem(  # TODO: wire up
+    p = Problem(
         id="hard_composite",
         type_id="algebra",
         name="Full composite",
@@ -177,7 +121,7 @@ def test_problem_all_optional_fields():
 @pytest.mark.schemas
 def test_problem_gap_fill_with_source_id_and_blank_steps():
     """gap_fill Problem with source_id and blank_steps constructs correctly."""
-    p = Problem(  # TODO: wire up
+    p = Problem(
         id="surd_gap",
         type_id="algebra",
         name="Surd gap fill",
@@ -199,7 +143,7 @@ def test_problem_gap_fill_with_source_id_and_blank_steps():
 @pytest.mark.schemas
 def test_problem_gap_fill_noncontiguous_blank_steps():
     """gap_fill with noncontiguous blank_steps stores both indices."""
-    p = Problem(  # TODO: wire up
+    p = Problem(
         id="surd_gap_0_2",
         type_id="algebra",
         name="Surd gap fill steps 0 and 2",
@@ -224,7 +168,7 @@ def test_problem_gap_fill_noncontiguous_blank_steps():
 @pytest.mark.schemas
 def test_problem_model_dump_is_json_serializable():
     """Problem.model_dump() produces a JSON-serializable dict (no live objects)."""
-    p = Problem(  # TODO: wire up
+    p = Problem(
         id="simple_add",
         type_id="arithmetic",
         name="Simple addition",
@@ -246,7 +190,7 @@ def test_problem_model_dump_is_json_serializable():
 def test_problem_srs_card_with_self_graded_raises_validation_error():
     """srs_card artifact_type with SelfGraded verifier raises ValidationError at construction."""
     with pytest.raises(ValidationError):
-        Problem(  # TODO: wire up
+        Problem(
             id="bad_srs",
             type_id="geometry",
             name="Self-graded SRS card",
@@ -260,7 +204,7 @@ def test_problem_srs_card_with_self_graded_raises_validation_error():
 def test_problem_srs_card_with_more_than_two_verifier_steps_raises_validation_error():
     """srs_card with 3 verifier entries raises ValidationError (≤2 steps required)."""
     with pytest.raises(ValidationError):
-        Problem(  # TODO: wire up
+        Problem(
             id="three_step_srs",
             type_id="algebra",
             name="Three-step SRS card",
@@ -278,7 +222,7 @@ def test_problem_srs_card_with_more_than_two_verifier_steps_raises_validation_er
 def test_problem_gap_fill_without_source_id_raises_validation_error():
     """gap_fill without source_id raises ValidationError at construction."""
     with pytest.raises(ValidationError):
-        Problem(  # TODO: wire up
+        Problem(
             id="gap_no_source",
             type_id="algebra",
             name="Gap fill without source",
@@ -294,7 +238,7 @@ def test_problem_gap_fill_without_source_id_raises_validation_error():
 def test_problem_gap_fill_without_blank_steps_raises_validation_error():
     """gap_fill without blank_steps raises ValidationError at construction."""
     with pytest.raises(ValidationError):
-        Problem(  # TODO: wire up
+        Problem(
             id="gap_no_blanks",
             type_id="algebra",
             name="Gap fill without blank steps",
@@ -310,7 +254,7 @@ def test_problem_gap_fill_without_blank_steps_raises_validation_error():
 def test_problem_invalid_artifact_type_raises_validation_error():
     """artifact_type not in enum raises ValidationError."""
     with pytest.raises(ValidationError):
-        Problem(  # TODO: wire up
+        Problem(
             id="bad_type",
             type_id="algebra",
             name="Bad artifact type",
@@ -324,7 +268,7 @@ def test_problem_invalid_artifact_type_raises_validation_error():
 def test_problem_invalid_difficulty_raises_validation_error():
     """difficulty value not in enum raises ValidationError."""
     with pytest.raises(ValidationError):
-        Problem(  # TODO: wire up
+        Problem(
             id="bad_difficulty",
             type_id="algebra",
             name="Bad difficulty",
@@ -343,8 +287,8 @@ def test_problem_invalid_difficulty_raises_validation_error():
 @pytest.mark.schemas
 def test_solution_attempt_with_submitted_step_stores_value():
     """SolutionAttempt containing SubmittedStep preserves the step and value."""
-    step = SubmittedStep({"roots": [-3, 5]})  # TODO: wire up
-    attempt = SolutionAttempt(steps=[step])  # TODO: wire up
+    step = SubmittedStep({"roots": [-3, 5]})
+    attempt = SolutionAttempt(steps=[step])
     assert attempt.steps[0] is step
 
 
@@ -354,7 +298,7 @@ def test_solution_attempt_with_provided_step_stores_value():
     step = ProvidedStep(
         ["Multiply", 2, ["Symbol", "a"]]
     )  # TODO: wire up (MathJSON value)
-    attempt = SolutionAttempt(steps=[step])  # TODO: wire up
+    attempt = SolutionAttempt(steps=[step])
     assert attempt.steps[0] is step
 
 
@@ -363,15 +307,15 @@ def test_solution_attempt_with_none_slot_is_valid_for_presented_attempt():
     """SolutionAttempt can hold None at a step position (for presented_attempt blank slots)."""
     attempt = SolutionAttempt(
         steps=[ProvidedStep(5), None, ProvidedStep(3)]
-    )  # TODO: wire up
+    )
     assert attempt.steps[1] is None
 
 
 @pytest.mark.schemas
 def test_provided_step_and_submitted_step_are_distinct_types():
     """ProvidedStep and SubmittedStep are different types — not interchangeable wrappers."""
-    provided = ProvidedStep(10)  # TODO: wire up
-    submitted = SubmittedStep(10)  # TODO: wire up
+    provided = ProvidedStep(10)
+    submitted = SubmittedStep(10)
     assert type(provided) is not type(submitted)
 
 
@@ -379,7 +323,7 @@ def test_provided_step_and_submitted_step_are_distinct_types():
 def test_solution_is_all_submitted_steps():
     """The canonical solution is a SolutionAttempt where every step is a SubmittedStep."""
     # The golden-path solution has no ProvidedStep or None — all steps are SubmittedStep.
-    solution = SolutionAttempt(  # TODO: wire up
+    solution = SolutionAttempt(
         steps=[SubmittedStep({"roots": [-3, 5]})]
     )
     assert all(type(s) is SubmittedStep for s in solution.steps)
@@ -393,7 +337,7 @@ def test_solution_is_all_submitted_steps():
 @pytest.mark.schemas
 def test_solution_rating_marks_awarded_is_sum_of_step_marks():
     """marks_awarded equals the sum of marks_awarded across all StepRatings."""
-    rating = SolutionRating(  # TODO: wire up
+    rating = SolutionRating(
         steps=[
             StepRating(
                 index=0,
@@ -422,7 +366,7 @@ def test_solution_rating_marks_awarded_is_sum_of_step_marks():
 @pytest.mark.schemas
 def test_solution_rating_is_correct_true_when_full_marks():
     """is_correct is True exactly when marks_awarded == marks_possible."""
-    rating = SolutionRating(  # TODO: wire up
+    rating = SolutionRating(
         steps=[
             StepRating(
                 index=0,
@@ -442,7 +386,7 @@ def test_solution_rating_is_correct_true_when_full_marks():
 @pytest.mark.schemas
 def test_solution_rating_is_correct_false_when_partial():
     """is_correct is False when marks_awarded < marks_possible."""
-    rating = SolutionRating(  # TODO: wire up
+    rating = SolutionRating(
         steps=[
             StepRating(
                 index=0,
@@ -463,7 +407,7 @@ def test_solution_rating_is_correct_false_when_partial():
 def test_step_rating_mistake_type_enum_values():
     """StepRating accepts all four mistake_type values from the spec."""
     for mt in ("correct", "ca_correct", "semantic_error", "computation_error"):
-        sr = StepRating(  # TODO: wire up
+        sr = StepRating(
             index=0,
             marks_awarded=0,
             marks_possible=1,
@@ -488,7 +432,7 @@ def test_in_memory_registry_satisfies_content_registry_protocol():
         def get(self, problem_id: str) -> object: ...
         def version(self) -> str: ...
 
-    registry = InMemoryRegistry({})  # TODO: wire up
+    registry = InMemoryRegistry({})
     assert isinstance(registry, ContentRegistry)
 
 
@@ -515,7 +459,7 @@ def test_ad_hoc_class_satisfies_content_registry_protocol():
 @pytest.mark.schemas
 def test_in_memory_registry_get_returns_registered_problem():
     """InMemoryRegistry.get(id) returns the exact Problem registered under that id."""
-    p = Problem(  # TODO: wire up
+    p = Problem(
         id="test_prob",
         type_id="test",
         name="Test problem",
@@ -523,14 +467,14 @@ def test_in_memory_registry_get_returns_registered_problem():
         problem_spec={"kind": "test"},
         verifier_spec={"kind": "set_equality"},
     )
-    registry = InMemoryRegistry({"test_prob": p})  # TODO: wire up
+    registry = InMemoryRegistry({"test_prob": p})
     assert registry.get("test_prob") is p
 
 
 @pytest.mark.schemas
 def test_in_memory_registry_get_unknown_id_raises_problem_not_found():
     """InMemoryRegistry.get(unknown_id) raises ProblemNotFoundError."""
-    registry = InMemoryRegistry({})  # TODO: wire up
+    registry = InMemoryRegistry({})
     with pytest.raises(ProblemNotFoundError):
         registry.get("nonexistent")
 
@@ -538,7 +482,7 @@ def test_in_memory_registry_get_unknown_id_raises_problem_not_found():
 @pytest.mark.schemas
 def test_in_memory_registry_version_returns_string():
     """InMemoryRegistry.version() returns a string."""
-    registry = InMemoryRegistry({})  # TODO: wire up
+    registry = InMemoryRegistry({})
     v = registry.version()
     assert isinstance(v, str)
 
@@ -551,7 +495,7 @@ def test_in_memory_registry_version_returns_string():
 @pytest.mark.schemas
 def test_problem_instance_non_gap_fill_has_none_presented_attempt():
     """ProblemInstance from a non-gap_fill problem has presented_attempt=None."""
-    problem = Problem(  # TODO: wire up
+    problem = Problem(
         id="quad",
         type_id="algebra",
         name="Quadratic",
@@ -563,16 +507,16 @@ def test_problem_instance_non_gap_fill_has_none_presented_attempt():
         },
         verifier_spec={"kind": "set_equality", "marks_possible": 1},
     )
-    registry = InMemoryRegistry({"quad": problem})  # TODO: wire up
-    engine = Engine(registry=registry)  # TODO: wire up
-    instance = engine.instantiate("quad", seed=1)  # TODO: wire up
+    registry = InMemoryRegistry({"quad": problem})
+    engine = Engine(registry=registry)
+    instance = engine.instantiate("quad", seed=1)
     assert instance.presented_attempt is None
 
 
 @pytest.mark.schemas
 def test_problem_instance_gap_fill_has_non_none_presented_attempt():
     """ProblemInstance from a gap_fill problem has a non-None presented_attempt."""
-    gap_problem = Problem(  # TODO: wire up
+    gap_problem = Problem(
         id="surd_gap",
         type_id="algebra",
         name="Surd gap fill",
@@ -586,7 +530,7 @@ def test_problem_instance_gap_fill_has_non_none_presented_attempt():
         source_id="surd_equation_linear_rhs",
         blank_steps=[1],
     )
-    source_problem = Problem(  # TODO: wire up
+    source_problem = Problem(
         id="surd_equation_linear_rhs",
         type_id="algebra",
         name="Surd equation (linear RHS)",
@@ -597,16 +541,16 @@ def test_problem_instance_gap_fill_has_non_none_presented_attempt():
     )
     registry = InMemoryRegistry(
         {"surd_gap": gap_problem, "surd_equation_linear_rhs": source_problem}
-    )  # TODO: wire up
-    engine = Engine(registry=registry)  # TODO: wire up
-    instance = engine.instantiate("surd_gap", seed=7)  # TODO: wire up
+    )
+    engine = Engine(registry=registry)
+    instance = engine.instantiate("surd_gap", seed=7)
     assert instance.presented_attempt is not None
 
 
 @pytest.mark.schemas
 def test_problem_instance_gap_fill_presented_attempt_has_none_at_blank_steps():
     """presented_attempt.steps has None at blank_steps indices and ProvidedStep elsewhere."""
-    gap_problem = Problem(  # TODO: wire up
+    gap_problem = Problem(
         id="surd_gap",
         type_id="algebra",
         name="Surd gap fill",
@@ -620,7 +564,7 @@ def test_problem_instance_gap_fill_presented_attempt_has_none_at_blank_steps():
         source_id="surd_equation_linear_rhs",
         blank_steps=[1],
     )
-    source_problem = Problem(  # TODO: wire up
+    source_problem = Problem(
         id="surd_equation_linear_rhs",
         type_id="algebra",
         name="Surd equation (linear RHS)",
@@ -631,9 +575,9 @@ def test_problem_instance_gap_fill_presented_attempt_has_none_at_blank_steps():
     )
     registry = InMemoryRegistry(
         {"surd_gap": gap_problem, "surd_equation_linear_rhs": source_problem}
-    )  # TODO: wire up
-    engine = Engine(registry=registry)  # TODO: wire up
-    instance = engine.instantiate("surd_gap", seed=7)  # TODO: wire up
+    )
+    engine = Engine(registry=registry)
+    instance = engine.instantiate("surd_gap", seed=7)
     steps = instance.presented_attempt.steps
     assert steps[1] is None
     assert isinstance(steps[0], ProvidedStep)

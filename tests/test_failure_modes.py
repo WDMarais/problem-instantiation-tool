@@ -6,84 +6,22 @@ Spec section: ## Section 3 — Failure modes
 
 import pytest
 
-try:
-    from pydantic import ValidationError
-except ImportError:
+from pydantic import ValidationError
 
-    class ValidationError(Exception):
-        pass
-
-
-# Stubs — one block for all unimplemented production imports.
-# As each module is implemented: move its imports above this block as bare imports,
-# delete the corresponding stub classes from the except clause.
-# When the except clause is empty, delete the whole try/except.
-try:
-    from problem_instantiation_tool.schemas import (
-        Problem,
-        SolutionAttempt,
-        SubmittedStep,
-    )
-    from problem_instantiation_tool.registry import InMemoryRegistry
-    from problem_instantiation_tool.engine import Engine
-    from problem_instantiation_tool.exceptions import (
-        ProblemEngineError,
-        ProblemNotFoundError,
-        InstantiationError,
-        ParamsIncompatibleError,
-        AttemptValidationError,
-    )
-except ImportError:
-
-    class Problem:
-        def __init__(self, **kwargs):
-            raise NotImplementedError
-
-    class SolutionAttempt:
-        def __init__(self, **kwargs):
-            raise NotImplementedError
-
-    class SubmittedStep:
-        def __init__(self, value):
-            raise NotImplementedError
-
-    class InMemoryRegistry:
-        def __init__(self, problems):
-            raise NotImplementedError
-
-        def get(self, problem_id):
-            raise NotImplementedError
-
-        def version(self):
-            raise NotImplementedError
-
-    class Engine:
-        def __init__(self, registry):
-            raise NotImplementedError
-
-        def instantiate(self, spec_or_id, seed=None, params=None):
-            raise NotImplementedError
-
-    class ProblemEngineError(Exception):
-        pass
-
-    class ProblemNotFoundError(ProblemEngineError):
-        def __init__(self, problem_id):
-            super().__init__(problem_id)
-
-    class InstantiationError(ProblemEngineError):
-        def __init__(self, problem_id, cause=None):
-            super().__init__(problem_id)
-
-    class ParamsIncompatibleError(ProblemEngineError):
-        def __init__(self, problem_id, stored_params=None, current_signature=None):
-            super().__init__(problem_id)
-
-    class AttemptValidationError(ProblemEngineError):
-        def __init__(self, step_index, reason=""):
-            super().__init__(step_index, reason)
-            self.step_index = step_index
-            self.reason = reason
+from problem_instantiation_tool.engine import Engine
+from problem_instantiation_tool.exceptions import (
+    AttemptValidationError,
+    InstantiationError,
+    ParamsIncompatibleError,
+    ProblemEngineError,
+    ProblemNotFoundError,
+)
+from problem_instantiation_tool.registry import InMemoryRegistry
+from problem_instantiation_tool.schemas import (
+    Problem,
+    SolutionAttempt,
+    SubmittedStep,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +31,7 @@ except ImportError:
 
 @pytest.fixture
 def quad_problem():
-    return Problem(  # TODO: wire up
+    return Problem(
         id="quadratic_factor",
         type_id="algebra",
         name="Factor a quadratic",
@@ -109,8 +47,8 @@ def quad_problem():
 
 @pytest.fixture
 def engine(quad_problem):
-    registry = InMemoryRegistry({"quadratic_factor": quad_problem})  # TODO: wire up
-    return Engine(registry=registry)  # TODO: wire up
+    registry = InMemoryRegistry({"quadratic_factor": quad_problem})
+    return Engine(registry=registry)
 
 
 # ---------------------------------------------------------------------------
@@ -146,7 +84,7 @@ def test_attempt_validation_error_is_subclass_of_problem_engine_error():
 def test_problem_engine_error_catches_all_engine_failures(engine):
     """Catching ProblemEngineError is sufficient to catch any engine-level failure."""
     with pytest.raises(ProblemEngineError):
-        engine.instantiate("nonexistent_id")  # TODO: wire up
+        engine.instantiate("nonexistent_id")
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +96,7 @@ def test_problem_engine_error_catches_all_engine_failures(engine):
 def test_unknown_id_raises_problem_not_found_error(engine):
     """instantiate() with an unknown ID raises ProblemNotFoundError."""
     with pytest.raises(ProblemNotFoundError) as exc_info:
-        engine.instantiate("nonexistent_id")  # TODO: wire up
+        engine.instantiate("nonexistent_id")
     assert "nonexistent_id" in str(exc_info.value)
 
 
@@ -166,7 +104,7 @@ def test_unknown_id_raises_problem_not_found_error(engine):
 def test_problem_not_found_error_carries_problem_id(engine):
     """ProblemNotFoundError exposes the unknown problem_id."""
     with pytest.raises(ProblemNotFoundError) as exc_info:
-        engine.instantiate("nonexistent_id")  # TODO: wire up
+        engine.instantiate("nonexistent_id")
     assert exc_info.value.problem_id == "nonexistent_id"
 
 
@@ -182,7 +120,7 @@ def test_overconstrained_generator_raises_instantiation_error():
     def overconstrained(rng):
         raise ValueError("no valid discriminant found under constraints")
 
-    problem = Problem(  # TODO: wire up
+    problem = Problem(
         id="overconstrained_generator",
         type_id="algebra",
         name="Overconstrained",
@@ -190,10 +128,10 @@ def test_overconstrained_generator_raises_instantiation_error():
         problem_spec=overconstrained,
         verifier_spec={"kind": "sympy_equivalence", "marks_possible": 1},
     )
-    registry = InMemoryRegistry({"overconstrained_generator": problem})  # TODO: wire up
-    engine = Engine(registry=registry)  # TODO: wire up
+    registry = InMemoryRegistry({"overconstrained_generator": problem})
+    engine = Engine(registry=registry)
     with pytest.raises(InstantiationError) as exc_info:
-        engine.instantiate("overconstrained_generator", seed=1)  # TODO: wire up
+        engine.instantiate("overconstrained_generator", seed=1)
     assert exc_info.value.problem_id == "overconstrained_generator"
     assert exc_info.value.cause is not None  # wraps the underlying ValueError
 
@@ -207,7 +145,7 @@ def test_overconstrained_generator_raises_instantiation_error():
 def test_renamed_param_raises_params_incompatible_error(engine):
     """Stored params with a renamed field raise ParamsIncompatibleError on reconstruction."""
     with pytest.raises(ParamsIncompatibleError) as exc_info:
-        engine.instantiate(  # TODO: wire up
+        engine.instantiate(
             "quadratic_factor",
             params={"a": 2, "old_field": 5},  # "old_field" no longer in signature
         )
@@ -222,7 +160,7 @@ def test_params_incompatible_error_does_not_silently_fall_back(engine):
     # Verify the error is raised, not swallowed.
     raised = False
     try:
-        engine.instantiate(  # TODO: wire up
+        engine.instantiate(
             "quadratic_factor",
             params={"a": 2, "old_field": 5},
         )
@@ -239,7 +177,7 @@ def test_params_incompatible_error_does_not_silently_fall_back(engine):
 @pytest.mark.failure_modes
 def test_self_graded_non_bool_raises_attempt_validation_error(quad_problem):
     """SelfGraded verifier receiving a non-bool raises AttemptValidationError."""
-    problem = Problem(  # TODO: wire up
+    problem = Problem(
         id="sg_problem",
         type_id="algebra",
         name="Self-graded",
@@ -247,12 +185,12 @@ def test_self_graded_non_bool_raises_attempt_validation_error(quad_problem):
         problem_spec={"kind": "fixed", "expression": "x^2"},
         verifier_spec={"kind": "self_graded", "marks_possible": 1},
     )
-    registry = InMemoryRegistry({"sg_problem": problem})  # TODO: wire up
-    engine = Engine(registry=registry)  # TODO: wire up
-    instance = engine.instantiate("sg_problem", seed=1)  # TODO: wire up
-    attempt = SolutionAttempt(steps=[SubmittedStep("not_a_bool")])  # TODO: wire up
+    registry = InMemoryRegistry({"sg_problem": problem})
+    engine = Engine(registry=registry)
+    instance = engine.instantiate("sg_problem", seed=1)
+    attempt = SolutionAttempt(steps=[SubmittedStep("not_a_bool")])
     with pytest.raises(AttemptValidationError) as exc_info:
-        instance.verifier.rate(attempt)  # TODO: wire up
+        instance.verifier.rate(attempt)
     assert exc_info.value.step_index == 0
     assert "bool" in exc_info.value.reason.lower()
 
@@ -270,7 +208,7 @@ def test_srs_card_with_self_graded_verifier_raises_validation_error_at_construct
     so authoring mistakes are caught immediately, not deferred to runtime.
     """
     with pytest.raises(ValidationError):
-        Problem(  # TODO: wire up
+        Problem(
             id="circle_area",
             type_id="geometry",
             name="Find the area of a circle",
