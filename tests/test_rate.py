@@ -226,7 +226,22 @@ def gap_fill_instance():
         source_id="surd_equation_linear_rhs",
         blank_steps=[1],
     )
-    registry = InMemoryRegistry({"surd_gap": problem})  # TODO: wire up
+    source = Problem(  # TODO: wire up
+        id="surd_equation_linear_rhs",
+        type_id="algebra",
+        name="Surd equation (linear RHS)",
+        artifact_type="practice",
+        problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
+        verifier_spec=[
+            {"kind": "sympy_equivalence", "marks_possible": 1},
+            {"kind": "sympy_equivalence", "marks_possible": 1},
+            {"kind": "sympy_equivalence", "marks_possible": 1},
+        ],
+        difficulty="standard",
+    )
+    registry = InMemoryRegistry(
+        {"surd_gap": problem, "surd_equation_linear_rhs": source}
+    )  # TODO: wire up
     engine = Engine(registry=registry)  # TODO: wire up
     return engine.instantiate("surd_gap", params={"a": 3})  # TODO: wire up
 
@@ -269,7 +284,22 @@ def ca_gap_noncontiguous_instance():
         source_id="three_step_chain",
         blank_steps=[0, 2],
     )
-    registry = InMemoryRegistry({"three_step_ca_gap": problem})  # TODO: wire up
+    source = Problem(  # TODO: wire up
+        id="three_step_chain",
+        type_id="algebra",
+        name="Three-step chain (source)",
+        artifact_type="practice",
+        problem_spec={"kind": "fixed", "a": 5},
+        verifier_spec=[
+            {"kind": "sympy_equivalence", "marks_possible": 1},
+            {"kind": "sympy_equivalence", "marks_possible": 1},
+            {"kind": "sympy_equivalence", "marks_possible": 1},
+        ],
+        difficulty="standard",
+    )
+    registry = InMemoryRegistry(
+        {"three_step_ca_gap": problem, "three_step_chain": source}
+    )  # TODO: wire up
     engine = Engine(registry=registry)  # TODO: wire up
     return engine.instantiate("three_step_ca_gap", params={"a": 5})  # TODO: wire up
 

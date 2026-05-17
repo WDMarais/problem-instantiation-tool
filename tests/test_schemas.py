@@ -586,7 +586,18 @@ def test_problem_instance_gap_fill_has_non_none_presented_attempt():
         source_id="surd_equation_linear_rhs",
         blank_steps=[1],
     )
-    registry = InMemoryRegistry({"surd_gap": gap_problem})  # TODO: wire up
+    source_problem = Problem(  # TODO: wire up
+        id="surd_equation_linear_rhs",
+        type_id="algebra",
+        name="Surd equation (linear RHS)",
+        artifact_type="practice",
+        problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
+        verifier_spec=[{"kind": "sympy_equivalence"}],
+        difficulty="standard",
+    )
+    registry = InMemoryRegistry(
+        {"surd_gap": gap_problem, "surd_equation_linear_rhs": source_problem}
+    )  # TODO: wire up
     engine = Engine(registry=registry)  # TODO: wire up
     instance = engine.instantiate("surd_gap", seed=7)  # TODO: wire up
     assert instance.presented_attempt is not None
@@ -609,7 +620,18 @@ def test_problem_instance_gap_fill_presented_attempt_has_none_at_blank_steps():
         source_id="surd_equation_linear_rhs",
         blank_steps=[1],
     )
-    registry = InMemoryRegistry({"surd_gap": gap_problem})  # TODO: wire up
+    source_problem = Problem(  # TODO: wire up
+        id="surd_equation_linear_rhs",
+        type_id="algebra",
+        name="Surd equation (linear RHS)",
+        artifact_type="practice",
+        problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
+        verifier_spec=[{"kind": "sympy_equivalence"}],
+        difficulty="standard",
+    )
+    registry = InMemoryRegistry(
+        {"surd_gap": gap_problem, "surd_equation_linear_rhs": source_problem}
+    )  # TODO: wire up
     engine = Engine(registry=registry)  # TODO: wire up
     instance = engine.instantiate("surd_gap", seed=7)  # TODO: wire up
     steps = instance.presented_attempt.steps
