@@ -233,8 +233,9 @@ def test_callable_problem_spec_produces_same_instance_shape():
     """A callable problem_spec (code generator) produces the same ProblemInstance shape as YAML."""
 
     def discriminant_generator(rng):
-        # Minimal stub generator signature; implementation irrelevant for shape test.
-        raise NotImplementedError
+        # Minimal implementation: returns fixed params. Real generators use rng for
+        # case branching (d>0/d=0/d<0) that a YAML DSL cannot express as one concept.
+        return {"a": 1, "b": 0, "c": -1}
 
     problem = Problem(  # TODO: wire up
         id="discriminant_generator",
@@ -353,7 +354,19 @@ def test_gap_fill_noncontiguous_blanks_presented_attempt_shape(
 @pytest.mark.instantiate
 def test_gap_fill_difficulty_defaults_one_below_source():
     """Gap-fill without authored difficulty carries one tier below the source problem."""
-    # source difficulty: standard → gap-fill should carry: routine
+    source_problem = Problem(  # TODO: wire up
+        id="surd_equation_linear_rhs",
+        type_id="algebra",
+        name="Surd equation (linear RHS)",
+        artifact_type="practice",
+        problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
+        verifier_spec=[
+            {"kind": "sympy_equivalence"},
+            {"kind": "sympy_equivalence"},
+            {"kind": "sympy_equivalence"},
+        ],
+        difficulty="standard",
+    )
     gap_problem = Problem(  # TODO: wire up
         id="surd_gap_no_difficulty",
         type_id="algebra",
@@ -367,14 +380,17 @@ def test_gap_fill_difficulty_defaults_one_below_source():
         ],
         source_id="surd_equation_linear_rhs",
         blank_steps=[1],
-        # difficulty omitted — should default to one below source
+        # difficulty omitted — engine looks up source and applies one-tier-below rule
     )
-    registry = InMemoryRegistry(
-        {"surd_gap_no_difficulty": gap_problem}
-    )  # TODO: wire up
+    registry = InMemoryRegistry(  # TODO: wire up
+        {
+            "surd_equation_linear_rhs": source_problem,
+            "surd_gap_no_difficulty": gap_problem,
+        }
+    )
     engine = Engine(registry=registry)  # TODO: wire up
     instance = engine.instantiate("surd_gap_no_difficulty", seed=1)  # TODO: wire up
-    # Source is "standard"; gap-fill default is "routine"
+    # Source is "standard"; one tier below → "routine"
     assert instance.spec.difficulty == "routine"
 
 
