@@ -58,11 +58,17 @@ directly — no file I/O, no YAML parsing, problems defined inline.
 ```python
 # production
 engine = Engine(registry=NSCRegistry(content_dir="./content"))
+engine = Engine(registry=NSCRegistry(content_dir="./content"), validation_mode=ValidationMode.STRICT)
 
 # tests
 engine = Engine(registry=InMemoryRegistry({
     "quadratic_factor": Problem(id="quadratic_factor", ...)
 }))
+
+# ValidationMode enum
+class ValidationMode(enum):
+    LENIENT  # default — coincidental canonical match → correct
+    STRICT   # coincidental canonical match → semantic_error
 ```
 
 ### Problem (the spec — immutable, authored)
@@ -211,12 +217,23 @@ StepRating:
 |---|---|---|
 | `correct` | Matches canonical answer | Pass |
 | `ca_correct` | Wrong vs canonical; correct given student's own prior value | Arithmetic slip; light penalty |
-| `semantic_error` | Wrong vs CA-canonical (step has a prior dependency; student did not apply the correct formula to their own prior values — this includes a coincidental match with canonical, e.g. using the canonical prior value instead of their own) | Conceptual gap; heavy penalty |
+| `semantic_error` | Wrong vs canonical AND wrong vs CA-canonical — student did not apply the correct formula to their own prior values | Conceptual gap; heavy penalty |
 | `computation_error` | Step 0 only (no prior); simply wrong | Standard fail |
 
 SRS scheduling should weight `semantic_error` more heavily than `ca_correct` or
 `computation_error`. `ca_correct` means the student understood the method but made an
 earlier arithmetic slip; `semantic_error` means they applied the wrong approach regardless.
+
+**Coincidental canonical match** — student matches canonical but not CA-canonical (e.g. used
+canonical prior value instead of their own, arriving at the right answer by a different
+path): behaviour depends on `ValidationMode`:
+
+- `ValidationMode.LENIENT` (default): marked `correct`. A correct line is a correct line
+  regardless of path — the student may have re-derived independently, and penalising a
+  correct answer is user-hostile.
+- `ValidationMode.STRICT`: marked `semantic_error`. The CA chain reveals the student did
+  not apply the formula to their own work; the coincidental match is treated as a
+  conceptual gap signal. Use for diagnostic/research contexts where method tracing matters.
 
 `marks_possible` on `SolutionRating` covers submitted steps only — partial attempts do not
 penalise for unsubmitted steps. `is_correct` is a computed convenience; not authored.
@@ -248,8 +265,9 @@ step 0: canonical=5,  student=10
           → computation_error  (no prior step; just wrong)
 
 step 1: canonical=10, ca_canonical=2×10=20, student=10
-          student==canonical(10) but ≠ ca_canonical(20)
-          → semantic_error  (formula correct but applied against canonical a, not their a=10)
+          student==canonical(10) but ≠ ca_canonical(20)  — coincidental match
+          → correct        (ValidationMode.LENIENT, default)
+          → semantic_error (ValidationMode.STRICT)
 
 step 2: canonical=20, ca_canonical=2×10=20, student=20
           student==ca_canonical  → ca_correct
@@ -405,11 +423,23 @@ verifier.rate(SolutionAttempt(steps=[SubmittedStep(10), SubmittedStep(20)]))
       marks_awarded:1, marks_possible:2, is_correct:False
     }
 
-# 2-step: semantic error on step 1
-# canonical: a=5, x=2a=10  |  student: a=10, x=10 (applied formula to canonical a, not theirs)
+# 2-step: coincidental canonical match — lenient (default)
+# canonical: a=5, x=2a=10  |  student: a=10, x=10 (matched canonical but not ca_canonical=20)
 verifier.rate(SolutionAttempt(steps=[SubmittedStep(10), SubmittedStep(10)]))
+  → StepRating {index:1, mistake_type:correct, marks_awarded:1}
+  # student line is correct; lenient mode does not penalise the path taken
+
+# 2-step: coincidental canonical match — strict mode
+verifier.rate(SolutionAttempt(steps=[SubmittedStep(10), SubmittedStep(10)]),
+              validation_mode=ValidationMode.STRICT)
   → StepRating {index:1, mistake_type:semantic_error, marks_awarded:0}
-  # student matched canonical x=10 but not ca_canonical x=20; conceptual gap flagged
+  # strict: student matched canonical x=10 but not ca_canonical x=20; conceptual gap flagged
+
+# 2-step: genuine semantic error (both modes agree)
+# canonical: a=5, x=2a=10  |  student: a=10, x=7 (wrong vs canonical AND wrong vs ca_canonical=20)
+verifier.rate(SolutionAttempt(steps=[SubmittedStep(10), SubmittedStep(7)]))
+  → StepRating {index:1, mistake_type:semantic_error, marks_awarded:0}
+  # modes agree: wrong vs canonical and wrong vs ca_canonical → semantic_error in both
 
 # partial attempt — 1 of 2 steps submitted
 verifier.rate(SolutionAttempt(steps=[SubmittedStep(5)]))

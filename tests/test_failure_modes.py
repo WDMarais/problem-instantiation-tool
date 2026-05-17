@@ -283,33 +283,6 @@ def test_srs_card_with_self_graded_verifier_raises_validation_error_at_construct
         )
 
 
-@pytest.mark.failure_modes
-def test_validation_error_is_not_deferred_to_instantiate():
-    """The ValidationError is NOT raised at instantiate() — it is raised at Problem() time."""
-    construction_raised = False
-    try:
-        bad_problem = Problem(  # TODO: wire up
-            id="circle_area",
-            type_id="geometry",
-            name="Find the area of a circle",
-            artifact_type="srs_card",
-            problem_spec={"kind": "circle_area", "radius_range": [1, 10]},
-            verifier_spec=[
-                {"kind": "self_graded", "marks_possible": 1},
-                {"kind": "self_graded", "marks_possible": 1},
-            ],
-        )
-    except (ValidationError, NotImplementedError):
-        construction_raised = True
-
-    # If somehow construction didn't raise, instantiate must not succeed silently.
-    if not construction_raised:
-        registry = InMemoryRegistry({"circle_area": bad_problem})  # TODO: wire up
-        engine = Engine(registry=registry)  # TODO: wire up
-        with pytest.raises((ValidationError, Exception)):
-            engine.instantiate("circle_area", seed=1)  # TODO: wire up
-
-
 # === SPEC GAPS ===
 # test_instantiation_error_cause_type: spec says InstantiationError wraps the
 #   underlying exception as `cause`, but does not specify whether this is stored

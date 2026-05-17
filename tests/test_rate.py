@@ -19,6 +19,7 @@ try:
         StepRating,
         ProvidedStep,
         SubmittedStep,
+        ValidationMode,
     )
     from problem_instantiation_tool.registry import InMemoryRegistry
     from problem_instantiation_tool.engine import Engine
@@ -48,6 +49,10 @@ except ImportError:
     class SubmittedStep:
         def __init__(self, value):
             raise NotImplementedError
+
+    class ValidationMode:
+        LENIENT = "lenient"
+        STRICT = "strict"
 
     class InMemoryRegistry:
         def __init__(self, problems):
@@ -227,6 +232,49 @@ def gap_fill_instance():
 
 
 @pytest.fixture
+def ca_gap_noncontiguous_instance():
+    """3-step CA gap-fill with blank_steps=[0, 2]. Step 2 CA-depends on step 1 (provided).
+
+    Canonical: a=5, step1=2*a=10, step2=step1+5=15.
+    """
+    problem = Problem(  # TODO: wire up
+        id="three_step_ca_gap",
+        type_id="algebra",
+        name="Three-step chain, noncontiguous blanks",
+        artifact_type="gap_fill",
+        problem_spec={"kind": "fixed", "a": 5},
+        verifier_spec=[
+            {"kind": "sympy_equivalence", "marks_possible": 1},
+            {
+                "kind": "sympy_equivalence",
+                "marks_possible": 1,
+                "depends_on": [0],
+                "symbolic_expr": "2 * step0_result",
+            },
+            {
+                "kind": "sympy_equivalence",
+                "marks_possible": 1,
+                "depends_on": [1],
+                "symbolic_expr": "step1_result + 5",
+            },
+        ],
+        problem_structure={
+            "kind": "sequential",
+            "steps": [
+                {"role": "find_a"},
+                {"role": "find_2a"},
+                {"role": "find_2a_plus_5"},
+            ],
+        },
+        source_id="three_step_chain",
+        blank_steps=[0, 2],
+    )
+    registry = InMemoryRegistry({"three_step_ca_gap": problem})  # TODO: wire up
+    engine = Engine(registry=registry)  # TODO: wire up
+    return engine.instantiate("three_step_ca_gap", params={"a": 5})  # TODO: wire up
+
+
+@pytest.fixture
 def high_marks_instance():
     """SymPyEquivalence verifier with marks_possible=2 (insight step)."""
     problem = Problem(  # TODO: wire up
@@ -322,17 +370,17 @@ def test_two_step_ca_correct(two_step_ca_instance):
 
 
 # ---------------------------------------------------------------------------
-# 2-step CA marking: semantic_error
+# 2-step CA marking: coincidental canonical match (lenient and strict)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.rate
-def test_two_step_semantic_error(two_step_ca_instance):
-    """Step 0 wrong; step 1 matches canonical but not CA-canonical → semantic_error.
+def test_two_step_coincidental_match_lenient_is_correct(two_step_ca_instance):
+    """Coincidental canonical match in LENIENT mode (default) → correct.
 
-    Canonical: a=5, x=2a=10.
-    Student:   a=10, x=10  (used canonical a=5 in formula instead of their own a=10).
-    CA-canonical for step 1: 2×10=20. Student x=10 ≠ 20 → semantic_error.
+    Canonical: a=5, x=2a=10.  Student: a=10, x=10.
+    Student x=10 matches canonical(10) but not ca_canonical(20).
+    LENIENT: a correct answer is correct regardless of path taken.
     """
     attempt = SolutionAttempt(
         steps=[SubmittedStep(10), SubmittedStep(10)]
@@ -340,10 +388,51 @@ def test_two_step_semantic_error(two_step_ca_instance):
     rating = two_step_ca_instance.verifier.rate(attempt)  # TODO: wire up
 
     assert rating.steps[0].mistake_type == "computation_error"
+    assert rating.steps[1].mistake_type == "correct"
+    assert rating.steps[1].marks_awarded == 1
 
+
+@pytest.mark.rate
+def test_two_step_coincidental_match_strict_is_semantic_error(two_step_ca_instance):
+    """Coincidental canonical match in STRICT mode → semantic_error.
+
+    Canonical: a=5, x=2a=10.  Student: a=10, x=10.
+    Student x=10 matches canonical(10) but not ca_canonical(20).
+    STRICT: coincidental match signals student did not apply method to their own prior value.
+    """
+    attempt = SolutionAttempt(
+        steps=[SubmittedStep(10), SubmittedStep(10)]
+    )  # TODO: wire up
+    rating = two_step_ca_instance.verifier.rate(
+        attempt, validation_mode=ValidationMode.STRICT
+    )  # TODO: wire up
+
+    assert rating.steps[0].mistake_type == "computation_error"
     assert rating.steps[1].mistake_type == "semantic_error"
     assert rating.steps[1].marks_awarded == 0
+    assert rating.is_correct is False
 
+
+# ---------------------------------------------------------------------------
+# 2-step CA marking: genuine semantic_error (both modes agree)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.rate
+def test_two_step_genuine_semantic_error(two_step_ca_instance):
+    """Genuine semantic_error: wrong vs canonical AND wrong vs CA-canonical. Both modes agree.
+
+    Canonical: a=5, x=2a=10.  Student: a=10, x=7.
+    Student x=7 ≠ canonical(10) and ≠ ca_canonical(20) → semantic_error in both modes.
+    """
+    attempt = SolutionAttempt(
+        steps=[SubmittedStep(10), SubmittedStep(7)]
+    )  # TODO: wire up
+    rating = two_step_ca_instance.verifier.rate(attempt)  # TODO: wire up
+
+    assert rating.steps[0].mistake_type == "computation_error"
+    assert rating.steps[1].mistake_type == "semantic_error"
+    assert rating.steps[1].marks_awarded == 0
     assert rating.marks_awarded == 0
     assert rating.is_correct is False
 
@@ -391,6 +480,46 @@ def test_gap_fill_provided_steps_skipped_in_marking(gap_fill_instance):
     assert rating.steps[0].index == 1
     assert rating.steps[0].mistake_type == "correct"
     assert rating.marks_possible == 1
+
+
+# ---------------------------------------------------------------------------
+# Gap-fill CA chain: ProvidedStep resets CA to canonical
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.rate
+def test_provided_step_breaks_ca_chain_in_noncontiguous_gap_fill(
+    ca_gap_noncontiguous_instance,
+):
+    """ProvidedStep at step 1 resets the CA chain to canonical; student's wrong step 0
+    does not propagate into the CA evaluation for step 2.
+
+    Canonical: a=5, step1=10, step2=15.
+    Student submits: step0=8 (wrong), step2=21.
+
+    Without reset: step2 ca_canonical = 2*8+5 = 21 → student=21 is ca_correct.
+    With reset:    ProvidedStep(10) breaks chain; step2 ca_canonical = 10+5 = 15.
+                   Student step2=21 ≠ 15 → computation_error (not ca_correct).
+    """
+    provided_s1 = ca_gap_noncontiguous_instance.presented_attempt.steps[
+        1
+    ].value  # TODO: wire up
+
+    attempt = SolutionAttempt(  # TODO: wire up
+        steps=[
+            SubmittedStep(8),  # wrong: canonical a=5
+            ProvidedStep(provided_s1),  # canonical step1=10 breaks CA chain
+            SubmittedStep(21),  # ca_correct WITHOUT reset, computation_error WITH reset
+        ]
+    )
+    rating = ca_gap_noncontiguous_instance.verifier.rate(attempt)  # TODO: wire up
+
+    assert len(rating.steps) == 2  # only the two SubmittedSteps are rated
+    assert rating.steps[0].index == 0
+    assert rating.steps[0].mistake_type == "computation_error"
+    assert rating.steps[1].index == 2
+    # Chain was reset by ProvidedStep(10): ca_canonical = 10+5 = 15, not 21.
+    assert rating.steps[1].mistake_type == "computation_error"
 
 
 # ---------------------------------------------------------------------------
@@ -522,18 +651,6 @@ def test_self_graded_non_bool_raises_attempt_validation_error(self_graded_instan
 
 
 # === SPEC GAPS ===
-# test_ca_chain_reset_by_provided_step: spec says ProvidedStep breaks CA chain and
-#   resets to canonical for the next SubmittedStep. No concrete test yet for the
-#   noncontiguous case (blank_steps=[0,2]): what is the ca_canonical for step 2
-#   when step 1 is a ProvidedStep with canonical value? Expected: step 2 CA uses
-#   canonical step 1 value (not student's), resetting the propagation.
-#
-# test_semantic_error_table_description_vs_example: the spec table says
-#   semantic_error = "Wrong vs canonical AND wrong vs CA-canonical", but the
-#   example shows student=10 == canonical=10 yet mistake_type=semantic_error.
-#   The example is authoritative; the table description appears imprecise.
-#   Implementation should follow the example. Worth resolving in spec before impl.
-#
 # test_exact_match_whitespace_normalisation: spec lists "whitespace" as an authored
 #   normalize option but gives no concrete example. Behaviour under leading/trailing
 #   vs internal whitespace normalisation is unspecified.
