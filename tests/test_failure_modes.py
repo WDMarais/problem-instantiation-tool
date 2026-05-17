@@ -126,7 +126,7 @@ def test_overconstrained_generator_raises_instantiation_error():
         name="Overconstrained",
         artifact_type="practice",
         problem_spec=overconstrained,
-        verifier_spec={"kind": "sympy_equivalence", "marks_possible": 1},
+        verifier_spec={"kind": "symbolic_equality", "marks_possible": 1},
     )
     registry = InMemoryRegistry({"overconstrained_generator": problem})
     engine = Engine(registry=registry)

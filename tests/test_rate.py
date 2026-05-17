@@ -60,9 +60,9 @@ def two_step_ca_instance():
         artifact_type="practice",
         problem_spec={"kind": "fixed", "a": 5},
         verifier_spec=[
-            {"kind": "sympy_equivalence", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
             {
-                "kind": "sympy_equivalence",
+                "kind": "symbolic_equality",
                 "marks_possible": 1,
                 "depends_on": [0],
                 "symbolic_expr": "2 * step0_result",
@@ -99,7 +99,7 @@ def mcq_instance():
 
 
 @pytest.fixture
-def exact_match_geo_instance():
+def exact_equality_geo_instance():
     """ExactMatch verifier: canonical answer is 'Tanzania' (case-insensitive by default)."""
     problem = Problem(
         id="country_flag",
@@ -107,7 +107,7 @@ def exact_match_geo_instance():
         name="Name the country",
         artifact_type="srs_card",
         problem_spec={"kind": "fixed_answer", "answer": "Tanzania"},
-        verifier_spec={"kind": "exact_match", "marks_possible": 1},
+        verifier_spec={"kind": "exact_equality", "marks_possible": 1},
     )
     registry = InMemoryRegistry({"country_flag": problem})
     engine = Engine(registry=registry)
@@ -117,7 +117,7 @@ def exact_match_geo_instance():
 
 
 @pytest.fixture
-def exact_match_pinyin_instance():
+def exact_equality_pinyin_instance():
     """ExactMatch with accents normalization: canonical 'nǐ hǎo', normalize=[accents]."""
     problem = Problem(
         id="pinyin_nihao",
@@ -126,7 +126,7 @@ def exact_match_pinyin_instance():
         artifact_type="srs_card",
         problem_spec={"kind": "fixed_answer", "answer": "nǐ hǎo"},
         verifier_spec={
-            "kind": "exact_match",
+            "kind": "exact_equality",
             "marks_possible": 1,
             "normalize": ["accents"],
         },
@@ -164,9 +164,9 @@ def gap_fill_instance():
         artifact_type="gap_fill",
         problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
         verifier_spec=[
-            {"kind": "sympy_equivalence", "marks_possible": 1},
-            {"kind": "sympy_equivalence", "marks_possible": 1},
-            {"kind": "sympy_equivalence", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
         ],
         source_id="surd_equation_linear_rhs",
         blank_steps=[1],
@@ -178,9 +178,9 @@ def gap_fill_instance():
         artifact_type="practice",
         problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
         verifier_spec=[
-            {"kind": "sympy_equivalence", "marks_possible": 1},
-            {"kind": "sympy_equivalence", "marks_possible": 1},
-            {"kind": "sympy_equivalence", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
         ],
         difficulty="standard",
     )
@@ -204,15 +204,15 @@ def ca_gap_noncontiguous_instance():
         artifact_type="gap_fill",
         problem_spec={"kind": "fixed", "a": 5},
         verifier_spec=[
-            {"kind": "sympy_equivalence", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
             {
-                "kind": "sympy_equivalence",
+                "kind": "symbolic_equality",
                 "marks_possible": 1,
                 "depends_on": [0],
                 "symbolic_expr": "2 * step0_result",
             },
             {
-                "kind": "sympy_equivalence",
+                "kind": "symbolic_equality",
                 "marks_possible": 1,
                 "depends_on": [1],
                 "symbolic_expr": "step1_result + 5",
@@ -236,9 +236,9 @@ def ca_gap_noncontiguous_instance():
         artifact_type="practice",
         problem_spec={"kind": "fixed", "a": 5},
         verifier_spec=[
-            {"kind": "sympy_equivalence", "marks_possible": 1},
-            {"kind": "sympy_equivalence", "marks_possible": 1},
-            {"kind": "sympy_equivalence", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
         ],
         difficulty="standard",
     )
@@ -258,7 +258,7 @@ def high_marks_instance():
         name="Circle area derivation",
         artifact_type="practice",
         problem_spec={"kind": "fixed", "radius": 1},
-        verifier_spec={"kind": "sympy_equivalence", "marks_possible": 2},
+        verifier_spec={"kind": "symbolic_equality", "marks_possible": 2},
     )
     registry = InMemoryRegistry({"circle_insight": problem})
     engine = Engine(registry=registry)
@@ -559,36 +559,36 @@ def test_mcq_wrong_choice(mcq_instance):
 
 
 @pytest.mark.rate
-def test_exact_match_correct_casing(exact_match_geo_instance):
+def test_exact_equality_correct_casing(exact_equality_geo_instance):
     """Exact case match: 'Tanzania' → correct."""
     attempt = SolutionAttempt(steps=[SubmittedStep("Tanzania")])
-    rating = exact_match_geo_instance.verifier.rate(attempt)
+    rating = exact_equality_geo_instance.verifier.rate(attempt)
     assert rating.steps[0].mistake_type == "correct"
-    assert rating.steps[0].verifier_type == "exact_match"
+    assert rating.steps[0].verifier_type == "exact_equality"
 
 
 @pytest.mark.rate
-def test_exact_match_case_insensitive_by_default(exact_match_geo_instance):
+def test_exact_equality_case_insensitive_by_default(exact_equality_geo_instance):
     """Lowercase submission 'tanzania' matches canonical 'Tanzania' (case-insensitive always on)."""
     attempt = SolutionAttempt(steps=[SubmittedStep("tanzania")])
-    rating = exact_match_geo_instance.verifier.rate(attempt)
+    rating = exact_equality_geo_instance.verifier.rate(attempt)
     assert rating.steps[0].mistake_type == "correct"
 
 
 @pytest.mark.rate
-def test_exact_match_wrong_answer(exact_match_geo_instance):
+def test_exact_equality_wrong_answer(exact_equality_geo_instance):
     """Wrong ExactMatch answer: mistake_type=computation_error, marks_awarded=0."""
     attempt = SolutionAttempt(steps=[SubmittedStep("Zambia")])
-    rating = exact_match_geo_instance.verifier.rate(attempt)
+    rating = exact_equality_geo_instance.verifier.rate(attempt)
     assert rating.steps[0].mistake_type == "computation_error"
     assert rating.steps[0].marks_awarded == 0
 
 
 @pytest.mark.rate
-def test_exact_match_accent_normalisation(exact_match_pinyin_instance):
+def test_exact_equality_accent_normalisation(exact_equality_pinyin_instance):
     """'ni hao' (no tone marks) normalises to match 'nǐ hǎo' when normalize includes accents."""
     attempt = SolutionAttempt(steps=[SubmittedStep("ni hao")])
-    rating = exact_match_pinyin_instance.verifier.rate(attempt)
+    rating = exact_equality_pinyin_instance.verifier.rate(attempt)
     assert rating.steps[0].mistake_type == "correct"
 
 
@@ -626,6 +626,6 @@ def test_self_graded_non_bool_raises_attempt_validation_error(self_graded_instan
 
 
 # === SPEC GAPS ===
-# test_exact_match_whitespace_normalisation: spec lists "whitespace" as an authored
+# test_exact_equality_whitespace_normalisation: spec lists "whitespace" as an authored
 #   normalize option but gives no concrete example. Behaviour under leading/trailing
 #   vs internal whitespace normalisation is unspecified.

@@ -49,9 +49,9 @@ def surd_gap_problem():
         artifact_type="gap_fill",
         problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
         verifier_spec=[
-            {"kind": "sympy_equivalence", "marks_possible": 1},
-            {"kind": "sympy_equivalence", "marks_possible": 1},
-            {"kind": "sympy_equivalence", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
         ],
         source_id="surd_equation_linear_rhs",
         blank_steps=[1],
@@ -68,9 +68,9 @@ def surd_gap_noncontiguous_problem():
         artifact_type="gap_fill",
         problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
         verifier_spec=[
-            {"kind": "sympy_equivalence", "marks_possible": 1},
-            {"kind": "sympy_equivalence", "marks_possible": 1},
-            {"kind": "sympy_equivalence", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
         ],
         source_id="surd_equation_linear_rhs",
         blank_steps=[0, 2],
@@ -197,7 +197,7 @@ def test_callable_problem_spec_produces_same_instance_shape():
         name="Discriminant — case branching",
         artifact_type="practice",
         problem_spec=discriminant_generator,  # callable, not dict
-        verifier_spec={"kind": "sympy_equivalence", "marks_possible": 1},
+        verifier_spec={"kind": "symbolic_equality", "marks_possible": 1},
     )
     registry = InMemoryRegistry({"discriminant_generator": problem})
     engine = Engine(registry=registry)
@@ -315,9 +315,9 @@ def test_gap_fill_difficulty_defaults_one_below_source():
         artifact_type="practice",
         problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
         verifier_spec=[
-            {"kind": "sympy_equivalence"},
-            {"kind": "sympy_equivalence"},
-            {"kind": "sympy_equivalence"},
+            {"kind": "symbolic_equality"},
+            {"kind": "symbolic_equality"},
+            {"kind": "symbolic_equality"},
         ],
         difficulty="standard",
     )
@@ -328,9 +328,9 @@ def test_gap_fill_difficulty_defaults_one_below_source():
         artifact_type="gap_fill",
         problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
         verifier_spec=[
-            {"kind": "sympy_equivalence"},
-            {"kind": "sympy_equivalence"},
-            {"kind": "sympy_equivalence"},
+            {"kind": "symbolic_equality"},
+            {"kind": "symbolic_equality"},
+            {"kind": "symbolic_equality"},
         ],
         source_id="surd_equation_linear_rhs",
         blank_steps=[1],
@@ -358,9 +358,9 @@ def test_gap_fill_authored_difficulty_overrides_default():
         artifact_type="gap_fill",
         problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
         verifier_spec=[
-            {"kind": "sympy_equivalence"},
-            {"kind": "sympy_equivalence"},
-            {"kind": "sympy_equivalence"},
+            {"kind": "symbolic_equality"},
+            {"kind": "symbolic_equality"},
+            {"kind": "symbolic_equality"},
         ],
         source_id="surd_equation_linear_rhs",
         blank_steps=[1],

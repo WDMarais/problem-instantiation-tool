@@ -99,7 +99,7 @@ def test_problem_all_optional_fields():
         verifier_spec=[
             {"kind": "set_equality", "marks_possible": 1},
             {
-                "kind": "numeric_approx",
+                "kind": "numeric_equality",
                 "tolerance": 0.005,
                 "marks_possible": 2,
                 "depends_on": [0],
@@ -128,9 +128,9 @@ def test_problem_gap_fill_with_source_id_and_blank_steps():
         artifact_type="gap_fill",
         problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
         verifier_spec=[
-            {"kind": "sympy_equivalence", "marks_possible": 1},
-            {"kind": "sympy_equivalence", "marks_possible": 1},
-            {"kind": "sympy_equivalence", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
         ],
         source_id="surd_equation_linear_rhs",
         blank_steps=[1],
@@ -150,9 +150,9 @@ def test_problem_gap_fill_noncontiguous_blank_steps():
         artifact_type="gap_fill",
         problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
         verifier_spec=[
-            {"kind": "sympy_equivalence", "marks_possible": 1},
-            {"kind": "sympy_equivalence", "marks_possible": 1},
-            {"kind": "sympy_equivalence", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
         ],
         source_id="surd_equation_linear_rhs",
         blank_steps=[0, 2],
@@ -228,7 +228,7 @@ def test_problem_gap_fill_without_source_id_raises_validation_error():
             name="Gap fill without source",
             artifact_type="gap_fill",
             problem_spec={"kind": "surd_linear"},
-            verifier_spec={"kind": "sympy_equivalence"},
+            verifier_spec={"kind": "symbolic_equality"},
             blank_steps=[1],
             # source_id deliberately omitted
         )
@@ -244,7 +244,7 @@ def test_problem_gap_fill_without_blank_steps_raises_validation_error():
             name="Gap fill without blank steps",
             artifact_type="gap_fill",
             problem_spec={"kind": "surd_linear"},
-            verifier_spec={"kind": "sympy_equivalence"},
+            verifier_spec={"kind": "symbolic_equality"},
             source_id="surd_equation_linear_rhs",
             # blank_steps deliberately omitted
         )
@@ -351,7 +351,7 @@ def test_solution_rating_marks_awarded_is_sum_of_step_marks():
                 marks_awarded=0,
                 marks_possible=2,
                 mistake_type="semantic_error",
-                verifier_type="sympy_equivalence",
+                verifier_type="symbolic_equality",
             ),
         ],
         marks_awarded=1,
@@ -523,9 +523,9 @@ def test_problem_instance_gap_fill_has_non_none_presented_attempt():
         artifact_type="gap_fill",
         problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
         verifier_spec=[
-            {"kind": "sympy_equivalence", "marks_possible": 1},
-            {"kind": "sympy_equivalence", "marks_possible": 1},
-            {"kind": "sympy_equivalence", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+            {"kind": "symbolic_equality", "marks_possible": 1},
         ],
         source_id="surd_equation_linear_rhs",
         blank_steps=[1],
@@ -536,7 +536,7 @@ def test_problem_instance_gap_fill_has_non_none_presented_attempt():
         name="Surd equation (linear RHS)",
         artifact_type="practice",
         problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
-        verifier_spec=[{"kind": "sympy_equivalence"}],
+        verifier_spec=[{"kind": "symbolic_equality"}],
         difficulty="standard",
     )
     registry = InMemoryRegistry(
@@ -557,9 +557,9 @@ def test_problem_instance_gap_fill_presented_attempt_has_none_at_blank_steps():
         artifact_type="gap_fill",
         problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
         verifier_spec=[
-            {"kind": "sympy_equivalence"},
-            {"kind": "sympy_equivalence"},
-            {"kind": "sympy_equivalence"},
+            {"kind": "symbolic_equality"},
+            {"kind": "symbolic_equality"},
+            {"kind": "symbolic_equality"},
         ],
         source_id="surd_equation_linear_rhs",
         blank_steps=[1],
@@ -570,7 +570,7 @@ def test_problem_instance_gap_fill_presented_attempt_has_none_at_blank_steps():
         name="Surd equation (linear RHS)",
         artifact_type="practice",
         problem_spec={"kind": "surd_linear", "a_range": [2, 9]},
-        verifier_spec=[{"kind": "sympy_equivalence"}],
+        verifier_spec=[{"kind": "symbolic_equality"}],
         difficulty="standard",
     )
     registry = InMemoryRegistry(

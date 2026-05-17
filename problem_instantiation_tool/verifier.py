@@ -59,7 +59,7 @@ def _compute_canonicals(specs: list[dict], params: dict) -> list[Any]:
     for spec in specs:
         depends_on = spec.get("depends_on")
         symbolic_expr_str = spec.get("symbolic_expr")
-        kind = spec.get("kind", "sympy_equivalence")
+        kind = spec.get("kind", "symbolic_equality")
 
         if depends_on is not None and symbolic_expr_str is not None:
             expr = sympy.sympify(symbolic_expr_str)
@@ -67,7 +67,7 @@ def _compute_canonicals(specs: list[dict], params: dict) -> list[Any]:
             canonical = _eval_symbolic(expr, prior, depends_on)
         elif kind == "mcq":
             canonical = params.get("correct", next(iter(params.values()), None))
-        elif kind == "exact_match":
+        elif kind == "exact_equality":
             canonical = params.get("answer", next(iter(params.values()), None))
         elif kind == "self_graded":
             canonical = True
@@ -108,7 +108,7 @@ def _normalize_string(value: str, normalize: list[str]) -> str:
 
 class _StepSpec:
     def __init__(self, spec_dict: dict, canonical: Any) -> None:
-        self.kind: str = spec_dict.get("kind", "sympy_equivalence")
+        self.kind: str = spec_dict.get("kind", "symbolic_equality")
         self.marks_possible: int = spec_dict.get("marks_possible", 1)
         self.canonical = canonical
         self.depends_on: list[int] | None = spec_dict.get("depends_on")
@@ -117,6 +117,7 @@ class _StepSpec:
             sympy.sympify(raw_expr) if raw_expr is not None else None
         )
         self.normalize: list[str] = spec_dict.get("normalize", [])
+        self.tolerance: float = spec_dict.get("tolerance", 0.0)
 
 
 def _rate_submitted_step(
@@ -143,7 +144,7 @@ def _rate_submitted_step(
             return MistakeType.correct, spec.marks_possible
         return MistakeType.computation_error, 0
 
-    if kind == "exact_match":
+    if kind == "exact_equality":
         student_norm = _normalize_string(str(student_value), spec.normalize)
         canonical_norm = _normalize_string(str(spec.canonical), spec.normalize)
         if student_norm == canonical_norm:
@@ -155,7 +156,16 @@ def _rate_submitted_step(
             return MistakeType.correct, spec.marks_possible
         return MistakeType.computation_error, 0
 
-    # sympy_equivalence (and unknown kinds)
+    if kind == "numeric_equality":
+        tolerance = spec.tolerance
+        try:
+            if abs(float(student_value) - float(spec.canonical)) <= tolerance:
+                return MistakeType.correct, spec.marks_possible
+        except (TypeError, ValueError):
+            pass
+        return MistakeType.computation_error, 0
+
+    # symbolic_equality (and unknown kinds — fall through to symbolic comparison)
     is_canonical_match = _sympy_equal(student_value, spec.canonical)
 
     if spec.depends_on is None or spec.symbolic_expr is None:
