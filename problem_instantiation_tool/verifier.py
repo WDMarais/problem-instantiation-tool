@@ -99,7 +99,11 @@ def _extract_student_set(value: Any) -> frozenset:
 
 
 def _normalize_string(value: str, normalize: list[str]) -> str:
-    s = value.lower()
+    s = unicodedata.normalize("NFC", value).lower()
+    if "pinyin" in normalize:
+        from .normalizers.pinyin import normalize as _pinyin_normalize
+
+        s = _pinyin_normalize(s)
     if "accents" in normalize or "tone_marks" in normalize:
         s = unicodedata.normalize("NFD", s)
         s = "".join(c for c in s if unicodedata.category(c) != "Mn")

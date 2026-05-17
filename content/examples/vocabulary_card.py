@@ -1,21 +1,22 @@
 """
-Reference example: vocabulary card (exact_equality with normalisation).
+Reference example: vocabulary card (exact_equality with pinyin normalisation).
 
 Design decisions demonstrated:
-- exact_equality is appropriate when the answer is a fixed string with no
-  algebraic equivalent — pinyin has one correct romanisation per syllable,
-  not a family of symbolically equal expressions.
-- normalize: ["tone_marks", "whitespace"] accepts ni hao / nǐ hǎo / Ni Hao
-  as equivalent. Tone mark stripping is the minimal concession for keyboard
-  entry; case-folding is always applied (it's free and never wrong here).
-  Whitespace normalisation collapses multiple spaces and trims, so "nǐ  hǎo"
-  and "nǐ hǎo" are the same.
-- The generator puts `answer` (pinyin) in params alongside the question
-  params (hanzi, meaning). exact_equality picks params["answer"] as the
-  canonical; the other params exist for the consumer to render the card front.
-- This is a code generator because the vocabulary list is a runtime value,
-  not a range. Dict specs only describe parameter spaces via *_range keys;
-  arbitrary choice from a list requires a callable.
+- The canonical is stored in tone-number format ("ni3 hao3"), not diacritic
+  format ("nǐ hǎo"). Tone numbers are the natural keyboard-entry format;
+  diacritics require special input methods most students don't have.
+- normalize: ["pinyin", "whitespace"] converts any diacritic input to
+  tone-number form before comparing, so both "nǐ hǎo" and "ni3 hao3" match
+  the canonical. Tone accuracy is preserved: "ni4 hao4" does not match.
+- Neutral tone variants (bare syllable, trailing 0, trailing 5) all
+  canonicalise to 5, so "xie xie", "xie5 xie5", and "xie0 xie0" are
+  equivalent and all accepted.
+- exact_equality is the right verifier here: pinyin has one conventional
+  romanisation per syllable with no algebraically equivalent forms.
+  symbolic_equality (SymPy) would be wrong — there's no mathematical
+  equivalence to exploit.
+- hanzi and meaning sit in params for the consumer to render the card front.
+  The verifier only touches params["answer"].
 """
 
 from __future__ import annotations
@@ -24,12 +25,13 @@ import random
 
 from problem_instantiation_tool.schemas import Problem
 
+# Canonicals are in tone-number format — the natural input format.
 _VOCAB = [
-    {"hanzi": "你好", "meaning": "hello", "pinyin": "nǐ hǎo"},
-    {"hanzi": "谢谢", "meaning": "thank you", "pinyin": "xiè xie"},
-    {"hanzi": "再见", "meaning": "goodbye", "pinyin": "zài jiàn"},
-    {"hanzi": "老师", "meaning": "teacher", "pinyin": "lǎo shī"},
-    {"hanzi": "学生", "meaning": "student", "pinyin": "xué shēng"},
+    {"hanzi": "你好", "meaning": "hello", "pinyin": "ni3 hao3"},
+    {"hanzi": "谢谢", "meaning": "thank you", "pinyin": "xie4 xie5"},
+    {"hanzi": "再见", "meaning": "goodbye", "pinyin": "zai4 jian4"},
+    {"hanzi": "老师", "meaning": "teacher", "pinyin": "lao3 shi1"},
+    {"hanzi": "学生", "meaning": "student", "pinyin": "xue2 sheng1"},
 ]
 
 
@@ -51,7 +53,7 @@ problem = Problem(
     verifier_spec={
         "kind": "exact_equality",
         "marks_possible": 1,
-        "normalize": ["tone_marks", "whitespace"],
+        "normalize": ["pinyin", "whitespace"],
     },
 )
 
@@ -66,26 +68,38 @@ if __name__ == "__main__":
     p = instance.params
     print(f"Question : What is the pinyin for {p['hanzi']} ({p['meaning']})?")
     print(f"Canonical: {instance.verifier.canonicals[0]}")
+    print()
 
-    for label, answer in [
-        ("Tones correct  ", p["answer"]),
-        (
-            "Tones stripped ",
-            p["answer"]
-            .replace("ǐ", "i")
-            .replace("ǎ", "a")
-            .replace("è", "e")
-            .replace("ì", "i")
-            .replace("ā", "a")
-            .replace("ē", "e")
-            .replace("ù", "u")
-            .replace("ō", "o")
-            .replace("ī", "i"),
-        ),
-        ("Wrong answer   ", "wrong"),
-    ]:
+    def show(label, answer, inst=instance):
         attempt = SolutionAttempt(steps=[SubmittedStep(answer)])
-        r = instance.verifier.rate(attempt)
+        r = inst.verifier.rate(attempt)
         print(
             f"{label}: {r.marks_awarded}/{r.marks_possible}  is_correct={r.is_correct}"
         )
+
+    # 你好 — tone numbers, diacritics, wrong tones
+    show("Tone numbers (canonical) ", "ni3 hao3")
+    show("Diacritics               ", "nǐ hǎo")
+    show("Wrong tones              ", "ni4 hao4")
+    show("Wrong answer             ", "wrong")
+    print()
+
+    # 谢谢 — neutral tone: bare, 0, and 5 are all equivalent
+    xie_xie = next(e for e in _VOCAB if e["hanzi"] == "谢谢")
+    xie_instance = engine.instantiate(
+        problem.id,
+        params={
+            "hanzi": xie_xie["hanzi"],
+            "meaning": xie_xie["meaning"],
+            "answer": xie_xie["pinyin"],
+        },
+    )
+    print(
+        f"Question : What is the pinyin for {xie_xie['hanzi']} ({xie_xie['meaning']})?"
+    )
+    print(f"Canonical: {xie_instance.verifier.canonicals[0]}")
+    print()
+    show("Tone numbers (xie4 xie5)", "xie4 xie5", xie_instance)
+    show("Neutral as 0             ", "xie4 xie0", xie_instance)
+    show("Neutral bare             ", "xie4 xie", xie_instance)
+    show("Diacritics               ", "xiè xie", xie_instance)
