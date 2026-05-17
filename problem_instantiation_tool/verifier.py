@@ -76,8 +76,10 @@ def _compute_canonicals(specs: list[dict], params: dict) -> list[Any]:
             canonical = (
                 frozenset(root_vals) if root_vals else frozenset(params.values())
             )
-        else:
-            canonical = next(iter(params.values()), 0) if params else 0
+        else:  # symbolic_equality (and unknown kinds)
+            canonical = (
+                params.get("answer", next(iter(params.values()), 0)) if params else 0
+            )
 
         canonicals.append(canonical)
     return canonicals
@@ -118,6 +120,7 @@ class _StepSpec:
         )
         self.normalize: list[str] = spec_dict.get("normalize", [])
         self.tolerance: float = spec_dict.get("tolerance", 0.0)
+        self.partial_credit: bool = spec_dict.get("partial_credit", True)
 
 
 def _rate_submitted_step(
@@ -152,8 +155,14 @@ def _rate_submitted_step(
         return MistakeType.computation_error, 0
 
     if kind == "set_equality":
-        if _extract_student_set(student_value) == frozenset(spec.canonical):
+        student_set = _extract_student_set(student_value)
+        canonical_set = frozenset(spec.canonical)
+        if student_set == canonical_set:
             return MistakeType.correct, spec.marks_possible
+        if spec.partial_credit and spec.marks_possible > 1:
+            matched = len(student_set & canonical_set)
+            if matched > 0:
+                return MistakeType.computation_error, min(matched, spec.marks_possible)
         return MistakeType.computation_error, 0
 
     if kind == "numeric_equality":
