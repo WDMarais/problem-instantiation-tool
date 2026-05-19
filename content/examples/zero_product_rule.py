@@ -19,6 +19,7 @@ zero_product_extension — (x + p + qi) = 0 with integers p, q. Root is −p −
 
 from __future__ import annotations
 
+import itertools
 import random
 
 import sympy
@@ -33,8 +34,11 @@ from problem_instantiation_tool.schemas import Problem
 
 _zig = sympy.Function("zig")
 _grep = sympy.Function("grep")
+_blorp = sympy.Function("blorp")
+_quux = sympy.Function("quux")
 _sin_fn = sympy.Function("sin")  # opaque — prevents SymPy from evaluating to float
 _cos_fn = sympy.Function("cos")
+_tan_fn = sympy.Function("tan")
 
 _POOL: list[tuple[str, sympy.Basic]] = [
     # Opaque made-up functions — no arithmetic shortcut possible
@@ -42,18 +46,34 @@ _POOL: list[tuple[str, sympy.Basic]] = [
     (r"\text{zig}(-2)", _zig(sympy.Integer(-2))),
     (r"\text{grep}(5)", _grep(sympy.Integer(5))),
     (r"\text{grep}(-1)", _grep(sympy.Integer(-1))),
+    (r"\text{blorp}(4)", _blorp(sympy.Integer(4))),
+    (r"\text{blorp}(-3)", _blorp(sympy.Integer(-3))),
+    (r"\text{quux}(7)", _quux(sympy.Integer(7))),
+    (r"\text{quux}(2)", _quux(sympy.Integer(2))),
     # Surds — irrational, introduces the rule beyond integers
     (r"\sqrt{5}", sympy.sqrt(5)),
     (r"2\sqrt{3}", 2 * sympy.sqrt(3)),
     (r"\sqrt{7}", sympy.sqrt(7)),
     (r"3\sqrt{2}", 3 * sympy.sqrt(2)),
+    (r"\sqrt{11}", sympy.sqrt(11)),
+    (r"4\sqrt{5}", 4 * sympy.sqrt(5)),
+    (r"\sqrt{13}", sympy.sqrt(13)),
+    (r"5\sqrt{2}", 5 * sympy.sqrt(2)),
     # Trig-named (opaque undefined function — SymPy won't evaluate to a decimal)
     (r"\sin 30°", _sin_fn(sympy.Integer(30))),
     (r"\cos 45°", _cos_fn(sympy.Integer(45))),
+    (r"\sin 60°", _sin_fn(sympy.Integer(60))),
+    (r"\cos 30°", _cos_fn(sympy.Integer(30))),
+    (r"\tan 45°", _tan_fn(sympy.Integer(45))),
     # Pure symbolic — leads naturally toward the general quadratic formula
     (r"p", sympy.Symbol("p")),
     (r"q", sympy.Symbol("q")),
+    (r"m", sympy.Symbol("m")),
+    (r"n", sympy.Symbol("n")),
+    (r"k", sympy.Symbol("k")),
     (r"\alpha", sympy.Symbol("alpha")),
+    (r"\beta", sympy.Symbol("beta")),
+    (r"\lambda", sympy.Symbol("lambda")),
 ]
 
 _i_sym = sympy.Symbol("i")  # opaque imaginary unit for the extension variant
@@ -111,6 +131,32 @@ _COMPOUND_BUILDERS = [
     _compound_minus_plus,
     _compound_minus_minus,
 ]
+
+
+def atomic_shuffled_n(rng: random.Random, n: int) -> list[dict]:
+    """Return n shuffled atomic problems, constructing only ~2n candidates.
+
+    Walks a shuffled pool once: each step emits one simple form (alternating
+    +/−) and one compound form with the next pool entry, then stops at 2n.
+    Cost is O(n), not O(pool²) — ~300× faster than full enumeration for
+    typical worksheet sizes.
+    """
+    pool = list(_POOL)
+    rng.shuffle(pool)
+    candidates: list[dict] = []
+    for i, (a_lat, a) in enumerate(pool):
+        eq, root_lat, root = _SIMPLE_BUILDERS[i % 2](a_lat, a)
+        candidates.append({"equation_latex": eq, "root_latex": root_lat, "root": root})
+        if i + 1 < len(pool):
+            b_lat, b = pool[i + 1]
+            eq, root_lat, root = _COMPOUND_BUILDERS[i % 4](a_lat, a, b_lat, b)
+            candidates.append(
+                {"equation_latex": eq, "root_latex": root_lat, "root": root}
+            )
+        if len(candidates) >= 2 * n:
+            break
+    rng.shuffle(candidates)
+    return candidates[:n]
 
 
 def _gen_atomic(rng: random.Random) -> dict:

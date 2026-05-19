@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from content.examples.monic_factorise import problem as monic_factorise_problem
 from content.examples.zero_product_rule import (
+    atomic_shuffled_n,
     zero_product_atomic,
     zero_product_extension,
     zero_product_standard,
@@ -393,6 +394,60 @@ def build_html(title: str, cards: list[ProblemCard], per_page: int = 2) -> str:
     )
 
 
+# ── generation helpers ────────────────────────────────────────────────────────
+
+# Sequence generators: problem_id → fn(rng, n) -> list[params].
+# When present, used instead of the retry-based fallback.
+# A sequence generator guarantees no repeats and scales with n, not pool².
+SEQUENCES: dict[str, Callable] = {
+    zero_product_atomic.id: atomic_shuffled_n,
+}
+
+
+def _generate_cards(
+    engine: Engine,
+    problem_id: str,
+    template_fn: Callable,
+    rng: random.Random,
+    n: int,
+    long_count: int,
+) -> list[ProblemCard]:
+    if problem_id in SEQUENCES:
+        params_list = SEQUENCES[problem_id](rng, n)
+    else:
+        params_list = _generate_unique_retry(engine, problem_id, rng, n)
+    return [
+        template_fn(params_list[i], detail="full" if i < long_count else "short")
+        for i in range(len(params_list))
+    ]
+
+
+def _generate_unique_retry(
+    engine: Engine,
+    problem_id: str,
+    rng: random.Random,
+    n: int,
+    max_retries: int = 50,
+) -> list[dict]:
+    seen: set[str] = set()
+    result: list[dict] = []
+    for _ in range(n):
+        params = None
+        for _ in range(max_retries):
+            candidate = engine.instantiate(problem_id, seed=rng.randint(0, 2**31))
+            key = str(
+                sorted(
+                    (k, v) for k, v in candidate.params.items() if isinstance(v, str)
+                )
+            )
+            if key not in seen:
+                seen.add(key)
+                params = candidate.params
+                break
+        result.append(params if params is not None else candidate.params)
+    return result
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 
@@ -425,13 +480,7 @@ def main() -> None:
     template_fn = TEMPLATES[args.problem]
     long_count = args.long_count if args.long_count is not None else args.n
 
-    cards = [
-        template_fn(
-            engine.instantiate(args.problem, seed=rng.randint(0, 2**31)).params,
-            detail="full" if i < long_count else "short",
-        )
-        for i in range(args.n)
-    ]
+    cards = _generate_cards(engine, args.problem, template_fn, rng, args.n, long_count)
 
     html = build_html(args.title, cards, per_page=args.per_page)
     Path(args.output).write_text(html, encoding="utf-8")
