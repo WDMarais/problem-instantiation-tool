@@ -127,12 +127,12 @@ def template_monic_factorise(params: dict, detail: str = "full") -> ProblemCard:
 
 
 def template_zero_product_atomic(params: dict, **_) -> ProblemCard:
-    expr = params["expr_latex"]
+    eq = params["equation_latex"]
     root = params["root_latex"]
     return ProblemCard(
         instruction="State the root:",
-        display_math=rf"x + {expr} = 0",
-        worked_steps=[rf"x + {expr} = 0 \;\Rightarrow\; x = {root}"],
+        display_math=eq,
+        worked_steps=[rf"{eq} \;\Rightarrow\; x = {root}"],
     )
 
 

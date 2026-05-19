@@ -62,12 +62,71 @@ _i_sym = sympy.Symbol("i")  # opaque imaginary unit for the extension variant
 # ── generators ─────────────────────────────────────────────────────────────────
 
 
+# Form builders for the atomic variant.
+# Each returns (equation_latex, root_latex, root_sympy).
+# Simple forms use one pool expression; compound forms use two.
+# Compound equations are parenthesised to visually echo the standard variant.
+
+
+def _simple_plus(a_lat: str, a: sympy.Basic) -> tuple[str, str, sympy.Basic]:
+    return rf"x + {a_lat} = 0", rf"-{a_lat}", -a
+
+
+def _simple_minus(a_lat: str, a: sympy.Basic) -> tuple[str, str, sympy.Basic]:
+    return rf"x - {a_lat} = 0", a_lat, a
+
+
+def _compound_plus_plus(
+    a_lat: str, a: sympy.Basic, b_lat: str, b: sympy.Basic
+) -> tuple[str, str, sympy.Basic]:
+    # (x + a + b) = 0  →  root = −a − b
+    return rf"(x + {a_lat} + {b_lat}) = 0", rf"-{a_lat} - {b_lat}", -a - b
+
+
+def _compound_plus_minus(
+    a_lat: str, a: sympy.Basic, b_lat: str, b: sympy.Basic
+) -> tuple[str, str, sympy.Basic]:
+    # (x + a − b) = 0  →  root = b − a
+    return rf"(x + {a_lat} - {b_lat}) = 0", rf"{b_lat} - {a_lat}", b - a
+
+
+def _compound_minus_plus(
+    a_lat: str, a: sympy.Basic, b_lat: str, b: sympy.Basic
+) -> tuple[str, str, sympy.Basic]:
+    # (x − a + b) = 0  →  root = a − b
+    return rf"(x - {a_lat} + {b_lat}) = 0", rf"{a_lat} - {b_lat}", a - b
+
+
+def _compound_minus_minus(
+    a_lat: str, a: sympy.Basic, b_lat: str, b: sympy.Basic
+) -> tuple[str, str, sympy.Basic]:
+    # (x − a − b) = 0  →  root = a + b
+    return rf"(x - {a_lat} - {b_lat}) = 0", rf"{a_lat} + {b_lat}", a + b
+
+
+_SIMPLE_BUILDERS = [_simple_plus, _simple_minus]
+_COMPOUND_BUILDERS = [
+    _compound_plus_plus,
+    _compound_plus_minus,
+    _compound_minus_plus,
+    _compound_minus_minus,
+]
+
+
 def _gen_atomic(rng: random.Random) -> dict:
-    latex, expr = rng.choice(_POOL)
+    # Equal probability: simple vs compound.
+    if rng.random() < 0.5:
+        builder = rng.choice(_SIMPLE_BUILDERS)
+        a_lat, a = rng.choice(_POOL)
+        eq_lat, root_lat, root = builder(a_lat, a)
+    else:
+        builder = rng.choice(_COMPOUND_BUILDERS)
+        (a_lat, a), (b_lat, b) = rng.sample(_POOL, 2)
+        eq_lat, root_lat, root = builder(a_lat, a, b_lat, b)
     return {
-        "expr_latex": latex,
-        "root_latex": f"-{latex}",
-        "root": -expr,
+        "equation_latex": eq_lat,
+        "root_latex": root_lat,
+        "root": root,
     }
 
 
@@ -152,7 +211,7 @@ if __name__ == "__main__":
     print("=== zero_product_atomic ===")
     inst = engine.instantiate("zero_product_atomic", seed=42)
     p = inst.params
-    print(f"  Equation : x + {p['expr_latex']} = 0")
+    print(f"  Equation : {p['equation_latex']}")
     print(f"  Root     : {p['root_latex']}")
     canon = inst.verifier.canonicals[0]
     show("Correct             ", inst, canon)
