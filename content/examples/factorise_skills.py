@@ -4,16 +4,16 @@ Three atomic skill drills for monic quadratic factorisation.
 The combined problem x² + bx + c = 0 → roots silently chains three skills.
 Separating them makes each link independently drillable and trackable.
 
-factorise_skill_a  — equation → constraints (pattern recognition, no arithmetic)
+factorise_constraints  — equation → constraints (pattern recognition, no arithmetic)
   Given x² + bx + c = 0, write down mn and m+n from the identity
   (x−m)(x−n) = x²−(m+n)x+mn.  The error "m+n = b" instead of "m+n = −b"
   is invisible in the combined problem but surfaces immediately here.
 
-factorise_skill_b  — constraints → sign case (sign reasoning, MCQ, no arithmetic)
+factorise_sign_case  — constraints → sign case (sign reasoning, MCQ, no arithmetic)
   Given mn and m+n, deduce whether m,n are both positive, both negative, or
   have opposite signs.  This is where sign-flip confusion actually lives.
 
-factorise_skill_c  — factor enumeration (arithmetic)
+factorise_enumerate  — factor enumeration (arithmetic)
   Given mn, m+n, and the sign case, find m and n by listing factor pairs.
   The sign case is given so Skill B reasoning is not re-tested here.
 """
@@ -86,8 +86,8 @@ def _gen_a(rng: random.Random) -> dict:
     }
 
 
-factorise_skill_a = Problem(
-    id="factorise_skill_a",
+factorise_constraints = Problem(
+    id="factorise_constraints",
     type_id="factorise_skill",
     name="Equation → constraints: read mn and m+n from x² + bx + c = 0",
     artifact_type="practice",
@@ -117,8 +117,8 @@ def _gen_b(rng: random.Random) -> dict:
     }
 
 
-factorise_skill_b = Problem(
-    id="factorise_skill_b",
+factorise_sign_case = Problem(
+    id="factorise_sign_case",
     type_id="factorise_skill",
     name="Constraints → sign case: given mn and m+n, state sign of m and n (MCQ)",
     artifact_type="practice",
@@ -144,8 +144,8 @@ def _gen_c(rng: random.Random) -> dict:
     }
 
 
-factorise_skill_c = Problem(
-    id="factorise_skill_c",
+factorise_enumerate = Problem(
+    id="factorise_enumerate",
     type_id="factorise_skill",
     name="Factor enumeration: given mn, m+n, sign case — find m and n",
     artifact_type="practice",
@@ -162,7 +162,8 @@ if __name__ == "__main__":
     from problem_instantiation_tool.schemas import SolutionAttempt, SubmittedStep
 
     all_probs = {
-        p.id: p for p in [factorise_skill_a, factorise_skill_b, factorise_skill_c]
+        p.id: p
+        for p in [factorise_constraints, factorise_sign_case, factorise_enumerate]
     }
     engine = Engine(registry=InMemoryRegistry(all_probs))
 
@@ -174,7 +175,7 @@ if __name__ == "__main__":
         )
 
     print("=== Skill A: x² - 7x + 12 = 0 ===")
-    inst = engine.instantiate("factorise_skill_a", seed=1)
+    inst = engine.instantiate("factorise_constraints", seed=1)
     p = inst.params
     print(f"  x² + {p['b']}x + {p['c']} = 0  →  mn=?, m+n=?")
     print(
@@ -196,7 +197,7 @@ if __name__ == "__main__":
     print()
 
     print("=== Skill B: sign reasoning ===")
-    inst = engine.instantiate("factorise_skill_b", seed=1)
+    inst = engine.instantiate("factorise_sign_case", seed=1)
     p = inst.params
     print(f"  mn={p['mn']}, m+n={p['m_plus_n']}  →  sign case?")
     print(f"  Correct: {p['correct']}")
@@ -207,7 +208,7 @@ if __name__ == "__main__":
     print()
 
     print("=== Skill C: factor enumeration ===")
-    inst = engine.instantiate("factorise_skill_c", seed=1)
+    inst = engine.instantiate("factorise_enumerate", seed=1)
     p = inst.params
     print(f"  mn={p['mn']}, m+n={p['m_plus_n']} ({p['sign_label']})")
     print(f"  Factor pairs: {p['factor_pairs']}")

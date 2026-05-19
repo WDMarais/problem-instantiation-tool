@@ -29,9 +29,9 @@ import sympy
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from content.examples.factorise_skills import (
-    factorise_skill_a,
-    factorise_skill_b,
-    factorise_skill_c,
+    factorise_constraints,
+    factorise_sign_case,
+    factorise_enumerate,
     factor_pairs_for_display,
 )
 from content.examples.monic_factorise import problem as monic_factorise_problem
@@ -182,7 +182,7 @@ def template_zero_product_extension(params: dict, **_) -> ProblemCard:
     )
 
 
-def template_factorise_skill_a(params: dict, **_) -> ProblemCard:
+def template_factorise_constraints(params: dict, **_) -> ProblemCard:
     b, c = params["b"], params["c"]
     mn = int(params["answer_mn"])
     m_plus_n = int(params["answer_m_plus_n"])
@@ -196,7 +196,7 @@ def template_factorise_skill_a(params: dict, **_) -> ProblemCard:
     )
 
 
-def template_factorise_skill_b(params: dict, **_) -> ProblemCard:
+def template_factorise_sign_case(params: dict, **_) -> ProblemCard:
     mn, s = params["mn"], params["m_plus_n"]
     case = params["sign_case"]
     if case == "both_positive":
@@ -215,7 +215,7 @@ def template_factorise_skill_b(params: dict, **_) -> ProblemCard:
     )
 
 
-def template_factorise_skill_c(params: dict, **_) -> ProblemCard:
+def template_factorise_enumerate(params: dict, **_) -> ProblemCard:
     mn, s = params["mn"], params["m_plus_n"]
     sign_label = params["sign_label"]
     r1, r2 = sorted([int(params["root1"]), int(params["root2"])])
@@ -241,17 +241,17 @@ PROBLEMS: dict[str, WorksheetEntry] = {
         problem=monic_factorise_problem,
         template=template_monic_factorise,
     ),
-    factorise_skill_a.id: WorksheetEntry(
-        problem=factorise_skill_a,
-        template=template_factorise_skill_a,
+    factorise_constraints.id: WorksheetEntry(
+        problem=factorise_constraints,
+        template=template_factorise_constraints,
     ),
-    factorise_skill_b.id: WorksheetEntry(
-        problem=factorise_skill_b,
-        template=template_factorise_skill_b,
+    factorise_sign_case.id: WorksheetEntry(
+        problem=factorise_sign_case,
+        template=template_factorise_sign_case,
     ),
-    factorise_skill_c.id: WorksheetEntry(
-        problem=factorise_skill_c,
-        template=template_factorise_skill_c,
+    factorise_enumerate.id: WorksheetEntry(
+        problem=factorise_enumerate,
+        template=template_factorise_enumerate,
     ),
     zero_product_atomic.id: WorksheetEntry(
         problem=zero_product_atomic,
