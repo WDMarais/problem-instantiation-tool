@@ -29,6 +29,11 @@ import sympy
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from content.examples.monic_factorise import problem as monic_factorise_problem
+from content.examples.zero_product_rule import (
+    zero_product_atomic,
+    zero_product_extension,
+    zero_product_standard,
+)
 from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.registry import InMemoryRegistry
 
@@ -121,12 +126,60 @@ def template_monic_factorise(params: dict, detail: str = "full") -> ProblemCard:
     )
 
 
+def template_zero_product_atomic(params: dict, **_) -> ProblemCard:
+    expr = params["expr_latex"]
+    root = params["root_latex"]
+    return ProblemCard(
+        instruction="State the root:",
+        display_math=rf"x + {expr} = 0",
+        worked_steps=[rf"x + {expr} = 0 \;\Rightarrow\; x = {root}"],
+    )
+
+
+def template_zero_product_standard(params: dict, **_) -> ProblemCard:
+    m, n = params["m_latex"], params["n_latex"]
+    zero_step = (
+        rf"x - {m} = 0 \;\Rightarrow\; x = {m}"
+        rf" \quad \text{{or}} \quad "
+        rf"x - {n} = 0 \;\Rightarrow\; x = {n}"
+    )
+    return ProblemCard(
+        instruction="State all roots — you do not need to evaluate these expressions:",
+        display_math=rf"(x - {m})(x - {n}) = 0",
+        worked_steps=[
+            zero_step,
+            rf"x = {m} \quad \text{{or}} \quad x = {n}",
+        ],
+    )
+
+
+def template_zero_product_extension(params: dict, **_) -> ProblemCard:
+    p, q = params["p"], params["q"]
+    p_sign = "+" if p > 0 else "-"
+    p_abs = abs(p)
+    q_str = "i" if q == 1 else rf"{q}i"
+    neg_p = -p
+    return ProblemCard(
+        instruction=r"State the root — you do not need to know what $i$ means, just apply the rule:",
+        display_math=rf"(x {p_sign} {p_abs} + {q_str}) = 0",
+        worked_steps=[
+            rf"x {p_sign} {p_abs} + {q_str} = 0 \;\Rightarrow\; x = {neg_p} - {q_str}"
+        ],
+    )
+
+
 TEMPLATES: dict[str, Callable[[dict], ProblemCard]] = {
     monic_factorise_problem.id: template_monic_factorise,
+    zero_product_atomic.id: template_zero_product_atomic,
+    zero_product_standard.id: template_zero_product_standard,
+    zero_product_extension.id: template_zero_product_extension,
 }
 
 REGISTRY: dict = {
     monic_factorise_problem.id: monic_factorise_problem,
+    zero_product_atomic.id: zero_product_atomic,
+    zero_product_standard.id: zero_product_standard,
+    zero_product_extension.id: zero_product_extension,
 }
 
 
@@ -346,7 +399,13 @@ def build_html(title: str, cards: list[ProblemCard], per_page: int = 2) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser(description="Generate an HTML practice worksheet.")
     ap.add_argument("n", type=int, help="Number of problems")
-    ap.add_argument("--problem", default="monic_factorise", choices=list(TEMPLATES))
+    ap.add_argument(
+        "--problem",
+        default="monic_factorise",
+        choices=list(TEMPLATES),
+        metavar="PROBLEM",
+        help=f"Problem type: {', '.join(TEMPLATES)}",
+    )
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--title", default="Factorisation Practice")
     ap.add_argument("--per-page", type=int, default=2, dest="per_page")
