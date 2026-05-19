@@ -28,6 +28,12 @@ import sympy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from content.examples.factorise_skills import (
+    factorise_skill_a,
+    factorise_skill_b,
+    factorise_skill_c,
+    factor_pairs_for_display,
+)
 from content.examples.monic_factorise import problem as monic_factorise_problem
 from content.examples.zero_product_rule import (
     atomic_shuffled_n,
@@ -39,7 +45,14 @@ from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.registry import InMemoryRegistry
 
 
-# ── data model ────────────────────────────────────────────────────────────────
+# ── data models ───────────────────────────────────────────────────────────────
+
+
+@dataclass
+class WorksheetEntry:
+    problem: object  # Problem
+    template: Callable[[dict], "ProblemCard"]
+    sequence_fn: Callable | None = None  # opt-in O(n) generation; None → retry fallback
 
 
 @dataclass
@@ -169,19 +182,94 @@ def template_zero_product_extension(params: dict, **_) -> ProblemCard:
     )
 
 
-TEMPLATES: dict[str, Callable[[dict], ProblemCard]] = {
-    monic_factorise_problem.id: template_monic_factorise,
-    zero_product_atomic.id: template_zero_product_atomic,
-    zero_product_standard.id: template_zero_product_standard,
-    zero_product_extension.id: template_zero_product_extension,
+def template_factorise_skill_a(params: dict, **_) -> ProblemCard:
+    b, c = params["b"], params["c"]
+    mn = int(params["answer_mn"])
+    m_plus_n = int(params["answer_m_plus_n"])
+    return ProblemCard(
+        instruction=r"Using $(x-m)(x-n) = x^2-(m+n)x+mn$, write down $mn$ and $m+n$:",
+        display_math=_poly_latex(b, c) + " = 0",
+        worked_steps=[
+            rf"-(m+n) = {b} \;\Rightarrow\; m+n = {m_plus_n}",
+            rf"mn = {mn}",
+        ],
+    )
+
+
+def template_factorise_skill_b(params: dict, **_) -> ProblemCard:
+    mn, s = params["mn"], params["m_plus_n"]
+    case = params["sign_case"]
+    if case == "both_positive":
+        reasoning = rf"mn = {mn} > 0 \Rightarrow \text{{same sign}};\; m+n = {s} > 0 \Rightarrow \text{{both positive}}"
+    elif case == "both_negative":
+        reasoning = rf"mn = {mn} > 0 \Rightarrow \text{{same sign}};\; m+n = {s} < 0 \Rightarrow \text{{both negative}}"
+    else:
+        reasoning = rf"mn = {mn} < 0 \Rightarrow \text{{opposite signs}}"
+    return ProblemCard(
+        instruction=(
+            "What are the signs of m and n?\n"
+            "(A) both positive  (B) both negative  (C) opposite signs"
+        ),
+        display_math=rf"mn = {mn}, \quad m+n = {s}",
+        worked_steps=[reasoning],
+    )
+
+
+def template_factorise_skill_c(params: dict, **_) -> ProblemCard:
+    mn, s = params["mn"], params["m_plus_n"]
+    sign_label = params["sign_label"]
+    r1, r2 = sorted([int(params["root1"]), int(params["root2"])])
+    pairs = factor_pairs_for_display(mn, s)
+
+    def _entry(a: int, b: int) -> str:
+        check = r" \checkmark" if a + b == s else ""
+        return rf"({a},\,{b})\!\to\!{a + b}{check}"
+
+    table = r",\; ".join(_entry(a, b) for a, b in pairs)
+    return ProblemCard(
+        instruction=f"Find m and n — sign case: {sign_label}:",
+        display_math=rf"mn = {mn}, \quad m+n = {s}",
+        worked_steps=[
+            table,
+            rf"m = {r1}, \quad n = {r2}",
+        ],
+    )
+
+
+PROBLEMS: dict[str, WorksheetEntry] = {
+    monic_factorise_problem.id: WorksheetEntry(
+        problem=monic_factorise_problem,
+        template=template_monic_factorise,
+    ),
+    factorise_skill_a.id: WorksheetEntry(
+        problem=factorise_skill_a,
+        template=template_factorise_skill_a,
+    ),
+    factorise_skill_b.id: WorksheetEntry(
+        problem=factorise_skill_b,
+        template=template_factorise_skill_b,
+    ),
+    factorise_skill_c.id: WorksheetEntry(
+        problem=factorise_skill_c,
+        template=template_factorise_skill_c,
+    ),
+    zero_product_atomic.id: WorksheetEntry(
+        problem=zero_product_atomic,
+        template=template_zero_product_atomic,
+        sequence_fn=atomic_shuffled_n,
+    ),
+    zero_product_standard.id: WorksheetEntry(
+        problem=zero_product_standard,
+        template=template_zero_product_standard,
+    ),
+    zero_product_extension.id: WorksheetEntry(
+        problem=zero_product_extension,
+        template=template_zero_product_extension,
+    ),
 }
 
-REGISTRY: dict = {
-    monic_factorise_problem.id: monic_factorise_problem,
-    zero_product_atomic.id: zero_product_atomic,
-    zero_product_standard.id: zero_product_standard,
-    zero_product_extension.id: zero_product_extension,
-}
+REGISTRY = {id: e.problem for id, e in PROBLEMS.items()}
+TEMPLATES = {id: e.template for id, e in PROBLEMS.items()}
 
 
 # ── HTML / CSS ────────────────────────────────────────────────────────────────
@@ -396,28 +484,20 @@ def build_html(title: str, cards: list[ProblemCard], per_page: int = 2) -> str:
 
 # ── generation helpers ────────────────────────────────────────────────────────
 
-# Sequence generators: problem_id → fn(rng, n) -> list[params].
-# When present, used instead of the retry-based fallback.
-# A sequence generator guarantees no repeats and scales with n, not pool².
-SEQUENCES: dict[str, Callable] = {
-    zero_product_atomic.id: atomic_shuffled_n,
-}
-
 
 def _generate_cards(
     engine: Engine,
-    problem_id: str,
-    template_fn: Callable,
+    entry: WorksheetEntry,
     rng: random.Random,
     n: int,
     long_count: int,
 ) -> list[ProblemCard]:
-    if problem_id in SEQUENCES:
-        params_list = SEQUENCES[problem_id](rng, n)
+    if entry.sequence_fn is not None:
+        params_list = entry.sequence_fn(rng, n)
     else:
-        params_list = _generate_unique_retry(engine, problem_id, rng, n)
+        params_list = _generate_unique_retry(engine, entry.problem.id, rng, n)
     return [
-        template_fn(params_list[i], detail="full" if i < long_count else "short")
+        entry.template(params_list[i], detail="full" if i < long_count else "short")
         for i in range(len(params_list))
     ]
 
@@ -475,12 +555,12 @@ def main() -> None:
     )
     args = ap.parse_args()
 
+    entry = PROBLEMS[args.problem]
     engine = Engine(registry=InMemoryRegistry(REGISTRY))
     rng = random.Random(args.seed)
-    template_fn = TEMPLATES[args.problem]
     long_count = args.long_count if args.long_count is not None else args.n
 
-    cards = _generate_cards(engine, args.problem, template_fn, rng, args.n, long_count)
+    cards = _generate_cards(engine, entry, rng, args.n, long_count)
 
     html = build_html(args.title, cards, per_page=args.per_page)
     Path(args.output).write_text(html, encoding="utf-8")
