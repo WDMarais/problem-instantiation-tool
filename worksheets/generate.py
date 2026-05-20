@@ -300,7 +300,8 @@ def template_trig_graph_solve(params: dict, **_) -> ProblemCard:
     a_str = "" if a == 1 else str(a)
     b_str = "" if b == 1 else str(b)
     steps = [
-        rf"R = {R_latex},\quad \varphi \approx {phi:.1f}^\circ",
+        rf"R^2 = {a_str if a_str else 1}^2 + {b_str if b_str else 1}^2 = {a**2} + {b**2} = {a**2 + b**2} \;\Rightarrow\; R = {R_latex}",
+        rf"\tan\varphi = \tfrac{{{b}}}{{{a}}} \;\Rightarrow\; \varphi \approx {phi:.1f}^\circ",
         rf"{R_latex}\sin({np}x - {phi:.1f}^\circ) = {k}",
         rf"\sin({np}x - {phi:.1f}^\circ) = \tfrac{{{k}}}{{{R_latex}}} \;\Rightarrow\; {np}x - {phi:.1f}^\circ \approx {alpha:.1f}^\circ\text{{ or }}{180 - alpha:.1f}^\circ",
     ]
