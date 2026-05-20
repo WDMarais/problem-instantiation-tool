@@ -35,6 +35,12 @@ from content.examples.factorise_skills import (
     factor_pairs_for_display,
 )
 from content.examples.monic_factorise import problem as monic_factorise_problem
+from content.examples.trig_graph_properties import (
+    trig_graph_amplitude,
+    trig_graph_decreasing,
+    trig_graph_range,
+    trig_graph_solve,
+)
 from content.examples.zero_product_rule import (
     atomic_shuffled_n,
     zero_product_atomic,
@@ -236,6 +242,66 @@ def template_factorise_enumerate(params: dict, **_) -> ProblemCard:
     )
 
 
+def _trig_term(n: int, fn: str) -> str:
+    """Format n·fn(x), suppressing the leading coefficient when n == 1."""
+    return rf"\{fn} x" if n == 1 else rf"{n}\{fn} x"
+
+
+def template_trig_graph_amplitude(params: dict, **_) -> ProblemCard:
+    a, b = params["a"], params["b"]
+    return ProblemCard(
+        instruction="From the graph, state the values of a and b.",
+        display_math=r"f(x) = a\sin x,\quad g(x) = b\cos x \quad [\text{graph not yet rendered}]",
+        worked_steps=[rf"a = {a}", rf"b = {b}"],
+    )
+
+
+def template_trig_graph_range(params: dict, **_) -> ProblemCard:
+    b = params["b"]
+    return ProblemCard(
+        instruction="State the range of $g$.",
+        display_math=rf"g(x) = {_trig_term(b, 'cos')}",
+        worked_steps=[
+            r"-1 \leq \cos x \leq 1",
+            rf"\therefore\; {-b} \leq g(x) \leq {b}",
+            rf"\text{{range of }}g = [{-b};\; {b}]",
+        ],
+    )
+
+
+def template_trig_graph_decreasing(params: dict, **_) -> ProblemCard:
+    b = params["b"]
+    return ProblemCard(
+        instruction=r"For x ∈ [−180°, 180°], state the interval on which g is strictly decreasing.",
+        display_math=rf"g(x) = {_trig_term(b, 'cos')}",
+        worked_steps=[
+            r"\cos x \text{ is strictly decreasing on } (0^\circ,\; 180^\circ)",
+            rf"b = {b} > 0,\text{{ so }}g\text{{ decreases on the same interval}}",
+            r"g \text{ is strictly decreasing on } (0^\circ,\; 180^\circ)",
+        ],
+    )
+
+
+def template_trig_graph_solve(params: dict, **_) -> ProblemCard:
+    a, b, k = params["a"], params["b"], params["k"]
+    x1, x2 = params["answer_x1"], params["answer_x2"]
+    R_sym = sympy.sqrt(a**2 + b**2)
+    R_latex = sympy.latex(R_sym)
+    R_val = float(R_sym)
+    phi = math.degrees(math.atan2(b, a))
+    alpha = math.degrees(math.asin(k / R_val))
+    return ProblemCard(
+        instruction="Solve for x ∈ [0°, 360°]:",
+        display_math=rf"{_trig_term(a, 'sin')} - {_trig_term(b, 'cos')} = {k}",
+        worked_steps=[
+            rf"R = {R_latex},\quad \varphi \approx {phi:.1f}^\circ",
+            rf"{R_latex}\sin(x - {phi:.1f}^\circ) = {k}",
+            rf"\sin(x - {phi:.1f}^\circ) = \tfrac{{{k}}}{{{R_latex}}} \;\Rightarrow\; x - {phi:.1f}^\circ \approx {alpha:.1f}^\circ\text{{ or }}{180 - alpha:.1f}^\circ",
+            rf"x \approx {x1:.1f}^\circ\quad\text{{or}}\quad x \approx {x2:.1f}^\circ",
+        ],
+    )
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
     monic_factorise_problem.id: WorksheetEntry(
         problem=monic_factorise_problem,
@@ -265,6 +331,22 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     zero_product_extension.id: WorksheetEntry(
         problem=zero_product_extension,
         template=template_zero_product_extension,
+    ),
+    trig_graph_amplitude.id: WorksheetEntry(
+        problem=trig_graph_amplitude,
+        template=template_trig_graph_amplitude,
+    ),
+    trig_graph_range.id: WorksheetEntry(
+        problem=trig_graph_range,
+        template=template_trig_graph_range,
+    ),
+    trig_graph_decreasing.id: WorksheetEntry(
+        problem=trig_graph_decreasing,
+        template=template_trig_graph_decreasing,
+    ),
+    trig_graph_solve.id: WorksheetEntry(
+        problem=trig_graph_solve,
+        template=template_trig_graph_solve,
     ),
 }
 
