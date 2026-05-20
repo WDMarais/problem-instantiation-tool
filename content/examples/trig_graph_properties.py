@@ -1,36 +1,19 @@
 """
-Reference example: trig graph properties — four question variants (P2 Q6, 9 marks).
+Trig graph properties — four question variants (P2 Q6, 9 marks).
 
-All four problems share the same underlying setup: f(x) = a·sin x and g(x) = b·cos x
-for a ∈ {1,2,3}, b ∈ {1,2}.  Each instance includes a `graph` key in params that
-encodes the visual description (curves, domain, any reference lines).  This key is
-structurally complete — a renderer can consume it as-is — but no image is generated
-here.  The two halves that remain:
-  1. A renderer that turns `graph` into an SVG/PNG/PDF.
-  2. A snapshot test that asserts "these params → this image" (separate from this file).
-Neither is a blocker for the content layer, which is fully testable without them.
+Expanded parameter space to cover the full range of Gr10 exam variation:
+  - Amplitude a ∈ {1..5}, both sin and cos as the function under test
+  - Period factor n ∈ {1, 2}: fn(nx), period = 360°/n
+  - Vertical offset q ∈ {−3..3}: fn(nx) + q
+  - Phase shift θ ∈ multiples of 45° for range only — phase shift does not
+    affect range, so it probes whether students know that amplitude determines
+    range, not where the cycle starts
 
-Design decisions demonstrated:
-
-- trig_graph_amplitude: the only graph-dependent sub-question.  The params ARE the
-  answer (a and b are chosen, not inferred from a visual).  The problem is only
-  meaningful once the renderer hides those values behind an image; until then it is
-  included so the Problem ID exists and the graph encoding is exercised.
-  Two symbolic_equality param_key steps for answer_a and answer_b.
-
-- trig_graph_range: purely analytical — range of g = b·cos x is [−b, b] regardless
-  of the domain shown.  Two param_key steps (answer_min, answer_max) with integer
-  values as SymPy Integers.
-
-- trig_graph_decreasing: also analytical.  g(x) = b·cos x with b > 0 is strictly
-  decreasing on (0°, 180°) within the shown domain [−180°, 180°].  Two param_key
-  steps for the endpoints (always 0 and 180 for b > 0), testing the conceptual fact.
-
-- trig_graph_solve: solve a·sin x − b·cos x = k for x ∈ [0°, 360°].  The equation
-  is rewritten as R·sin(x − φ) = k with R = √(a²+b²) and φ = atan2(b, a).  Two
-  distinct solutions exist iff |k| < R; k is chosen from {1, …, ⌊R⌋} to guarantee
-  this.  Answers are floats; numeric_equality with tolerance=0.5° accommodates
-  calculator rounding.
+trig_graph_amplitude  — graph-dependent placeholder (renderer needed)
+trig_graph_range      — a·fn(nx+θ)+q: range is [q−a, q+a] regardless of fn, n, θ
+trig_graph_decreasing — a·fn(nx)+q: decreasing interval depends on fn and n only;
+                        domain chosen so the full interval is visible
+trig_graph_solve      — a·sin(nx)−b·cos(nx)=k via R-formula; domain [0°, 360°/n]
 """
 
 from __future__ import annotations
@@ -42,44 +25,74 @@ import sympy
 
 from problem_instantiation_tool.schemas import Problem
 
-_A_CHOICES = [1, 2, 3]
-_B_CHOICES = [1, 2]
+_A_CHOICES = [1, 2, 3, 4, 5]
+_N_CHOICES = [1, 2]
+_Q_CHOICES = list(range(-3, 4))
+_THETA_CHOICES = [0, 45, 90, 135, 180, 225, 270, 315]
+_FN_CHOICES = ["sin", "cos"]
+_A_SOLVE = [1, 2, 3]
+_B_SOLVE = [1, 2, 3]
 
 
-def _graph_encoding(a: int, b: int, x_domain: tuple[int, int]) -> dict:
+# ── LaTeX helpers ─────────────────────────────────────────────────────────────
+
+
+def _trig_arg_latex(n: int, theta: int) -> str:
+    """LaTeX for argument nx + theta (theta in degrees, 0 suppressed)."""
+    n_part = "x" if n == 1 else f"{n}x"
+    if theta == 0:
+        return n_part
+    sign, t = ("+", theta) if theta > 0 else ("-", -theta)
+    return rf"{n_part} {sign} {t}^\circ"
+
+
+def _inner_latex(fn: str, n: int, theta: int) -> str:
+    """LaTeX for fn(arg) — no amplitude, no offset."""
+    arg = _trig_arg_latex(n, theta)
+    return rf"\{fn}({arg})" if (n > 1 or theta != 0) else rf"\{fn} x"
+
+
+def _trig_expr_latex(fn: str, a: int, n: int, theta: int, q: int) -> str:
+    """LaTeX for a·fn(nx+θ)+q."""
+    inner = _inner_latex(fn, n, theta)
+    coeff = "" if a == 1 else str(a)
+    expr = f"{coeff}{inner}"
+    if q > 0:
+        expr += f" + {q}"
+    elif q < 0:
+        expr += f" - {abs(q)}"
+    return expr
+
+
+# ── graph encoding ────────────────────────────────────────────────────────────
+
+
+def _graph_encoding(
+    fn_f: str, a: int, fn_g: str, b: int, n: int, x_domain: tuple[int, int]
+) -> dict:
+    period = 360 // n
     return {
         "curves": [
-            {"id": "f", "func": "sin", "amplitude": a, "period_deg": 360},
-            {"id": "g", "func": "cos", "amplitude": b, "period_deg": 360},
+            {"id": "f", "func": fn_f, "amplitude": a, "period_deg": period},
+            {"id": "g", "func": fn_g, "amplitude": b, "period_deg": period},
         ],
         "x_domain_deg": list(x_domain),
     }
 
 
-def _solve_x(a: int, b: int, k: int) -> tuple[float, float]:
-    """Return (x1, x2) in degrees in [0°, 360°), sorted ascending."""
-    R = math.sqrt(a**2 + b**2)
-    phi = math.atan2(b, a)
-    alpha = math.asin(k / R)
-    x1 = math.degrees(phi + alpha) % 360
-    x2 = math.degrees(phi + math.pi - alpha) % 360
-    return tuple(sorted([x1, x2]))
-
-
-# ---------------------------------------------------------------------------
-# 1. trig_graph_amplitude
-#    Read a and b from the graph of f(x)=a·sin x, g(x)=b·cos x.
-#    Graph-dependent: meaningful only when the renderer hides a and b visually.
-# ---------------------------------------------------------------------------
+# ── 1. trig_graph_amplitude ────────────────────────────────────────────────────
 
 
 def _gen_amplitude(rng: random.Random) -> dict:
     a = rng.choice(_A_CHOICES)
-    b = rng.choice(_B_CHOICES)
+    b = rng.choice(_A_CHOICES)
+    n = rng.choice(_N_CHOICES)
+    period = 360 // n
     return {
         "a": a,
         "b": b,
-        "graph": _graph_encoding(a, b, (-360, 360)),
+        "n": n,
+        "graph": _graph_encoding("sin", a, "cos", b, n, (-period, period)),
         "answer_a": sympy.Integer(a),
         "answer_b": sympy.Integer(b),
     }
@@ -88,7 +101,7 @@ def _gen_amplitude(rng: random.Random) -> dict:
 trig_graph_amplitude = Problem(
     id="trig_graph_amplitude",
     type_id="trig_graph",
-    name="Read the amplitudes a and b from the graph of f=a·sin x and g=b·cos x",
+    name="Read amplitudes a and b from the graph of f=a·sin(nx), g=b·cos(nx)",
     artifact_type="practice",
     problem_spec=_gen_amplitude,
     verifier_spec=[
@@ -98,28 +111,32 @@ trig_graph_amplitude = Problem(
 )
 
 
-# ---------------------------------------------------------------------------
-# 2. trig_graph_range
-#    State the range of g(x) = b·cos x.
-# ---------------------------------------------------------------------------
+# ── 2. trig_graph_range ────────────────────────────────────────────────────────
 
 
 def _gen_range(rng: random.Random) -> dict:
+    fn = rng.choice(_FN_CHOICES)
     a = rng.choice(_A_CHOICES)
-    b = rng.choice(_B_CHOICES)
+    n = rng.choice(_N_CHOICES)
+    q = rng.choice(_Q_CHOICES)
+    theta = rng.choice(_THETA_CHOICES)
     return {
+        "fn": fn,
         "a": a,
-        "b": b,
-        "graph": _graph_encoding(a, b, (-360, 360)),
-        "answer_min": sympy.Integer(-b),
-        "answer_max": sympy.Integer(b),
+        "n": n,
+        "q": q,
+        "theta": theta,
+        "expr_latex": _trig_expr_latex(fn, a, n, theta, q),
+        "inner_latex": _inner_latex(fn, n, theta),
+        "answer_min": sympy.Integer(q - a),
+        "answer_max": sympy.Integer(q + a),
     }
 
 
 trig_graph_range = Problem(
     id="trig_graph_range",
     type_id="trig_graph",
-    name="State the range of g(x) = b·cos x",
+    name="State the range of a·fn(nx+θ)+q",
     artifact_type="practice",
     problem_spec=_gen_range,
     verifier_spec=[
@@ -129,69 +146,93 @@ trig_graph_range = Problem(
 )
 
 
-# ---------------------------------------------------------------------------
-# 3. trig_graph_decreasing
-#    State the interval in [−180°, 180°] on which g(x) = b·cos x is decreasing.
-#    For b > 0 this is always (0°, 180°).
-# ---------------------------------------------------------------------------
+# ── 3. trig_graph_decreasing ───────────────────────────────────────────────────
+
+
+def _decreasing_endpoints(fn: str, n: int) -> tuple[int, int]:
+    """(lower, upper) of the first strictly decreasing interval in degrees."""
+    if fn == "cos":
+        return 0, 180 // n
+    else:
+        return 90 // n, 270 // n
+
+
+def _decreasing_domain(fn: str, n: int) -> tuple[int, int]:
+    """Domain that shows the full decreasing interval without ambiguity."""
+    if fn == "cos":
+        d = 180 // n
+        return -d, d
+    else:
+        return 0, 360 // n
 
 
 def _gen_decreasing(rng: random.Random) -> dict:
+    fn = rng.choice(_FN_CHOICES)
     a = rng.choice(_A_CHOICES)
-    b = rng.choice(_B_CHOICES)
+    n = rng.choice(_N_CHOICES)
+    q = rng.choice(_Q_CHOICES)
+    lower, upper = _decreasing_endpoints(fn, n)
+    domain = _decreasing_domain(fn, n)
     return {
+        "fn": fn,
         "a": a,
-        "b": b,
-        "graph": _graph_encoding(a, b, (-180, 180)),
-        "answer_lower": sympy.Integer(0),
-        "answer_upper": sympy.Integer(180),
+        "n": n,
+        "q": q,
+        "expr_latex": _trig_expr_latex(fn, a, n, 0, q),
+        "domain_lower": domain[0],
+        "domain_upper": domain[1],
+        "answer_lower": sympy.Integer(lower),
+        "answer_upper": sympy.Integer(upper),
     }
 
 
 trig_graph_decreasing = Problem(
     id="trig_graph_decreasing",
     type_id="trig_graph",
-    name="State the interval in [−180°, 180°] on which g(x) = b·cos x is decreasing",
+    name="State the decreasing interval of a·fn(nx)+q within the shown domain",
     artifact_type="practice",
     problem_spec=_gen_decreasing,
     verifier_spec=[
-        {
-            "kind": "symbolic_equality",
-            "marks_possible": 1,
-            "param_key": "answer_lower",
-        },
-        {
-            "kind": "symbolic_equality",
-            "marks_possible": 1,
-            "param_key": "answer_upper",
-        },
+        {"kind": "symbolic_equality", "marks_possible": 1, "param_key": "answer_lower"},
+        {"kind": "symbolic_equality", "marks_possible": 1, "param_key": "answer_upper"},
     ],
 )
 
 
-# ---------------------------------------------------------------------------
-# 4. trig_graph_solve
-#    Solve a·sin x − b·cos x = k for x ∈ [0°, 360°].
-#    Two solutions, verified with numeric_equality (tolerance 0.5°).
-# ---------------------------------------------------------------------------
+# ── 4. trig_graph_solve ────────────────────────────────────────────────────────
+
+
+def _solve_x(a: int, b: int, n: int, k: int) -> tuple[float, float]:
+    """Return (x1, x2) in degrees in [0°, 360°/n), sorted ascending."""
+    R = math.sqrt(a**2 + b**2)
+    phi = math.atan2(b, a)
+    alpha = math.asin(k / R)
+    period = 360.0 / n
+    x1 = math.degrees(phi + alpha) / n % period
+    x2 = math.degrees(phi + math.pi - alpha) / n % period
+    return tuple(sorted([x1, x2]))
 
 
 def _gen_solve(rng: random.Random) -> dict:
     while True:
-        a = rng.choice(_A_CHOICES)
-        b = rng.choice(_B_CHOICES)
+        a = rng.choice(_A_SOLVE)
+        b = rng.choice(_B_SOLVE)
+        n = rng.choice(_N_CHOICES)
         R = math.sqrt(a**2 + b**2)
-        k_max = math.floor(R - 1e-9)  # largest integer strictly less than R
+        k_max = math.floor(R - 1e-9)
         if k_max < 1:
             continue
         k = rng.randint(1, k_max)
-        x1, x2 = _solve_x(a, b, k)
-        graph = _graph_encoding(a, b, (0, 360))
-        graph["k_line"] = k  # renderer draws f(x)−g(x) = k or equivalent
+        x1, x2 = _solve_x(a, b, n, k)
+        period = 360 // n
+        graph = _graph_encoding("sin", a, "cos", b, n, (0, period))
+        graph["k_line"] = k
         return {
             "a": a,
             "b": b,
+            "n": n,
             "k": k,
+            "period": period,
             "graph": graph,
             "answer_x1": x1,
             "answer_x2": x2,
@@ -201,7 +242,7 @@ def _gen_solve(rng: random.Random) -> dict:
 trig_graph_solve = Problem(
     id="trig_graph_solve",
     type_id="trig_graph",
-    name="Solve a·sin x − b·cos x = k for x ∈ [0°, 360°]",
+    name="Solve a·sin(nx)−b·cos(nx)=k for x ∈ [0°, 360°/n]",
     artifact_type="practice",
     problem_spec=_gen_solve,
     verifier_spec=[
@@ -221,9 +262,7 @@ trig_graph_solve = Problem(
 )
 
 
-# ---------------------------------------------------------------------------
-# Demo
-# ---------------------------------------------------------------------------
+# ── Demo ───────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     from problem_instantiation_tool.engine import Engine
@@ -248,46 +287,50 @@ if __name__ == "__main__":
             f"  {label}: {r.marks_awarded}/{r.marks_possible}  is_correct={r.is_correct}"
         )
 
-    print("=== trig_graph_amplitude (graph-dependent sub-question) ===")
-    inst = engine.instantiate(trig_graph_amplitude.id, seed=42)
+    print("=== trig_graph_amplitude ===")
+    inst = engine.instantiate(trig_graph_amplitude.id, seed=1)
     p = inst.params
-    print(f"  Graph: f(x)={p['a']}·sin x,  g(x)={p['b']}·cos x")
-    print(f"  Graph encoding: {p['graph']}")
+    print(f"  f(x)={p['a']}·sin({p['n']}x),  g(x)={p['b']}·cos({p['n']}x)")
     a_c, b_c = inst.verifier.canonicals
-    show("Correct (a,b)    ", inst, a_c, b_c)
-    show("b wrong          ", inst, a_c, int(b_c) + 1)
+    show("Correct  ", inst, a_c, b_c)
+    show("b wrong  ", inst, a_c, int(b_c) + 1)
 
     print()
 
     print("=== trig_graph_range ===")
-    inst = engine.instantiate(trig_graph_range.id, seed=42)
+    inst = engine.instantiate(trig_graph_range.id, seed=1)
     p = inst.params
-    print(f"  g(x) = {p['b']}·cos x")
+    print(f"  f(x) = {p['expr_latex']}")
     mn, mx = inst.verifier.canonicals
     print(f"  Range: [{mn}, {mx}]")
-    show("Correct           ", inst, mn, mx)
-    show("Swapped min/max   ", inst, mx, mn)
+    show("Correct        ", inst, mn, mx)
+    show("Swapped        ", inst, mx, mn)
+    show("Forgot offset  ", inst, sympy.Integer(-p["a"]), sympy.Integer(p["a"]))
 
     print()
 
     print("=== trig_graph_decreasing ===")
-    inst = engine.instantiate(trig_graph_decreasing.id, seed=42)
+    inst = engine.instantiate(trig_graph_decreasing.id, seed=1)
     p = inst.params
-    print(f"  g(x) = {p['b']}·cos x,  domain [−180°, 180°]")
+    print(
+        f"  f(x) = {p['expr_latex']},  domain [{p['domain_lower']}°, {p['domain_upper']}°]"
+    )
     lo, hi = inst.verifier.canonicals
     print(f"  Decreasing on ({lo}°, {hi}°)")
-    show("Correct (0, 180)  ", inst, lo, hi)
-    show("Wrong (−180, 0)   ", inst, -180, 0)
+    show("Correct  ", inst, lo, hi)
+    show("Swapped  ", inst, hi, lo)
 
     print()
 
     print("=== trig_graph_solve ===")
-    inst = engine.instantiate(trig_graph_solve.id, seed=42)
+    inst = engine.instantiate(trig_graph_solve.id, seed=1)
     p = inst.params
-    print(f"  {p['a']}·sin x − {p['b']}·cos x = {p['k']},  x ∈ [0°, 360°]")
+    print(
+        f"  {p['a']}·sin({p['n']}x) − {p['b']}·cos({p['n']}x) = {p['k']},  x ∈ [0°, {p['period']}°]"
+    )
     x1, x2 = inst.verifier.canonicals
     print(f"  Solutions: x ≈ {x1:.2f}°,  x ≈ {x2:.2f}°")
-    show("Both correct (exact)      ", inst, x1, x2)
-    show("Both correct (rounded)    ", inst, round(x1, 1), round(x2, 1))
-    show("x1 off by 1°              ", inst, x1 + 1.0, x2)
-    show("Both wrong                ", inst, x1 + 2.0, x2 + 2.0)
+    show("Both correct (exact)   ", inst, x1, x2)
+    show("Both correct (rounded) ", inst, round(x1, 1), round(x2, 1))
+    show("x1 off by 1°           ", inst, x1 + 1.0, x2)
+    show("Both wrong             ", inst, x1 + 2.0, x2 + 2.0)
