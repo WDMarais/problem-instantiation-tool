@@ -35,6 +35,12 @@ from content.examples.factorise_skills import (
     factor_pairs_for_display,
 )
 from content.examples.monic_factorise import problem as monic_factorise_problem
+from content.examples.rform_skills import (
+    rform_find_R,
+    rform_find_phi,
+    rform_match_coefficients,
+    rform_solve,
+)
 from content.examples.trig_graph_properties import (
     trig_graph_amplitude,
     trig_graph_decreasing,
@@ -322,6 +328,70 @@ def template_trig_graph_solve(params: dict, **_) -> ProblemCard:
     )
 
 
+def _ab_display(a: int, b: int) -> str:
+    """LaTeX for a·sin x − b·cos x with coefficient-1 suppressed."""
+    a_str = "" if a == 1 else str(a)
+    b_str = "" if b == 1 else str(b)
+    return rf"{a_str}\sin x - {b_str}\cos x"
+
+
+def template_rform_match_coefficients(params: dict, **_) -> ProblemCard:
+    a, b = params["a"], params["b"]
+    return ProblemCard(
+        instruction=r"Using $\sin(A-B) = \sin A\cos B - \cos A\sin B$, expand $R\sin(x-\varphi)$ and match coefficients. Fill in: $R\cos\varphi = \square$ and $R\sin\varphi = \square$",
+        display_math=_ab_display(a, b),
+        worked_steps=[
+            r"R\sin(x-\varphi) = R\cos\varphi\cdot\sin x - R\sin\varphi\cdot\cos x",
+            rf"R\cos\varphi = {a},\quad R\sin\varphi = {b}",
+        ],
+    )
+
+
+def template_rform_find_R(params: dict, **_) -> ProblemCard:
+    a, b = params["a"], params["b"]
+    R_latex = sympy.latex(sympy.sqrt(a**2 + b**2))
+    return ProblemCard(
+        instruction=r"Square both equations and add them to find $R$:",
+        display_math=rf"R\cos\varphi = {a},\quad R\sin\varphi = {b}",
+        worked_steps=[
+            rf"(R\cos\varphi)^2 + (R\sin\varphi)^2 = {a}^2 + {b}^2",
+            rf"R^2(\cos^2\varphi + \sin^2\varphi) = {a**2 + b**2}",
+            rf"R^2 = {a**2 + b**2} \;\Rightarrow\; R = {R_latex}",
+        ],
+    )
+
+
+def template_rform_find_phi(params: dict, **_) -> ProblemCard:
+    a, b = params["a"], params["b"]
+    phi = math.degrees(math.atan2(b, a))
+    return ProblemCard(
+        instruction=r"Divide the second equation by the first to find $\varphi$:",
+        display_math=rf"R\cos\varphi = {a},\quad R\sin\varphi = {b}",
+        worked_steps=[
+            rf"\frac{{R\sin\varphi}}{{R\cos\varphi}} = \frac{{{b}}}{{{a}}} \;\Rightarrow\; \tan\varphi = \frac{{{b}}}{{{a}}}",
+            rf"\varphi = \arctan\frac{{{b}}}{{{a}}} \approx {phi:.1f}^\circ",
+        ],
+    )
+
+
+def template_rform_solve(params: dict, **_) -> ProblemCard:
+    phi = params["phi_deg"]
+    k = params["k"]
+    x1, x2 = params["answer_x1"], params["answer_x2"]
+    R_latex = sympy.latex(params["R_sym"])
+    R_val = float(params["R_sym"])
+    alpha = math.degrees(math.asin(k / R_val))
+    return ProblemCard(
+        instruction=r"Solve for $x \in [0°, 360°]$:",
+        display_math=rf"{R_latex}\sin(x - {phi:.1f}^\circ) = {k}",
+        worked_steps=[
+            rf"\sin(x - {phi:.1f}^\circ) = \tfrac{{{k}}}{{{R_latex}}}",
+            rf"x - {phi:.1f}^\circ \approx {alpha:.1f}^\circ\text{{ or }}{180 - alpha:.1f}^\circ",
+            rf"x \approx {x1:.1f}^\circ\quad\text{{or}}\quad x \approx {x2:.1f}^\circ",
+        ],
+    )
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
     monic_factorise_problem.id: WorksheetEntry(
         problem=monic_factorise_problem,
@@ -367,6 +437,22 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     trig_graph_solve.id: WorksheetEntry(
         problem=trig_graph_solve,
         template=template_trig_graph_solve,
+    ),
+    rform_match_coefficients.id: WorksheetEntry(
+        problem=rform_match_coefficients,
+        template=template_rform_match_coefficients,
+    ),
+    rform_find_R.id: WorksheetEntry(
+        problem=rform_find_R,
+        template=template_rform_find_R,
+    ),
+    rform_find_phi.id: WorksheetEntry(
+        problem=rform_find_phi,
+        template=template_rform_find_phi,
+    ),
+    rform_solve.id: WorksheetEntry(
+        problem=rform_solve,
+        template=template_rform_solve,
     ),
 }
 
