@@ -625,13 +625,19 @@ body {
 .answer-num { font-weight: bold; color: #777; min-width: 7mm; padding-top: 0.15em; }
 .answer-steps { display: flex; flex-direction: column; gap: 1.5mm; }
 
-/* graph SVG container */
-.problem-graph {
-    margin: 0 0 3mm;
-    flex-shrink: 0;
-    line-height: 0;  /* collapse inline-block gap under SVG */
+/* graph + working-space side by side */
+.problem-body {
+    flex: 1;
+    display: flex;
+    gap: 4mm;
+    min-height: 0;
 }
-.problem-graph svg { max-width: 100%; height: auto; }
+.problem-graph-side {
+    flex: 0 0 47%;
+    line-height: 0;
+}
+.problem-graph-side svg { width: 100%; height: auto; }
+.problem-body .working-space { min-height: 0; }
 
 @media print {
     body        { background: none; }
@@ -642,16 +648,21 @@ body {
 
 
 def _problem_html(n: int, card: ProblemCard) -> str:
-    graph_html = (
-        f'<div class="problem-graph">{card.graph_svg}</div>' if card.graph_svg else ""
-    )
+    if card.graph_svg:
+        body = (
+            '<div class="problem-body">'
+            f'<div class="problem-graph-side">{card.graph_svg}</div>'
+            '<div class="working-space"></div>'
+            "</div>"
+        )
+    else:
+        body = '<div class="working-space"></div>'
     return (
         '<div class="problem">'
         f'<div class="problem-label">Question {n}</div>'
         f'<div class="problem-instruction">{card.instruction}</div>'
         f'<div class="problem-equation">$${card.display_math}$$</div>'
-        f"{graph_html}"
-        '<div class="working-space"></div>'
+        f"{body}"
         "</div>"
     )
 
