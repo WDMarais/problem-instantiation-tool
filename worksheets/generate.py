@@ -28,6 +28,8 @@ import sympy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from render.graph import render_trig_graph
+
 from content.examples.factorise_skills import (
     factorise_constraints,
     factorise_sign_case,
@@ -74,6 +76,7 @@ class ProblemCard:
     worked_steps: list[
         str
     ]  # LaTeX bodies for each solution step (without $ delimiters)
+    graph_svg: str | None = None  # inline SVG string; None if no graph
 
 
 # ── problem templates ─────────────────────────────────────────────────────────
@@ -250,17 +253,35 @@ def template_factorise_enumerate(params: dict, **_) -> ProblemCard:
 
 def template_trig_graph_amplitude(params: dict, **_) -> ProblemCard:
     a, b = params["a"], params["b"]
+    svg = render_trig_graph(params["graph"])
     return ProblemCard(
         instruction="From the graph, state the values of a and b.",
-        display_math=r"f(x) = a\sin(nx),\quad g(x) = b\cos(nx) \quad [\text{graph not yet rendered}]",
+        display_math=r"f(x) = a\sin(nx),\quad g(x) = b\cos(nx)",
         worked_steps=[rf"a = {a}", rf"b = {b}"],
+        graph_svg=svg,
     )
 
 
 def template_trig_graph_range(params: dict, **_) -> ProblemCard:
-    a, q = params["a"], params["q"]
+    fn, a, n, q = params["fn"], params["a"], params["n"], params["q"]
     expr, inner = params["expr_latex"], params["inner_latex"]
+    theta = params["theta"]
     mn, mx = int(params["answer_min"]), int(params["answer_max"])
+    period_deg = 360 // n
+    graph = {
+        "curves": [
+            {
+                "id": "f",
+                "func": fn,
+                "amplitude": a,
+                "period_deg": period_deg,
+                "phase_shift_deg": theta,
+                "offset": q,
+            }
+        ],
+        "x_domain_deg": [0, period_deg],
+    }
+    svg = render_trig_graph(graph, range_band=(mn, mx))
     steps = [rf"-1 \leq {inner} \leq 1"]
     if a > 1:
         steps.append(rf"-{a} \leq {a}{inner} \leq {a}")
@@ -271,14 +292,29 @@ def template_trig_graph_range(params: dict, **_) -> ProblemCard:
         instruction="State the range of $f$.",
         display_math=rf"f(x) = {expr}",
         worked_steps=steps,
+        graph_svg=svg,
     )
 
 
 def template_trig_graph_decreasing(params: dict, **_) -> ProblemCard:
-    a, n, q = params["a"], params["n"], params["q"]
+    fn, a, n, q = params["fn"], params["a"], params["n"], params["q"]
     expr = params["expr_latex"]
     dl, du = params["domain_lower"], params["domain_upper"]
     lo, hi = int(params["answer_lower"]), int(params["answer_upper"])
+    period_deg = 360 // n
+    graph = {
+        "curves": [
+            {
+                "id": "f",
+                "func": fn,
+                "amplitude": a,
+                "period_deg": period_deg,
+                "offset": q,
+            }
+        ],
+        "x_domain_deg": [dl, du],
+    }
+    svg = render_trig_graph(graph, highlight_x=(lo, hi))
     steps = [
         rf"f \text{{ is maximum at }} x={lo}^\circ \text{{ and minimum at }} x={hi}^\circ",
         rf"a = {a} > 0"
@@ -290,6 +326,7 @@ def template_trig_graph_decreasing(params: dict, **_) -> ProblemCard:
         instruction=f"For x ∈ [{dl}°, {du}°], state the interval on which f is strictly decreasing.",
         display_math=rf"f(x) = {expr}",
         worked_steps=steps,
+        graph_svg=svg,
     )
 
 
@@ -305,6 +342,7 @@ def template_trig_graph_solve(params: dict, **_) -> ProblemCard:
     np = "" if n == 1 else str(n)  # prefix for nx in the argument
     a_str = "" if a == 1 else str(a)
     b_str = "" if b == 1 else str(b)
+    svg = render_trig_graph(params["graph"])
     steps = [
         rf"R^2 = {a_str if a_str else 1}^2 + {b_str if b_str else 1}^2 = {a**2} + {b**2} = {a**2 + b**2} \;\Rightarrow\; R = {R_latex}",
         rf"\tan\varphi = \tfrac{{{b}}}{{{a}}} \;\Rightarrow\; \varphi \approx {phi:.1f}^\circ",
@@ -325,6 +363,7 @@ def template_trig_graph_solve(params: dict, **_) -> ProblemCard:
         if n > 1
         else rf"{a_str}\sin x - {b_str}\cos x = {k}",
         worked_steps=steps,
+        graph_svg=svg,
     )
 
 
@@ -586,6 +625,14 @@ body {
 .answer-num { font-weight: bold; color: #777; min-width: 7mm; padding-top: 0.15em; }
 .answer-steps { display: flex; flex-direction: column; gap: 1.5mm; }
 
+/* graph SVG container */
+.problem-graph {
+    margin: 0 0 3mm;
+    flex-shrink: 0;
+    line-height: 0;  /* collapse inline-block gap under SVG */
+}
+.problem-graph svg { max-width: 100%; height: auto; }
+
 @media print {
     body        { background: none; }
     .page       { margin: 0; }
@@ -595,11 +642,15 @@ body {
 
 
 def _problem_html(n: int, card: ProblemCard) -> str:
+    graph_html = (
+        f'<div class="problem-graph">{card.graph_svg}</div>' if card.graph_svg else ""
+    )
     return (
         '<div class="problem">'
         f'<div class="problem-label">Question {n}</div>'
         f'<div class="problem-instruction">{card.instruction}</div>'
         f'<div class="problem-equation">$${card.display_math}$$</div>'
+        f"{graph_html}"
         '<div class="working-space"></div>'
         "</div>"
     )
