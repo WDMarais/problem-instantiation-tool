@@ -1,0 +1,105 @@
+"""
+Data types for acquisition sheets.
+
+This module is the contract between content authors (the sheet data files)
+and renderers (content/renderers/). All renderer inputs are defined here.
+
+All LaTeX strings use KaTeX-compatible syntax.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+
+class LayoutOverflowError(ValueError):
+    pass
+
+
+@dataclass(frozen=True)
+class ThreeStep:
+    """One worked example: equation → operation → result."""
+
+    equation: str
+    operation: str
+    result: str
+
+
+@dataclass(frozen=True)
+class FourStep:
+    """One worked example with an intermediate form (e.g. a/x=b → a=bx → x=a/b)."""
+
+    equation: str
+    operation: str
+    intermediate: str
+    result: str
+    model_ref: str = "ax = b"
+
+
+@dataclass(frozen=True)
+class CollapsedEx:
+    """One collapsed shorthand example: equation ⟹ answer."""
+
+    equation: str
+    answer: str
+
+
+@dataclass(frozen=True)
+class PracticeEx:
+    """One own-work problem. answer=None means no answer is printed."""
+
+    equation: str
+    answer: str | None
+
+
+# Empirically verified limits for the A4 grid layout.
+_MAX_DETAILED_THREE = 8  # 2-col × 4 rows, 3-step entries
+_MAX_DETAILED_FOUR = 6  # 2-col × 3 rows, 4-step entries
+_MAX_COLLAPSED = 12  # 3-col × 4 rows
+_MAX_PRACTICE = 16  # 4-col × 4 rows
+
+
+@dataclass
+class SheetData:
+    title: str
+    caption: str
+    detailed: list[ThreeStep | FourStep]
+    collapsed: list[CollapsedEx]
+    practice: list[PracticeEx]
+    output_name: str = field(default="sheet.html")
+
+    def __post_init__(self) -> None:
+        self._validate()
+
+    def _validate(self) -> None:
+        if not self.detailed:
+            raise LayoutOverflowError("detailed list must not be empty")
+
+        first_type = type(self.detailed[0])
+        if not all(type(d) is first_type for d in self.detailed):
+            raise LayoutOverflowError(
+                "All detailed examples must be the same type (ThreeStep or FourStep)"
+            )
+
+        if first_type is ThreeStep and len(self.detailed) > _MAX_DETAILED_THREE:
+            raise LayoutOverflowError(
+                f"ThreeStep layout fits at most {_MAX_DETAILED_THREE} detailed examples; "
+                f"got {len(self.detailed)}"
+            )
+        if first_type is FourStep and len(self.detailed) > _MAX_DETAILED_FOUR:
+            raise LayoutOverflowError(
+                f"FourStep layout fits at most {_MAX_DETAILED_FOUR} detailed examples; "
+                f"got {len(self.detailed)}"
+            )
+
+        if len(self.collapsed) > _MAX_COLLAPSED:
+            raise LayoutOverflowError(
+                f"Collapsed section fits at most {_MAX_COLLAPSED} examples; "
+                f"got {len(self.collapsed)}"
+            )
+
+        if len(self.practice) > _MAX_PRACTICE:
+            raise LayoutOverflowError(
+                f"Practice section fits at most {_MAX_PRACTICE} problems; "
+                f"got {len(self.practice)}"
+            )
