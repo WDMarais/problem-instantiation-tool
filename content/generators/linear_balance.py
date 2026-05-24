@@ -1,8 +1,4 @@
-"""
-Generator for x ± a = 0 problems (zero RHS, balance method).
-
-Produces ThreeStep instances for SheetData.
-"""
+"""Generator for x ± a = 0 problems (zero RHS, balance method)."""
 
 from __future__ import annotations
 
@@ -10,26 +6,8 @@ from fractions import Fraction
 from random import Random
 
 from content.generators import Kind
-from content.sheet import CollapsedEx, PracticeEx, SheetData, ThreeStep
-
-_SMALL_DENOMS = (2, 3, 4, 6)
-_VAR_POOL = tuple("abcdfghkmnpqrstu")
-
-_TITLE = "x ± a = 0  —  Balance Method"
-_CAPTION = (
-    "Principle: we add or subtract the same value on both sides to keep the "
-    "equation balanced."
-)
-
-_DETAILED_SHARE = {Kind.INTEGER: 4, Kind.FRACTION: 2, Kind.SYMBOL: 2}
-_KIND_ORDER = (Kind.INTEGER, Kind.FRACTION, Kind.SYMBOL)
-
-
-def _fmt(f: Fraction) -> str:
-    if f.denominator == 1:
-        return str(f.numerator)
-    sign = "-" if f < 0 else ""
-    return rf"{sign}\tfrac{{{abs(f.numerator)}}}{{{f.denominator}}}"
+from content.generators.base import LinearGenerator, _SMALL_DENOMS, _VAR_POOL, _fmt
+from content.sheet import ThreeStep
 
 
 def _gen_integer(rng: Random) -> ThreeStep:
@@ -84,46 +62,23 @@ def _gen_symbol(rng: Random) -> ThreeStep:
     )
 
 
-def gen_threestep(kind: Kind, rng: Random) -> ThreeStep:
-    if kind is Kind.INTEGER:
-        return _gen_integer(rng)
-    if kind is Kind.FRACTION:
-        return _gen_fraction(rng)
-    return _gen_symbol(rng)
-
-
-def make_sheet(
-    kinds: frozenset[Kind] = frozenset(Kind),
-    *,
-    seed: int | None = None,
-) -> SheetData:
-    rng = Random(seed)
-    active = [k for k in _KIND_ORDER if k in kinds]
-
-    if set(active) == set(Kind):
-        shares = _DETAILED_SHARE
-    else:
-        base, extra = divmod(8, len(active))
-        shares = {k: base + (1 if i < extra else 0) for i, k in enumerate(active)}
-    detailed: list[ThreeStep] = [
-        gen_threestep(kind, rng) for kind in active for _ in range(shares[kind])
-    ]
-
-    collapsed: list[CollapsedEx] = []
-    for i in range(12):
-        step = gen_threestep(active[i % len(active)], rng)
-        collapsed.append(CollapsedEx(step.equation, step.result))
-
-    practice: list[PracticeEx] = []
-    for i in range(16):
-        step = gen_threestep(active[i % len(active)], rng)
-        practice.append(PracticeEx(step.equation, step.result if i % 2 == 0 else None))
-
-    return SheetData(
-        title=_TITLE,
-        caption=_CAPTION,
-        output_name="linear_balance.html",
-        detailed=detailed,
-        collapsed=collapsed,
-        practice=practice,
+class BalanceGenerator(LinearGenerator):
+    title = "x ± a = 0  —  Balance Method"
+    caption = (
+        "Principle: we add or subtract the same value on both sides to keep the "
+        "equation balanced."
     )
+    output_name = "linear_balance.html"
+    detailed_share = {Kind.INTEGER: 4, Kind.FRACTION: 2, Kind.SYMBOL: 2}
+
+    def gen(self, kind: Kind, rng: Random) -> ThreeStep:
+        if kind is Kind.INTEGER:
+            return _gen_integer(rng)
+        if kind is Kind.FRACTION:
+            return _gen_fraction(rng)
+        return _gen_symbol(rng)
+
+
+_GEN = BalanceGenerator()
+make_sheet = _GEN.make_sheet
+gen_threestep = _GEN.gen
