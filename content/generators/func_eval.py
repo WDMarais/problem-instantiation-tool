@@ -46,7 +46,7 @@ def _fdef(fname: str, a: int, b: int) -> str:
     return rf"{fname}(x) = {ax}"
 
 
-def _gen_integer(rng: Random) -> FourStep:
+def _gen_integer(rng: Random) -> tuple[FourStep, str, str]:
     name = rng.choice(_FUNC_POOL)
     fname = _fn(name)
     a = rng.choice([-5, -4, -3, -2, 2, 3, 4, 5])
@@ -54,26 +54,31 @@ def _gen_integer(rng: Random) -> FourStep:
     xval = rng.choice([*range(-5, 0), *range(1, 6)])
     ax_val = a * xval
     result_val = ax_val + b
-    # Always wrap input in parens for unambiguous juxtaposition: 3(2), -3(-2)
     x_str = f"({xval})"
     a_part = rf"{a}{x_str}"
+    defn = _fdef(fname, a, b)
+    call = rf"{fname}({xval})"
     if b > 0:
-        op = rf"{fname}({xval}) = {a_part} + {b}"
+        op = rf"{call} = {a_part} + {b}"
         mid = rf"= {ax_val} + {b}"
     else:
         ab = -b
-        op = rf"{fname}({xval}) = {a_part} - {ab}"
+        op = rf"{call} = {a_part} - {ab}"
         mid = rf"= {ax_val} - {ab}"
-    return FourStep(
-        equation=rf"{_fdef(fname, a, b)},\quad {fname}({xval})",
-        operation=op,
-        intermediate=mid,
-        result=rf"{fname}({xval}) = {result_val}",
-        model_ref="",
+    return (
+        FourStep(
+            equation=rf"{defn},\quad {call}",
+            operation=op,
+            intermediate=mid,
+            result=rf"{call} = {result_val}",
+            model_ref="",
+        ),
+        defn,
+        call,
     )
 
 
-def _gen_fraction(rng: Random) -> FourStep:
+def _gen_fraction(rng: Random) -> tuple[FourStep, str, str]:
     name = rng.choice(_FUNC_POOL)
     fname = _fn(name)
     a = rng.choice([2, 3, 4, 5])
@@ -84,23 +89,29 @@ def _gen_fraction(rng: Random) -> FourStep:
     fxval = _fmt(xval)
     ax_val = a * xval
     result_val = ax_val + b
+    defn = _fdef(fname, a, b)
+    call = rf"{fname}({fxval})"
     if b > 0:
-        op = rf"{fname}({fxval}) = {a} \cdot {fxval} + {b}"
+        op = rf"{call} = {a} \cdot {fxval} + {b}"
         mid = rf"= {_fmt(ax_val)} + {b}"
     else:
         ab = -b
-        op = rf"{fname}({fxval}) = {a} \cdot {fxval} - {ab}"
+        op = rf"{call} = {a} \cdot {fxval} - {ab}"
         mid = rf"= {_fmt(ax_val)} - {ab}"
-    return FourStep(
-        equation=rf"{_fdef(fname, a, b)},\quad {fname}({fxval})",
-        operation=op,
-        intermediate=mid,
-        result=rf"{fname}({fxval}) = {_fmt(result_val)}",
-        model_ref="",
+    return (
+        FourStep(
+            equation=rf"{defn},\quad {call}",
+            operation=op,
+            intermediate=mid,
+            result=rf"{call} = {_fmt(result_val)}",
+            model_ref="",
+        ),
+        defn,
+        call,
     )
 
 
-def _gen_symbol(rng: Random) -> FourStep:
+def _gen_symbol(rng: Random) -> tuple[FourStep, str, str]:
     name = rng.choice(_FUNC_POOL)
     fname = _fn(name)
     a = rng.choice([2, 3, 4, 5])
@@ -110,6 +121,7 @@ def _gen_symbol(rng: Random) -> FourStep:
     ac = a * c
     combined = ac + b
     c_str = f"{var} + {c}" if c > 0 else rf"{var} - {-c}"
+    defn = _fdef(fname, a, b)
     call = rf"{fname}({c_str})"
     op_b = f"+ {b}" if b > 0 else f"- {-b}"
     op = rf"{call} = {a}({c_str}) {op_b}"
@@ -122,12 +134,16 @@ def _gen_symbol(rng: Random) -> FourStep:
         res_rhs = rf"{a}{var} - {-combined}"
     else:
         res_rhs = rf"{a}{var}"
-    return FourStep(
-        equation=rf"{_fdef(fname, a, b)},\quad {call}",
-        operation=op,
-        intermediate=mid,
-        result=rf"{call} = {res_rhs}",
-        model_ref="",
+    return (
+        FourStep(
+            equation=rf"{defn},\quad {call}",
+            operation=op,
+            intermediate=mid,
+            result=rf"{call} = {res_rhs}",
+            model_ref="",
+        ),
+        defn,
+        call,
     )
 
 
@@ -142,12 +158,15 @@ class FuncEvalGenerator:
     n_detailed = 6
     detailed_share = {Kind.INTEGER: 3, Kind.FRACTION: 2, Kind.SYMBOL: 1}
 
-    def gen(self, kind: Kind, rng: Random) -> FourStep:
+    def _gen_with_parts(self, kind: Kind, rng: Random) -> tuple[FourStep, str, str]:
         if kind is Kind.INTEGER:
             return _gen_integer(rng)
         if kind is Kind.FRACTION:
             return _gen_fraction(rng)
         return _gen_symbol(rng)
+
+    def gen(self, kind: Kind, rng: Random) -> FourStep:
+        return self._gen_with_parts(kind, rng)[0]
 
     def make_sheet(
         self,
@@ -166,16 +185,22 @@ class FuncEvalGenerator:
 
         detailed = [self.gen(k, rng) for k in active for _ in range(shares[k])]
 
-        # Collapsed shows the direct substitution: "blorp(2) = 3(2)+1 ⟹ blorp(2) = 7"
         collapsed = []
         for i in range(12):
-            s = self.gen(active[i % len(active)], rng)
+            s, _, _ = self._gen_with_parts(active[i % len(active)], rng)
             collapsed.append(CollapsedEx(s.operation, s.result))
 
         practice = []
         for i in range(18):
-            s = self.gen(active[i % len(active)], rng)
-            practice.append(PracticeEx(s.equation, s.result if i % 2 == 0 else None))
+            s, defn, call = self._gen_with_parts(active[i % len(active)], rng)
+            practice.append(
+                PracticeEx(
+                    equation=s.equation,
+                    answer=s.result if i % 2 == 0 else None,
+                    definition=defn,
+                    call_expr=call,
+                )
+            )
 
         return SheetData(
             title=self.title,

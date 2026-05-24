@@ -69,10 +69,16 @@ class CollapsedEx:
 
 @dataclass(frozen=True)
 class PracticeEx:
-    """One own-work problem. answer=None means no answer is printed."""
+    """One own-work problem. answer=None means no answer is printed.
+
+    When definition and call_expr are both set the renderer uses a two-line
+    layout: definition on top, then "call_expr = [box]" inline below.
+    """
 
     equation: str
     answer: str | None
+    definition: str | None = None
+    call_expr: str | None = None
 
 
 # Empirically verified limits for the A4 grid layout.

@@ -105,6 +105,16 @@ body { font-family: Georgia, "Times New Roman", serif; background: #ddd; color: 
     margin-top: 1mm; background: #fafafa;
 }
 
+.practice-def { font-size: 9pt; line-height: 1.3; }
+.practice-call {
+    display: flex; align-items: center; gap: 1.5mm;
+    margin-top: 1.5mm; font-size: 9pt;
+}
+.answer-box-inline {
+    height: 6mm; width: 18mm; flex-shrink: 0;
+    border: 1px solid #bbb; border-radius: 1px; background: #fafafa;
+}
+
 .answers-block {
     margin-top: auto; padding-top: 3.5mm; border-top: 1px dashed #ccc;
     flex-shrink: 0;
@@ -198,6 +208,17 @@ def _render_practice_item(i: int, ex: PracticeEx) -> str:
     starred = ex.answer is not None
     num_class = "practice-num starred" if starred else "practice-num"
     label = f'{i}.<span class="star">*</span>' if starred else f"{i}."
+    if ex.definition is not None and ex.call_expr is not None:
+        return (
+            f'<div class="practice-item">'
+            f'<div class="{num_class}">{label}</div>'
+            f'<div class="practice-def">${ex.definition}$</div>'
+            f'<div class="practice-call">'
+            f"<span>${ex.call_expr} = $</span>"
+            f'<span class="answer-box-inline"></span>'
+            f"</div>"
+            f"</div>"
+        )
     return (
         f'<div class="practice-item">'
         f'<div class="{num_class}">{label}</div>'
