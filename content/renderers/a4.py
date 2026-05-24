@@ -268,7 +268,7 @@ def _page2(data: SheetData) -> str:
         "</div>"
         '<div class="section-label">C &mdash; Your turn</div>'
         '<div class="practice-intro">'
-        "Solve for $x$. Write your answer in the box. "
+        "Solve for $x$. Show your working on a separate sheet and write only your final answer in the box. "
         'Problems marked <span class="star">*</span> have answers at the bottom. '
         "Some answers are negative &mdash; check your sign."
         "</div>"

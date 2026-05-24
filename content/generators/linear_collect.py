@@ -10,17 +10,18 @@ from content.generators.base import LinearGenerator, _SMALL_DENOMS, _VAR_POOL, _
 from content.sheet import SixStep
 
 
-def _eqside(coef: int, const: int) -> str:
-    """Format coef*x + const with correct sign."""
-    if const > 0:
-        return rf"{coef}x + {const}"
-    if const < 0:
-        return rf"{coef}x - {-const}"
-    return rf"{coef}x"
-
-
 def _coefx(coef: int) -> str:
     return "x" if coef == 1 else rf"{coef}x"
+
+
+def _eqside(coef: int, const: int) -> str:
+    """Format coef*x + const with correct sign, handling coef=1."""
+    cx = _coefx(coef)
+    if const > 0:
+        return rf"{cx} + {const}"
+    if const < 0:
+        return rf"{cx} - {-const}"
+    return cx
 
 
 def _gen_integer(rng: Random) -> SixStep:
@@ -32,8 +33,9 @@ def _gen_integer(rng: Random) -> SixStep:
     d = coef * x + b  # derived so ax + b = cx + d holds
     cx = _coefx(coef)
 
+    cc = _coefx(c)
     eq = f"{_eqside(a, b)} = {_eqside(c, d)}"
-    op1 = rf"{_eqside(a, b)} - {c}x = {_eqside(c, d)} - {c}x"
+    op1 = rf"{_eqside(a, b)} - {cc} = {_eqside(c, d)} - {cc}"
     mid1 = f"{_eqside(coef, b)} = {d}"
     if b > 0:
         op2 = rf"{cx} + {b} - {b} = {d} - {b}"
@@ -59,9 +61,10 @@ def _gen_fraction(rng: Random) -> SixStep:
     fd = _fmt(d)
     cx = _coefx(coef)
 
-    eq = rf"{a}x + {fb} = {c}x + {fd}"
-    op1 = rf"{a}x + {fb} - {c}x = {c}x + {fd} - {c}x"
-    mid1 = rf"{coef}x + {fb} = {fd}"
+    cc = _coefx(c)
+    eq = rf"{a}x + {fb} = {cc} + {fd}"
+    op1 = rf"{a}x + {fb} - {cc} = {cc} + {fd} - {cc}"
+    mid1 = rf"{_coefx(coef)} + {fb} = {fd}"
     op2 = rf"{cx} + {fb} - {fb} = {fd} - {fb}"
     mid2 = rf"{cx} = {_fmt(d - b)}"  # d - b = coef*x (integer)
     result = rf"x = {_fmt(Fraction(d - b, coef))}"
