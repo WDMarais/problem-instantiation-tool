@@ -37,6 +37,29 @@ class FourStep:
 
 
 @dataclass(frozen=True)
+class FiveStep:
+    """Two chained operations: equation → op1 → mid-form → op2 → result."""
+
+    equation: str
+    op1: str
+    mid: str
+    op2: str
+    result: str
+
+
+@dataclass(frozen=True)
+class SixStep:
+    """Three chained operations: equation → op1 → mid1 → op2 → mid2 → result."""
+
+    equation: str
+    op1: str
+    mid1: str
+    op2: str
+    mid2: str
+    result: str
+
+
+@dataclass(frozen=True)
 class CollapsedEx:
     """One collapsed shorthand example: equation ⟹ answer."""
 
@@ -55,6 +78,8 @@ class PracticeEx:
 # Empirically verified limits for the A4 grid layout.
 _MAX_DETAILED_THREE = 8  # 2-col × 4 rows, 3-step entries
 _MAX_DETAILED_FOUR = 6  # 2-col × 3 rows, 4-step entries
+_MAX_DETAILED_FIVE = 4  # 2-col × 2 rows, 5-step entries
+_MAX_DETAILED_SIX = 4  # 2-col × 2 rows, 6-step entries (verify visually)
 _MAX_COLLAPSED = 12  # 3-col × 4 rows
 _MAX_PRACTICE = 16  # 4-col × 4 rows
 
@@ -63,7 +88,7 @@ _MAX_PRACTICE = 16  # 4-col × 4 rows
 class SheetData:
     title: str
     caption: str
-    detailed: list[ThreeStep | FourStep]
+    detailed: list[ThreeStep | FourStep | FiveStep | SixStep]
     collapsed: list[CollapsedEx]
     practice: list[PracticeEx]
     output_name: str = field(default="sheet.html")
@@ -78,7 +103,7 @@ class SheetData:
         first_type = type(self.detailed[0])
         if not all(type(d) is first_type for d in self.detailed):
             raise LayoutOverflowError(
-                "All detailed examples must be the same type (ThreeStep or FourStep)"
+                "All detailed examples must be the same type (ThreeStep, FourStep, FiveStep, or SixStep)"
             )
 
         if first_type is ThreeStep and len(self.detailed) > _MAX_DETAILED_THREE:
@@ -89,6 +114,16 @@ class SheetData:
         if first_type is FourStep and len(self.detailed) > _MAX_DETAILED_FOUR:
             raise LayoutOverflowError(
                 f"FourStep layout fits at most {_MAX_DETAILED_FOUR} detailed examples; "
+                f"got {len(self.detailed)}"
+            )
+        if first_type is FiveStep and len(self.detailed) > _MAX_DETAILED_FIVE:
+            raise LayoutOverflowError(
+                f"FiveStep layout fits at most {_MAX_DETAILED_FIVE} detailed examples; "
+                f"got {len(self.detailed)}"
+            )
+        if first_type is SixStep and len(self.detailed) > _MAX_DETAILED_SIX:
+            raise LayoutOverflowError(
+                f"SixStep layout fits at most {_MAX_DETAILED_SIX} detailed examples; "
                 f"got {len(self.detailed)}"
             )
 

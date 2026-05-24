@@ -7,7 +7,15 @@ Section B accepts an optional note for renderer-level label annotations.
 
 from __future__ import annotations
 
-from content.sheet import CollapsedEx, FourStep, PracticeEx, SheetData, ThreeStep
+from content.sheet import (
+    CollapsedEx,
+    FiveStep,
+    FourStep,
+    PracticeEx,
+    SheetData,
+    SixStep,
+    ThreeStep,
+)
 
 _KATEX = """\
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
@@ -141,7 +149,36 @@ def _render_four(ex: FourStep) -> str:
     )
 
 
-def _render_detailed(ex: ThreeStep | FourStep) -> str:
+def _render_five(ex: FiveStep) -> str:
+    return (
+        '<div class="worked-ex">'
+        f'<div class="worked-step">${ex.equation}$</div>'
+        f'<div class="worked-step">${ex.op1}$</div>'
+        f'<div class="worked-step intermediate">${ex.mid}$</div>'
+        f'<div class="worked-step">${ex.op2}$</div>'
+        f'<div class="worked-step result">${ex.result}$</div>'
+        "</div>"
+    )
+
+
+def _render_six(ex: SixStep) -> str:
+    return (
+        '<div class="worked-ex">'
+        f'<div class="worked-step">${ex.equation}$</div>'
+        f'<div class="worked-step">${ex.op1}$</div>'
+        f'<div class="worked-step intermediate">${ex.mid1}$</div>'
+        f'<div class="worked-step">${ex.op2}$</div>'
+        f'<div class="worked-step intermediate">${ex.mid2}$</div>'
+        f'<div class="worked-step result">${ex.result}$</div>'
+        "</div>"
+    )
+
+
+def _render_detailed(ex: ThreeStep | FourStep | FiveStep | SixStep) -> str:
+    if isinstance(ex, SixStep):
+        return _render_six(ex)
+    if isinstance(ex, FiveStep):
+        return _render_five(ex)
     if isinstance(ex, FourStep):
         return _render_four(ex)
     return _render_three(ex)
@@ -179,8 +216,11 @@ def _render_answer_entry(i: int, ex: PracticeEx) -> str:
     )
 
 
+_STEP_LABEL = {ThreeStep: "three", FourStep: "four", FiveStep: "five", SixStep: "six"}
+
+
 def _section_a_label(data: SheetData) -> str:
-    steps = "four" if isinstance(data.detailed[0], FourStep) else "three"
+    steps = _STEP_LABEL[type(data.detailed[0])]
     return f"A &mdash; Method: {steps} steps"
 
 
