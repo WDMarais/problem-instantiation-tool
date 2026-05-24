@@ -81,7 +81,7 @@ _MAX_DETAILED_FOUR = 6  # 2-col × 3 rows, 4-step entries
 _MAX_DETAILED_FIVE = 4  # 2-col × 2 rows, 5-step entries
 _MAX_DETAILED_SIX = 4  # 2-col × 2 rows, 6-step entries (verify visually)
 _MAX_COLLAPSED = 12  # 3-col × 4 rows
-_MAX_PRACTICE = 16  # 4-col × 4 rows
+_MAX_PRACTICE = 18  # 4-col × 4 rows default; 3-col × 6 rows with practice_cols=3
 
 
 @dataclass
@@ -92,6 +92,8 @@ class SheetData:
     collapsed: list[CollapsedEx]
     practice: list[PracticeEx]
     output_name: str = field(default="sheet.html")
+    practice_intro: str = field(default="")
+    practice_cols: int = field(default=4)
 
     def __post_init__(self) -> None:
         self._validate()

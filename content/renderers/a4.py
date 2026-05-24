@@ -93,16 +93,16 @@ body { font-family: Georgia, "Times New Roman", serif; background: #ddd; color: 
 }
 .practice-grid {
     display: grid; grid-template-columns: repeat(4, 1fr);
-    gap: 4mm 7mm; flex-shrink: 0;
+    gap: 3mm 5mm; flex-shrink: 0;
 }
-.practice-item { display: flex; flex-direction: column; gap: 1mm; }
-.practice-num { font-size: 8.5pt; font-weight: bold; color: #bbb; }
+.practice-item { display: flex; flex-direction: column; gap: 0.5mm; }
+.practice-num { font-size: 7.5pt; font-weight: bold; color: #bbb; }
 .practice-num.starred { color: #2563EB; }
-.star { font-size: 11pt; }
-.practice-eq { font-size: 10.5pt; line-height: 1.35; }
+.star { font-size: 10pt; }
+.practice-eq { font-size: 9pt; line-height: 1.3; }
 .answer-box {
-    height: 9mm; border: 1px solid #bbb; border-radius: 1px;
-    margin-top: 1.5mm; background: #fafafa;
+    height: 8mm; border: 1px solid #bbb; border-radius: 1px;
+    margin-top: 1mm; background: #fafafa;
 }
 
 .answers-block {
@@ -138,7 +138,9 @@ def _render_three(ex: ThreeStep) -> str:
 
 
 def _render_four(ex: FourStep) -> str:
-    ref_html = f'<span class="model-ref">&#8594; {ex.model_ref}</span>'
+    ref_html = (
+        f'<span class="model-ref">&#8594; {ex.model_ref}</span>' if ex.model_ref else ""
+    )
     return (
         '<div class="worked-ex">'
         f'<div class="worked-step">${ex.equation}$</div>'
@@ -267,15 +269,21 @@ def _page2(data: SheetData) -> str:
         "<span>Page 2 of 2</span>"
         "</div>"
         '<div class="section-label">C &mdash; Your turn</div>'
-        '<div class="practice-intro">'
-        "Solve for $x$. Show your working on a separate sheet and write only your final answer in the box. "
-        'Problems marked <span class="star">*</span> have answers at the bottom. '
-        "Some answers are negative &mdash; check your sign."
-        "</div>"
-        f'<div class="practice-grid">{practice_html}</div>'
+        f'<div class="practice-intro">'
+        + (
+            data.practice_intro
+            if data.practice_intro
+            else (
+                "Solve for $x$. Show your working on a separate sheet and write only your final answer in the box. "
+                'Problems marked <span class="star">*</span> have answers at the bottom. '
+                "Some answers are negative &mdash; check your sign."
+            )
+        )
+        + "</div>"
+        f'<div class="practice-grid" style="grid-template-columns: repeat({data.practice_cols}, 1fr);">{practice_html}</div>'
         '<div class="answers-block">'
         '<div class="answers-label">Answers &mdash; starred problems</div>'
-        f'<div class="answers-grid">{answers_html}</div>'
+        f'<div class="answers-grid" style="grid-template-columns: repeat({data.practice_cols}, 1fr);">{answers_html}</div>'
         "</div>"
         "</section>\n"
     )
