@@ -36,14 +36,14 @@ def _fn(name: str) -> str:
     return rf"\text{{{name}}}"
 
 
-def _fdef(fname: str, a: int, b: int) -> str:
-    """Format fname(x) = ax + b."""
-    ax = "x" if a == 1 else ("-x" if a == -1 else rf"{a}x")
+def _fdef(fname: str, a: int, b: int, var: str = "x") -> str:
+    """Format fname(var) = a·var + b."""
+    av = var if a == 1 else (f"-{var}" if a == -1 else rf"{a}{var}")
     if b > 0:
-        return rf"{fname}(x) = {ax} + {b}"
+        return rf"{fname}({var}) = {av} + {b}"
     if b < 0:
-        return rf"{fname}(x) = {ax} - {-b}"
-    return rf"{fname}(x) = {ax}"
+        return rf"{fname}({var}) = {av} - {-b}"
+    return rf"{fname}({var}) = {av}"
 
 
 def _gen_integer(rng: Random) -> tuple[FourStep, str, str]:

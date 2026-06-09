@@ -71,14 +71,18 @@ class CollapsedEx:
 class PracticeEx:
     """One own-work problem. answer=None means no answer is printed.
 
-    When definition and call_expr are both set the renderer uses a two-line
-    layout: definition on top, then "call_expr = [box]" inline below.
+    Layouts (mutually exclusive, checked in order):
+    - equation2 set: two equation lines + "x = [inline box]" answer slot.
+    - definition + call_expr set: definition on top, "call_expr = [inline box]" below.
+    - default: single equation line + full-width answer box.
     """
 
     equation: str
     answer: str | None
     definition: str | None = None
     call_expr: str | None = None
+    equation2: str | None = None
+    answer_var: str = "x"  # variable shown in "answer_var = [box]" for equation2 layout
 
 
 # Empirically verified limits for the A4 grid layout.

@@ -23,7 +23,7 @@ if __name__ == "__main__":
     ap.add_argument(
         "--kinds",
         nargs="+",
-        choices=["integer", "fraction", "symbol"],
+        choices=["integer", "fraction", "symbol", "vararg"],
         default=None,
         metavar="KIND",
     )

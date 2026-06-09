@@ -84,9 +84,10 @@ body { font-family: Georgia, "Times New Roman", serif; background: #ddd; color: 
 
 .collapsed-grid {
     display: grid; grid-template-columns: 1fr 1fr 1fr;
-    gap: 1.5mm 6mm; flex-shrink: 0;
+    gap: 3.5mm 6mm; flex-shrink: 0;
 }
 .collapsed-ex { font-size: 9.5pt; line-height: 1.55; }
+.collapsed-num { font-size: 7.5pt; font-weight: bold; color: #bbb; margin-right: 1mm; }
 
 .practice-intro {
     font-size: 8.5pt; color: #555; margin-bottom: 3mm; flex-shrink: 0;
@@ -137,11 +138,18 @@ body { font-family: Georgia, "Times New Roman", serif; background: #ddd; color: 
 """
 
 
+def _eq_divs(equation: str) -> str:
+    """Render equation as one or more worked-step divs. Split on literal \\n."""
+    return "".join(
+        f'<div class="worked-step">${line}$</div>' for line in equation.split("\n")
+    )
+
+
 def _render_three(ex: ThreeStep) -> str:
     return (
         '<div class="worked-ex">'
-        f'<div class="worked-step">${ex.equation}$</div>'
-        f'<div class="worked-step">${ex.operation}$</div>'
+        + _eq_divs(ex.equation)
+        + f'<div class="worked-step">${ex.operation}$</div>'
         f'<div class="worked-step result">${ex.result}$</div>'
         "</div>"
     )
@@ -153,8 +161,8 @@ def _render_four(ex: FourStep) -> str:
     )
     return (
         '<div class="worked-ex">'
-        f'<div class="worked-step">${ex.equation}$</div>'
-        f'<div class="worked-step">${ex.operation}$</div>'
+        + _eq_divs(ex.equation)
+        + f'<div class="worked-step">${ex.operation}$</div>'
         f'<div class="worked-step intermediate">${ex.intermediate}${ref_html}</div>'
         f'<div class="worked-step result">${ex.result}$</div>'
         "</div>"
@@ -164,8 +172,8 @@ def _render_four(ex: FourStep) -> str:
 def _render_five(ex: FiveStep) -> str:
     return (
         '<div class="worked-ex">'
-        f'<div class="worked-step">${ex.equation}$</div>'
-        f'<div class="worked-step">${ex.op1}$</div>'
+        + _eq_divs(ex.equation)
+        + f'<div class="worked-step">${ex.op1}$</div>'
         f'<div class="worked-step intermediate">${ex.mid}$</div>'
         f'<div class="worked-step">${ex.op2}$</div>'
         f'<div class="worked-step result">${ex.result}$</div>'
@@ -176,8 +184,8 @@ def _render_five(ex: FiveStep) -> str:
 def _render_six(ex: SixStep) -> str:
     return (
         '<div class="worked-ex">'
-        f'<div class="worked-step">${ex.equation}$</div>'
-        f'<div class="worked-step">${ex.op1}$</div>'
+        + _eq_divs(ex.equation)
+        + f'<div class="worked-step">${ex.op1}$</div>'
         f'<div class="worked-step intermediate">${ex.mid1}$</div>'
         f'<div class="worked-step">${ex.op2}$</div>'
         f'<div class="worked-step intermediate">${ex.mid2}$</div>'
@@ -196,10 +204,11 @@ def _render_detailed(ex: ThreeStep | FourStep | FiveStep | SixStep) -> str:
     return _render_three(ex)
 
 
-def _render_collapsed(ex: CollapsedEx) -> str:
+def _render_collapsed(ex: CollapsedEx, n: int | None = None) -> str:
+    num_html = f'<span class="collapsed-num">{n}.</span>' if n is not None else ""
     return (
         f'<div class="collapsed-ex">'
-        f"${ex.equation} \\;\\Rightarrow\\; {ex.answer}$"
+        f"{num_html}${ex.equation} \\;\\Rightarrow\\; {ex.answer}$"
         f"</div>"
     )
 
@@ -208,6 +217,18 @@ def _render_practice_item(i: int, ex: PracticeEx) -> str:
     starred = ex.answer is not None
     num_class = "practice-num starred" if starred else "practice-num"
     label = f'{i}.<span class="star">*</span>' if starred else f"{i}."
+    if ex.equation2 is not None:
+        return (
+            f'<div class="practice-item">'
+            f'<div class="{num_class}">{label}</div>'
+            f'<div class="practice-eq">${ex.equation}$</div>'
+            f'<div class="practice-eq">${ex.equation2}$</div>'
+            f'<div class="practice-call">'
+            f"<span>${ex.answer_var} = $</span>"
+            f'<span class="answer-box-inline"></span>'
+            f"</div>"
+            f"</div>"
+        )
     if ex.definition is not None and ex.call_expr is not None:
         return (
             f'<div class="practice-item">'
@@ -244,11 +265,11 @@ _STEP_LABEL = {ThreeStep: "three", FourStep: "four", FiveStep: "five", SixStep: 
 
 def _section_a_label(data: SheetData) -> str:
     steps = _STEP_LABEL[type(data.detailed[0])]
-    return f"A &mdash; Method: {steps} steps"
+    return f"A: Method: {steps} steps"
 
 
 def _section_b_label(note: str) -> str:
-    base = "B &mdash; Shorthand: same idea in one step"
+    base = "B: Shorthand: same idea in one step"
     if not note:
         return base
     styled = (
@@ -260,7 +281,9 @@ def _section_b_label(note: str) -> str:
 
 def _page1(data: SheetData, section_b_note: str) -> str:
     detailed_html = "".join(_render_detailed(d) for d in data.detailed)
-    collapsed_html = "".join(_render_collapsed(c) for c in data.collapsed)
+    collapsed_html = "".join(
+        _render_collapsed(c, i) for i, c in enumerate(data.collapsed, 1)
+    )
     return (
         '<section class="page">'
         '<div class="page-header">'
@@ -289,7 +312,7 @@ def _page2(data: SheetData) -> str:
         f"<h1>{data.title}</h1>"
         "<span>Page 2 of 2</span>"
         "</div>"
-        '<div class="section-label">C &mdash; Your turn</div>'
+        '<div class="section-label">C: Your turn</div>'
         f'<div class="practice-intro">'
         + (
             data.practice_intro
@@ -303,7 +326,7 @@ def _page2(data: SheetData) -> str:
         + "</div>"
         f'<div class="practice-grid" style="grid-template-columns: repeat({data.practice_cols}, 1fr);">{practice_html}</div>'
         '<div class="answers-block">'
-        '<div class="answers-label">Answers &mdash; starred problems</div>'
+        '<div class="answers-label">Answers: starred problems</div>'
         f'<div class="answers-grid" style="grid-template-columns: repeat({data.practice_cols}, 1fr);">{answers_html}</div>'
         "</div>"
         "</section>\n"
