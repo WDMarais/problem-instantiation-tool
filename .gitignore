@@ -12,3 +12,4 @@ wheels/
 # Test / tool caches
 .pytest_cache/
 .ruff_cache/
+*.html
