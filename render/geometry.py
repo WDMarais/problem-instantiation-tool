@@ -49,21 +49,50 @@ class Angle:
     right: bool = False  # draw a right-angle square instead of an arc
 
 
+@dataclass(frozen=True)
+class Pose:
+    """A similarity transform applied for visual variety: optional reflection,
+    rotation by any angle, and a uniform scale given as a *fraction of the
+    viewport-fill size* (~0.7-1.0). Similarities preserve angles, so drawn angles
+    stay faithful to their labels no matter the orientation or size. Shape variety
+    (acute angle, side ratio) belongs to the figure, not the pose."""
+
+    rotate_deg: float = 0.0
+    scale: float = 1.0  # fraction of the fit-to-viewport size; clamps figure inside
+    reflect: bool = False
+
+
 @dataclass
 class GeometryFigure:
     points: list[Point]
     segments: list[Segment] = field(default_factory=list)
     angles: list[Angle] = field(default_factory=list)
+    pose: Pose = field(default_factory=Pose)
     width: int = 300
     height: int = 230
     pad: int = 30
 
 
 def render_figure(fig: GeometryFigure) -> str:
-    pts = {p.name: p for p in fig.points}
+    # ── apply the pose (similarity transform) about the figure's centroid ──────
+    n = len(fig.points)
+    c0x = sum(p.x for p in fig.points) / n
+    c0y = sum(p.y for p in fig.points) / n
+    th = math.radians(fig.pose.rotate_deg)
+    cos_t, sin_t = math.cos(th), math.sin(th)
+    sgn = -1.0 if fig.pose.reflect else 1.0  # reflect across the vertical axis
 
-    xs = [p.x for p in fig.points]
-    ys = [p.y for p in fig.points]
+    wpts: dict[str, tuple[float, float]] = {}
+    for p in fig.points:
+        dx = (p.x - c0x) * sgn
+        dy = p.y - c0y
+        wpts[p.name] = (
+            c0x + dx * cos_t - dy * sin_t,
+            c0y + dx * sin_t + dy * cos_t,
+        )
+
+    xs = [x for x, _ in wpts.values()]
+    ys = [y for _, y in wpts.values()]
     x_min, x_max = min(xs), max(xs)
     y_min, y_max = min(ys), max(ys)
     span_x = max(x_max - x_min, 1e-9)
@@ -71,9 +100,11 @@ def render_figure(fig: GeometryFigure) -> str:
 
     avail_w = fig.width - 2 * fig.pad
     avail_h = fig.height - 2 * fig.pad
-    scale = min(avail_w / span_x, avail_h / span_y)
+    # fit-to-viewport size for this pose, then shrink to the requested fraction
+    s_fill = min(avail_w / span_x, avail_h / span_y)
+    scale = s_fill * max(0.05, min(fig.pose.scale, 1.0))
 
-    # centre the drawn figure within the available area
+    # centre the (possibly inset) figure within the available area
     used_w = span_x * scale
     used_h = span_y * scale
     off_x = fig.pad + (avail_w - used_w) / 2
@@ -87,12 +118,12 @@ def render_figure(fig: GeometryFigure) -> str:
         return off_y + (y_max - y) * scale
 
     def S(name: str) -> tuple[float, float]:
-        p = pts[name]
-        return sx(p.x), sy(p.y)
+        wx, wy = wpts[name]
+        return sx(wx), sy(wy)
 
     # screen-space centroid, used to push labels outward
-    cx = sum(sx(p.x) for p in fig.points) / len(fig.points)
-    cy = sum(sy(p.y) for p in fig.points) / len(fig.points)
+    cx = sum(sx(wx) for wx, _ in wpts.values()) / n
+    cy = sum(sy(wy) for _, wy in wpts.values()) / n
 
     out: list[str] = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{fig.width}"'
@@ -124,7 +155,7 @@ def render_figure(fig: GeometryFigure) -> str:
 
     # ── vertices + labels ─────────────────────────────────────────────────────
     for p in fig.points:
-        px, py = sx(p.x), sy(p.y)
+        px, py = S(p.name)
         out.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="2.1" fill="{_STROKE}"/>')
         if p.name:
             dx, dy = px - cx, py - cy

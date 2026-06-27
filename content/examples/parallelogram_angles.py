@@ -33,11 +33,32 @@ _GIVEN_ADJ = [35, 40, 50, 55, 65, 70, 75, 105, 110, 115, 125, 130]
 _GIVEN_ALT = [25, 30, 35, 40, 45, 50, 55]
 
 
+def _random_pose(rng: random.Random) -> dict:
+    """A similarity transform (plain data; the template builds the Pose). Pure
+    visual variety — rotation/scale/reflection preserve angles, so the answer and
+    the drawn angle values are unaffected."""
+    return {
+        "rotate_deg": round(rng.uniform(0, 360), 1),
+        "scale": round(rng.uniform(0.72, 1.0), 3),
+        "reflect": rng.random() < 0.5,
+    }
+
+
+def _shape(rng: random.Random) -> dict:
+    """Intrinsic parallelogram proportions — varied for shape variety."""
+    return {
+        "base": round(rng.uniform(3.6, 4.8), 2),
+        "side": round(rng.uniform(2.2, 3.0), 2),
+    }
+
+
 def _gen_cointerior(rng: random.Random) -> dict:
     given = rng.choice(_GIVEN_ADJ)
     return {
         "given_deg": given,
-        "angle_a_deg": given,  # given is the angle at A
+        "angle_a_deg": given,  # given is the angle at A; kept to-scale
+        "pose": _random_pose(rng),
+        **_shape(rng),
         "answer": sympy.Integer(180 - given),
     }
 
@@ -47,6 +68,8 @@ def _gen_opposite(rng: random.Random) -> dict:
     return {
         "given_deg": given,
         "angle_a_deg": given,
+        "pose": _random_pose(rng),
+        **_shape(rng),
         "answer": sympy.Integer(given),
     }
 
@@ -56,6 +79,8 @@ def _gen_alternate(rng: random.Random) -> dict:
     return {
         "given_deg": given,
         "angle_a_deg": 68,  # fixed pleasant shear; diagram not to scale
+        "pose": _random_pose(rng),
+        **_shape(rng),
         "answer": sympy.Integer(given),
     }
 

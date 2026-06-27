@@ -40,56 +40,77 @@ _CSS = """
 body { font-family: Georgia, serif; background: #eceff3; color: #111; padding: 24px; }
 h1 { font-size: 16pt; margin-bottom: 4px; }
 .sub { color: #666; font-size: 10pt; margin-bottom: 20px; }
-.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-.card { background: #fff; border: 1px solid #ccc; border-radius: 4px; padding: 16px; }
-.card h2 { font-size: 10pt; color: #2563EB; text-transform: uppercase;
-           letter-spacing: 0.05em; margin-bottom: 10px; }
-.instruction { font-size: 11pt; margin-bottom: 6px; line-height: 1.4; }
-.given { font-size: 12pt; margin-bottom: 10px; }
-.fig { text-align: center; margin: 6px 0 12px; }
-.fig svg { width: 340px; height: auto; }
-.reason { border-top: 1px dashed #ccc; padding-top: 10px; }
-.reason .lbl { font-size: 8pt; color: #888; text-transform: uppercase;
-               letter-spacing: 0.05em; margin-bottom: 6px; }
-.reason div.step { font-size: 11pt; margin-bottom: 4px; }
+.variant { background: #fff; border: 1px solid #ccc; border-radius: 4px;
+           padding: 16px; margin-bottom: 18px; }
+.variant h2 { font-size: 10pt; color: #2563EB; text-transform: uppercase;
+              letter-spacing: 0.05em; margin-bottom: 4px; }
+.variant .reason { font-size: 10pt; color: #444; margin-bottom: 12px; }
+.row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.cell { text-align: center; }
+.cell svg { width: 100%; height: auto; }
+.cap { font-size: 9.5pt; color: #555; margin-top: 2px; }
 """
 
 
-def _card(pid: str, engine: Engine, seed: int) -> str:
+def _cell(pid: str, engine: Engine, seed: int) -> str:
     entry = PROBLEMS[pid]
     inst = engine.instantiate(pid, seed=seed)
     card = entry.template(inst.params)
-    steps = "".join(f'<div class="step">${s}$</div>' for s in card.worked_steps)
+    given = inst.params["given_deg"]
+    (ans,) = inst.verifier.canonicals
     return (
-        '<div class="card">'
-        f"<h2>{pid.replace('parallelogram_', '')}</h2>"
-        f'<div class="instruction">{card.instruction}</div>'
-        f'<div class="given">$${card.display_math}$$</div>'
-        f'<div class="fig">{card.graph_svg}</div>'
-        '<div class="reason"><div class="lbl">Worked reason</div>'
-        f"{steps}</div>"
+        '<div class="cell">'
+        f"{card.graph_svg}"
+        f'<div class="cap">given ${given}^\\circ$ &rarr; ${ans}^\\circ$</div>'
         "</div>"
     )
 
 
+_REASON = {
+    "parallelogram_cointerior": (
+        r"adjacent: $\hat{B}=180^\circ-\hat{A}$"
+        r" (co-interior $\angle$s; $AD\parallel BC$)"
+    ),
+    "parallelogram_opposite": (
+        r"opposite: $\hat{C}=\hat{A}$"
+        r" (opposite $\angle$s of a $\parallel^{\text{m}}$)"
+    ),
+    "parallelogram_alternate": (
+        r"alternate (Z): $B\hat{A}C=D\hat{C}A$"
+        r" (alt $\angle$s; $AB\parallel DC$)"
+    ),
+}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--seed", type=int, default=7, help="base seed for the row")
+    ap.add_argument("--cols", type=int, default=6, help="instances per variant")
     ap.add_argument("--output", default="geometry_demo.html")
     args = ap.parse_args()
 
     engine = Engine(
         registry=InMemoryRegistry({p: PROBLEMS[p].problem for p in _VARIANTS})
     )
-    cards = "".join(_card(pid, engine, args.seed) for pid in _VARIANTS)
+    sections = []
+    for pid in _VARIANTS:
+        cells = "".join(_cell(pid, engine, args.seed + i) for i in range(args.cols))
+        sections.append(
+            '<div class="variant">'
+            f"<h2>{pid.replace('parallelogram_', '')}</h2>"
+            f'<div class="reason">{_REASON[pid]}</div>'
+            f'<div class="row">{cells}</div>'
+            "</div>"
+        )
     html = (
         "<!DOCTYPE html><html lang='en'><head><meta charset='UTF-8'>"
         "<title>Geometry figure preview</title>"
         f"{_KATEX}<style>{_CSS}</style></head><body>"
-        "<h1>GeometryFigure preview — parallelogram angle-chases</h1>"
-        "<div class='sub'>render/geometry.py &middot; figures are display-only, "
-        "deliberately not to scale</div>"
-        f"<div class='grid'>{cards}</div>"
+        "<h1>GeometryFigure preview — pose variety</h1>"
+        "<div class='sub'>render/geometry.py &middot; each row is one variant "
+        "across seeds: rotation, scale (70-100%), and reflection vary; the angle "
+        "relationships and labels do not. Figures are not to scale.</div>"
+        f"{''.join(sections)}"
         "</body></html>"
     )
     Path(args.output).write_text(html, encoding="utf-8")

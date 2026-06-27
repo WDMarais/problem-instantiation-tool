@@ -29,7 +29,14 @@ import sympy
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from render.graph import render_trig_graph
-from render.geometry import Angle, GeometryFigure, Point, Segment, render_figure
+from render.geometry import (
+    Angle,
+    GeometryFigure,
+    Point,
+    Pose,
+    Segment,
+    render_figure,
+)
 
 from content.examples.factorise_skills import (
     factorise_constraints,
@@ -373,10 +380,10 @@ def template_trig_graph_solve(params: dict, **_) -> ProblemCard:
     )
 
 
-def _parallelogram_pts(angle_a_deg: float) -> dict:
+def _parallelogram_pts(angle_a_deg: float, base: float, side: float) -> dict:
     """Parallelogram ABCD (A bottom-left, going A→B→C→D anticlockwise) with the
-    interior angle at A equal to angle_a_deg. Layout coords, y-up."""
-    base, side = 4.2, 2.6
+    interior angle at A equal to angle_a_deg. Layout coords, y-up. Pose (rotation,
+    scale, reflection) is applied later by the renderer."""
     th = math.radians(angle_a_deg)
     dx, dy = side * math.cos(th), side * math.sin(th)
     return {
@@ -384,6 +391,16 @@ def _parallelogram_pts(angle_a_deg: float) -> dict:
         "B": Point("B", base, 0.0),
         "C": Point("C", base + dx, dy),
         "D": Point("D", dx, dy),
+    }
+
+
+def _pgram_geometry(params: dict) -> dict:
+    """Shared figure inputs from params: posed points + sides + Pose."""
+    pts = _parallelogram_pts(params["angle_a_deg"], params["base"], params["side"])
+    return {
+        "pts": pts,
+        "sides": _parallelogram_sides(),
+        "pose": Pose(**params["pose"]),
     }
 
 
@@ -400,14 +417,15 @@ def _parallelogram_sides() -> list[Segment]:
 def template_parallelogram_cointerior(params: dict, **_) -> ProblemCard:
     given = params["given_deg"]
     ans = int(params["answer"])
-    pts = _parallelogram_pts(params["angle_a_deg"])
+    g = _pgram_geometry(params)
     fig = GeometryFigure(
-        points=list(pts.values()),
-        segments=_parallelogram_sides(),
+        points=list(g["pts"].values()),
+        segments=g["sides"],
         angles=[
             Angle("A", "B", "D", label=f"{given}°"),
             Angle("B", "A", "C", label="x"),
         ],
+        pose=g["pose"],
     )
     return ProblemCard(
         instruction=r"$ABCD$ is a parallelogram. Determine the size of $\hat{B}$, giving a reason.",
@@ -423,14 +441,15 @@ def template_parallelogram_cointerior(params: dict, **_) -> ProblemCard:
 def template_parallelogram_opposite(params: dict, **_) -> ProblemCard:
     given = params["given_deg"]
     ans = int(params["answer"])
-    pts = _parallelogram_pts(params["angle_a_deg"])
+    g = _pgram_geometry(params)
     fig = GeometryFigure(
-        points=list(pts.values()),
-        segments=_parallelogram_sides(),
+        points=list(g["pts"].values()),
+        segments=g["sides"],
         angles=[
             Angle("A", "B", "D", label=f"{given}°"),
             Angle("C", "B", "D", label="x"),
         ],
+        pose=g["pose"],
     )
     return ProblemCard(
         instruction=r"$ABCD$ is a parallelogram. Determine the size of $\hat{C}$, giving a reason.",
@@ -446,14 +465,15 @@ def template_parallelogram_opposite(params: dict, **_) -> ProblemCard:
 def template_parallelogram_alternate(params: dict, **_) -> ProblemCard:
     given = params["given_deg"]
     ans = int(params["answer"])
-    pts = _parallelogram_pts(params["angle_a_deg"])
+    g = _pgram_geometry(params)
     fig = GeometryFigure(
-        points=list(pts.values()),
-        segments=_parallelogram_sides() + [Segment("A", "C")],
+        points=list(g["pts"].values()),
+        segments=g["sides"] + [Segment("A", "C")],
         angles=[
             Angle("C", "D", "A", label=f"{given}°"),
             Angle("A", "B", "C", label="x"),
         ],
+        pose=g["pose"],
     )
     return ProblemCard(
         instruction=r"$ABCD$ is a parallelogram with diagonal $AC$. Determine $B\hat{A}C$, giving a reason. (Diagram not to scale.)",
