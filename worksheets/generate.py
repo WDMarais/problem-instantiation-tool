@@ -29,6 +29,7 @@ import sympy
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from render.graph import render_trig_graph
+from render.geometry import Angle, GeometryFigure, Point, Segment, render_figure
 
 from content.examples.factorise_skills import (
     factorise_constraints,
@@ -48,6 +49,11 @@ from content.examples.trig_graph_properties import (
     trig_graph_decreasing,
     trig_graph_range,
     trig_graph_solve,
+)
+from content.examples.parallelogram_angles import (
+    parallelogram_alternate,
+    parallelogram_cointerior,
+    parallelogram_opposite,
 )
 from content.examples.zero_product_rule import (
     atomic_shuffled_n,
@@ -367,6 +373,99 @@ def template_trig_graph_solve(params: dict, **_) -> ProblemCard:
     )
 
 
+def _parallelogram_pts(angle_a_deg: float) -> dict:
+    """Parallelogram ABCD (A bottom-left, going A→B→C→D anticlockwise) with the
+    interior angle at A equal to angle_a_deg. Layout coords, y-up."""
+    base, side = 4.2, 2.6
+    th = math.radians(angle_a_deg)
+    dx, dy = side * math.cos(th), side * math.sin(th)
+    return {
+        "A": Point("A", 0.0, 0.0),
+        "B": Point("B", base, 0.0),
+        "C": Point("C", base + dx, dy),
+        "D": Point("D", dx, dy),
+    }
+
+
+def _parallelogram_sides() -> list[Segment]:
+    # single chevron: AB ∥ DC ; double chevron: AD ∥ BC
+    return [
+        Segment("A", "B", arrows=1),
+        Segment("D", "C", arrows=1),
+        Segment("A", "D", arrows=2),
+        Segment("B", "C", arrows=2),
+    ]
+
+
+def template_parallelogram_cointerior(params: dict, **_) -> ProblemCard:
+    given = params["given_deg"]
+    ans = int(params["answer"])
+    pts = _parallelogram_pts(params["angle_a_deg"])
+    fig = GeometryFigure(
+        points=list(pts.values()),
+        segments=_parallelogram_sides(),
+        angles=[
+            Angle("A", "B", "D", label=f"{given}°"),
+            Angle("B", "A", "C", label="x"),
+        ],
+    )
+    return ProblemCard(
+        instruction=r"$ABCD$ is a parallelogram. Determine the size of $\hat{B}$, giving a reason.",
+        display_math=rf"\hat{{A}} = {given}^\circ",
+        worked_steps=[
+            r"\hat{A} + \hat{B} = 180^\circ \quad (\text{co-interior } \angle\text{s};\ AD \parallel BC)",
+            rf"\hat{{B}} = 180^\circ - {given}^\circ = {ans}^\circ",
+        ],
+        graph_svg=render_figure(fig),
+    )
+
+
+def template_parallelogram_opposite(params: dict, **_) -> ProblemCard:
+    given = params["given_deg"]
+    ans = int(params["answer"])
+    pts = _parallelogram_pts(params["angle_a_deg"])
+    fig = GeometryFigure(
+        points=list(pts.values()),
+        segments=_parallelogram_sides(),
+        angles=[
+            Angle("A", "B", "D", label=f"{given}°"),
+            Angle("C", "B", "D", label="x"),
+        ],
+    )
+    return ProblemCard(
+        instruction=r"$ABCD$ is a parallelogram. Determine the size of $\hat{C}$, giving a reason.",
+        display_math=rf"\hat{{A}} = {given}^\circ",
+        worked_steps=[
+            r"\hat{C} = \hat{A} \quad (\text{opposite } \angle\text{s of a } \parallel^{\text{m}})",
+            rf"\hat{{C}} = {ans}^\circ",
+        ],
+        graph_svg=render_figure(fig),
+    )
+
+
+def template_parallelogram_alternate(params: dict, **_) -> ProblemCard:
+    given = params["given_deg"]
+    ans = int(params["answer"])
+    pts = _parallelogram_pts(params["angle_a_deg"])
+    fig = GeometryFigure(
+        points=list(pts.values()),
+        segments=_parallelogram_sides() + [Segment("A", "C")],
+        angles=[
+            Angle("C", "D", "A", label=f"{given}°"),
+            Angle("A", "B", "C", label="x"),
+        ],
+    )
+    return ProblemCard(
+        instruction=r"$ABCD$ is a parallelogram with diagonal $AC$. Determine $B\hat{A}C$, giving a reason. (Diagram not to scale.)",
+        display_math=rf"D\hat{{C}}A = {given}^\circ",
+        worked_steps=[
+            r"B\hat{A}C = D\hat{C}A \quad (\text{alternate } \angle\text{s};\ AB \parallel DC)",
+            rf"B\hat{{A}}C = {ans}^\circ",
+        ],
+        graph_svg=render_figure(fig),
+    )
+
+
 def _ab_display(a: int, b: int) -> str:
     """LaTeX for a·sin x − b·cos x with coefficient-1 suppressed."""
     a_str = "" if a == 1 else str(a)
@@ -492,6 +591,18 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     rform_solve.id: WorksheetEntry(
         problem=rform_solve,
         template=template_rform_solve,
+    ),
+    parallelogram_cointerior.id: WorksheetEntry(
+        problem=parallelogram_cointerior,
+        template=template_parallelogram_cointerior,
+    ),
+    parallelogram_opposite.id: WorksheetEntry(
+        problem=parallelogram_opposite,
+        template=template_parallelogram_opposite,
+    ),
+    parallelogram_alternate.id: WorksheetEntry(
+        problem=parallelogram_alternate,
+        template=template_parallelogram_alternate,
     ),
 }
 
