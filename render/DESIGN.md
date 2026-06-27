@@ -101,6 +101,13 @@ The mark primitives (angle-arc sweeps, equal ticks, right-angle squares, paralle
 chevrons) are the real implementation cost here — the Euclidean equivalent of
 "discontinuity handling is the real cost of function plots." Bounded but fiddly.
 
+**Perception caveat — don't "fix" accurate figures.** A geometrically exact acute
+angle often *looks* smaller than it is (the acute-angle underestimation illusion),
+especially in a thin wedge like a side-vs-diagonal. The parallelogram alternate
+figure is drawn to-scale and was verified exact in Inkscape; the apparent
+shrinkage is the eye, not the renderer. Before changing a construction because an
+angle "looks wrong", measure the rendered SVG — perceived angle ≠ drawn angle.
+
 **Layout, not evaluation, is the hard part.** The answer (e.g. the value of angle
 `x`) is baked by the generator via the theorem chain; the figure is pure display.
 But placing a legible cyclic-quad-with-tangent is a layout problem. The NSC figure

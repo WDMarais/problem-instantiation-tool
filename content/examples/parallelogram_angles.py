@@ -27,11 +27,16 @@ import sympy
 
 from problem_instantiation_tool.schemas import Problem
 
-# "Nice" givens. Acute and obtuse both allowed for the A-vertex variants so the
-# co-interior subtraction lands on the other side of 90° about half the time.
-_GIVEN_ADJ = [35, 40, 50, 55, 65, 70, 75, 105, 110, 115, 125, 130]
-# Alternate-angle givens are the acute angle between a side and the diagonal.
-_GIVEN_ALT = [25, 30, 35, 40, 45, 50, 55]
+
+# Givens are arbitrary integer degrees (no "nice" multiples needed — the answers
+# 180−A, A, =given are integer for any integer input). Bands avoid near-90°
+# (looks like a rectangle) and the thin extremes.
+def _given_adjacent(rng: random.Random) -> int:
+    """An angle at A: acute or obtuse, 50/50, so the co-interior subtraction lands
+    on either side of 90°."""
+    if rng.random() < 0.5:
+        return rng.randint(28, 78)
+    return rng.randint(102, 148)
 
 
 def _random_pose(rng: random.Random) -> dict:
@@ -54,7 +59,7 @@ def _shape(rng: random.Random) -> dict:
 
 
 def _gen_cointerior(rng: random.Random) -> dict:
-    given = rng.choice(_GIVEN_ADJ)
+    given = _given_adjacent(rng)
     return {
         "given_deg": given,
         "angle_a_deg": given,  # given is the angle at A; kept to-scale
@@ -65,7 +70,7 @@ def _gen_cointerior(rng: random.Random) -> dict:
 
 
 def _gen_opposite(rng: random.Random) -> dict:
-    given = rng.choice(_GIVEN_ADJ)
+    given = _given_adjacent(rng)
     return {
         "given_deg": given,
         "angle_a_deg": given,
@@ -76,11 +81,13 @@ def _gen_opposite(rng: random.Random) -> dict:
 
 
 def _gen_alternate(rng: random.Random) -> dict:
-    given = rng.choice(_GIVEN_ALT)
+    given = rng.randint(22, 60)
     # Construct to-scale: pick an obtuse interior angle at A, then solve the side
     # length so the diagonal AC subtends exactly `given` at A (= B^A^C). Both
     # alternate marks (B^A^C and D^C^A) then equal `given` in the drawing.
-    theta_a = rng.choice([100, 105, 110, 115, 120, 125])
+    # NB: a true acute angle here can *look* smaller than it is — the acute-angle
+    # underestimation illusion — but it is geometrically exact (verified in Inkscape).
+    theta_a = rng.randint(100, 126)
     base = rng.uniform(3.6, 4.6)
     t = math.tan(math.radians(given))
     th = math.radians(theta_a)
