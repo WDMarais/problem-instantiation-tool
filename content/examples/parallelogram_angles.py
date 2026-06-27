@@ -20,6 +20,7 @@ the relationships hold for any parallelogram, so the figure need not be to scale
 
 from __future__ import annotations
 
+import math
 import random
 
 import sympy
@@ -76,11 +77,20 @@ def _gen_opposite(rng: random.Random) -> dict:
 
 def _gen_alternate(rng: random.Random) -> dict:
     given = rng.choice(_GIVEN_ALT)
+    # Construct to-scale: pick an obtuse interior angle at A, then solve the side
+    # length so the diagonal AC subtends exactly `given` at A (= B^A^C). Both
+    # alternate marks (B^A^C and D^C^A) then equal `given` in the drawing.
+    theta_a = rng.choice([100, 105, 110, 115, 120, 125])
+    base = rng.uniform(3.6, 4.6)
+    t = math.tan(math.radians(given))
+    th = math.radians(theta_a)
+    side = t * base / (math.sin(th) - t * math.cos(th))  # > 0 for obtuse theta_a
     return {
         "given_deg": given,
-        "angle_a_deg": 68,  # fixed pleasant shear; diagram not to scale
+        "angle_a_deg": theta_a,
+        "base": round(base, 2),
+        "side": round(side, 2),
         "pose": _random_pose(rng),
-        **_shape(rng),
         "answer": sympy.Integer(given),
     }
 

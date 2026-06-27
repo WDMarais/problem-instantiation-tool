@@ -476,7 +476,7 @@ def template_parallelogram_alternate(params: dict, **_) -> ProblemCard:
         pose=g["pose"],
     )
     return ProblemCard(
-        instruction=r"$ABCD$ is a parallelogram with diagonal $AC$. Determine $B\hat{A}C$, giving a reason. (Diagram not to scale.)",
+        instruction=r"$ABCD$ is a parallelogram with diagonal $AC$. Determine $B\hat{A}C$, giving a reason.",
         display_math=rf"D\hat{{C}}A = {given}^\circ",
         worked_steps=[
             r"B\hat{A}C = D\hat{C}A \quad (\text{alternate } \angle\text{s};\ AB \parallel DC)",
