@@ -26,6 +26,9 @@ _VARIANTS = [
     "parallelogram_cointerior",
     "parallelogram_opposite",
     "parallelogram_alternate",
+    "triangle_angle_sum",
+    "triangle_isosceles",
+    "triangle_exterior",
 ]
 
 _KATEX = """\
@@ -56,12 +59,13 @@ def _cell(pid: str, engine: Engine, seed: int) -> str:
     entry = PROBLEMS[pid]
     inst = engine.instantiate(pid, seed=seed)
     card = entry.template(inst.params)
-    given = inst.params["given_deg"]
     (ans,) = inst.verifier.canonicals
+    # The figure already carries the givens as angle labels; the caption just
+    # echoes the baked answer so the unknown x can be checked against the marks.
     return (
         '<div class="cell">'
         f"{card.graph_svg}"
-        f'<div class="cap">given ${given}^\\circ$ &rarr; ${ans}^\\circ$</div>'
+        f'<div class="cap">$x = {ans}^\\circ$</div>'
         "</div>"
     )
 
@@ -79,6 +83,18 @@ _REASON = {
         r"alternate (Z): $B\hat{A}C=D\hat{C}A$"
         r" (alt $\angle$s; $AB\parallel DC$)"
     ),
+    "triangle_angle_sum": (
+        r"angle sum: $\hat{C}=180^\circ-\hat{A}-\hat{B}$"
+        r" ($\angle$s of a $\triangle$)"
+    ),
+    "triangle_isosceles": (
+        r"isosceles: $\hat{A}=180^\circ-2\hat{B}$"
+        r" (base $\angle$s equal; $AB=AC$)"
+    ),
+    "triangle_exterior": (
+        r"exterior: $C\hat{B}P=\hat{A}+\hat{C}$"
+        r" (ext $\angle$ of $\triangle$)"
+    ),
 }
 
 
@@ -93,8 +109,12 @@ def main() -> None:
         registry=InMemoryRegistry({p: PROBLEMS[p].problem for p in _VARIANTS})
     )
     sections = []
-    for pid in _VARIANTS:
-        cells = "".join(_cell(pid, engine, args.seed + i) for i in range(args.cols))
+    # Offset each variant's seed band: cointerior and opposite draw the same RNG
+    # sequence, so a shared base seed would render pixel-identical figures (only
+    # the marked angle differs). Independent bands make the preview show variety.
+    for v, pid in enumerate(_VARIANTS):
+        base = args.seed + v * 1000
+        cells = "".join(_cell(pid, engine, base + i) for i in range(args.cols))
         sections.append(
             '<div class="variant">'
             f"<h2>{pid.replace('parallelogram_', '')}</h2>"

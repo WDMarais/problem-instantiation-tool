@@ -62,6 +62,11 @@ from content.examples.parallelogram_angles import (
     parallelogram_cointerior,
     parallelogram_opposite,
 )
+from content.examples.triangle_angles import (
+    triangle_angle_sum,
+    triangle_exterior,
+    triangle_isosceles,
+)
 from content.examples.zero_product_rule import (
     atomic_shuffled_n,
     zero_product_atomic,
@@ -486,6 +491,108 @@ def template_parallelogram_alternate(params: dict, **_) -> ProblemCard:
     )
 
 
+def _triangle_pts(angle_a_deg: float, angle_b_deg: float, base: float) -> dict:
+    """Triangle ABC with A at the origin and B at (base, 0), interior angle
+    angle_a_deg at A and angle_b_deg at B. C is placed by the sine rule so the
+    figure is to-scale (a similarity Pose then keeps every drawn angle faithful)."""
+    a = math.radians(angle_a_deg)
+    ac = (
+        base
+        * math.sin(math.radians(angle_b_deg))
+        / math.sin(math.radians(angle_a_deg + angle_b_deg))
+    )
+    return {
+        "A": Point("A", 0.0, 0.0),
+        "B": Point("B", base, 0.0),
+        "C": Point("C", ac * math.cos(a), ac * math.sin(a)),
+    }
+
+
+def _triangle_sides() -> list[Segment]:
+    return [Segment("A", "B"), Segment("B", "C"), Segment("C", "A")]
+
+
+def template_triangle_angle_sum(params: dict, **_) -> ProblemCard:
+    alpha, beta = params["alpha_deg"], params["beta_deg"]
+    ans = int(params["answer"])
+    pts = _triangle_pts(alpha, beta, params["base"])
+    fig = GeometryFigure(
+        points=list(pts.values()),
+        segments=_triangle_sides(),
+        angles=[
+            Angle("A", "B", "C", label=f"{alpha}°"),
+            Angle("B", "C", "A", label=f"{beta}°"),
+            Angle("C", "A", "B", label="x"),
+        ],
+        pose=Pose(**params["pose"]),
+    )
+    return ProblemCard(
+        instruction=r"In $\triangle ABC$, determine the size of $\hat{C}$, giving a reason.",
+        display_math=rf"\hat{{A}} = {alpha}^\circ,\quad \hat{{B}} = {beta}^\circ",
+        worked_steps=[
+            r"\hat{A} + \hat{B} + \hat{C} = 180^\circ \quad (\angle\text{s of a } \triangle)",
+            rf"\hat{{C}} = 180^\circ - {alpha}^\circ - {beta}^\circ = {ans}^\circ",
+        ],
+        graph_svg=render_figure(fig),
+    )
+
+
+def template_triangle_isosceles(params: dict, **_) -> ProblemCard:
+    base_angle = params["base_angle_deg"]
+    ans = int(params["answer"])
+    pts = _triangle_pts(params["apex_deg"], base_angle, params["base"])
+    fig = GeometryFigure(
+        points=list(pts.values()),
+        # AB = AC, marked with single ticks; the apex is at A.
+        segments=[
+            Segment("A", "B", ticks=1),
+            Segment("C", "A", ticks=1),
+            Segment("B", "C"),
+        ],
+        angles=[
+            Angle("B", "C", "A", label=f"{base_angle}°"),
+            Angle("A", "B", "C", label="x"),
+        ],
+        pose=Pose(**params["pose"]),
+    )
+    return ProblemCard(
+        instruction=r"In $\triangle ABC$, $AB = AC$. Determine the size of $\hat{A}$, giving reasons.",
+        display_math=rf"\hat{{B}} = {base_angle}^\circ",
+        worked_steps=[
+            rf"\hat{{C}} = \hat{{B}} = {base_angle}^\circ \quad (\angle\text{{s opp equal sides}};\ AB = AC)",
+            rf"\hat{{A}} = 180^\circ - 2({base_angle}^\circ) = {ans}^\circ \quad (\angle\text{{s of a }} \triangle)",
+        ],
+        graph_svg=render_figure(fig),
+    )
+
+
+def template_triangle_exterior(params: dict, **_) -> ProblemCard:
+    alpha, gamma = params["alpha_deg"], params["gamma_deg"]
+    ans = int(params["answer"])
+    base = params["base"]
+    pts = _triangle_pts(alpha, params["interior_b_deg"], base)
+    pts["P"] = Point("P", base * 1.45, 0.0)  # AB extended past B
+    fig = GeometryFigure(
+        points=list(pts.values()),
+        segments=_triangle_sides() + [Segment("B", "P")],
+        angles=[
+            Angle("A", "B", "C", label=f"{alpha}°"),
+            Angle("C", "A", "B", label=f"{gamma}°"),
+            Angle("B", "C", "P", label="x"),
+        ],
+        pose=Pose(**params["pose"]),
+    )
+    return ProblemCard(
+        instruction=r"$AB$ is extended to $P$. Determine the size of $C\hat{B}P$, giving a reason.",
+        display_math=rf"\hat{{A}} = {alpha}^\circ,\quad \hat{{C}} = {gamma}^\circ",
+        worked_steps=[
+            r"C\hat{B}P = \hat{A} + \hat{C} \quad (\text{ext } \angle \text{ of } \triangle)",
+            rf"C\hat{{B}}P = {alpha}^\circ + {gamma}^\circ = {ans}^\circ",
+        ],
+        graph_svg=render_figure(fig),
+    )
+
+
 def _ab_display(a: int, b: int) -> str:
     """LaTeX for a·sin x − b·cos x with coefficient-1 suppressed."""
     a_str = "" if a == 1 else str(a)
@@ -623,6 +730,18 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     parallelogram_alternate.id: WorksheetEntry(
         problem=parallelogram_alternate,
         template=template_parallelogram_alternate,
+    ),
+    triangle_angle_sum.id: WorksheetEntry(
+        problem=triangle_angle_sum,
+        template=template_triangle_angle_sum,
+    ),
+    triangle_isosceles.id: WorksheetEntry(
+        problem=triangle_isosceles,
+        template=template_triangle_isosceles,
+    ),
+    triangle_exterior.id: WorksheetEntry(
+        problem=triangle_exterior,
+        template=template_triangle_exterior,
     ),
 }
 
