@@ -96,6 +96,16 @@ def build_gap_markers() -> list[Problem]:
                 "marks_possible": 1,
             },
         ),
+        Problem(
+            id="gap_ambiguous_set",
+            type_id="quadratic_equation",
+            name="set_equality spec with no root* params (ambiguous answer set)",
+            artifact_type="srs_card",
+            # no root* params, >1 field: the verifier must not sweep {a, b} into
+            # the answer set — it must refuse to guess.
+            problem_spec={"kind": "roots", "a_range": [1, 9], "b_range": [1, 9]},
+            verifier_spec={"kind": "set_equality", "marks_possible": 1},
+        ),
     ]
 
 

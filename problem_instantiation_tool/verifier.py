@@ -73,6 +73,30 @@ def _answer_param(params: dict, kind: str, key: str) -> Any:
     )
 
 
+def _set_canonical(params: dict) -> frozenset:
+    """Canonical answer set for set_equality.
+
+    Prefers the ``root*`` convention (root1, root2, ...). Falls back to the sole
+    param when there is exactly one (a collection becomes the set; a scalar a
+    singleton). Raises rather than the old ``frozenset(params.values())`` guess,
+    which silently swept unrelated fields (e.g. leading_coeff) into the answer.
+    """
+    root_vals = [v for k, v in params.items() if k.startswith("root")]
+    if root_vals:
+        return frozenset(root_vals)
+    if len(params) == 1:
+        sole = next(iter(params.values()))
+        if isinstance(sole, (set, frozenset, list, tuple)):
+            return frozenset(sole)
+        return frozenset({sole})
+    raise CanonicalResolutionError(
+        "set_equality",
+        list(params.keys()),
+        "no 'root*' params; cannot tell which fields form the answer set — name "
+        "them root1/root2/... or give the verifier a 'param_key'",
+    )
+
+
 def _compute_canonicals(specs: list[dict], params: dict) -> list[Any]:
     canonicals: list[Any] = []
     for spec in specs:
@@ -93,10 +117,7 @@ def _compute_canonicals(specs: list[dict], params: dict) -> list[Any]:
         elif kind == "self_graded":
             canonical = True
         elif kind == "set_equality":
-            root_vals = [v for k, v in params.items() if k.startswith("root")]
-            canonical = (
-                frozenset(root_vals) if root_vals else frozenset(params.values())
-            )
+            canonical = _set_canonical(params)
         elif not params:
             canonical = 0
         else:  # symbolic_equality, numeric_equality, and unknown kinds
