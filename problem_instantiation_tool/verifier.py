@@ -109,7 +109,15 @@ def _compute_canonicals(specs: list[dict], params: dict) -> list[Any]:
             prior = {j: canonicals[j] for j in depends_on}
             canonical = _eval_symbolic(expr, prior, depends_on)
         elif "param_key" in spec:
-            canonical = params.get(spec["param_key"], 0)
+            key = spec["param_key"]
+            if key not in params:
+                raise CanonicalResolutionError(
+                    kind,
+                    list(params.keys()),
+                    f"verifier names param_key '{key}', but the generator "
+                    f"produced no such param",
+                )
+            canonical = params[key]
         elif kind == "mcq":
             canonical = _answer_param(params, kind, "correct")
         elif kind == "exact_equality":

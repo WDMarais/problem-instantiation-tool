@@ -106,6 +106,18 @@ def build_gap_markers() -> list[Problem]:
             problem_spec={"kind": "roots", "a_range": [1, 9], "b_range": [1, 9]},
             verifier_spec={"kind": "set_equality", "marks_possible": 1},
         ),
+        Problem(
+            id="gap_missing_param_key",
+            type_id="arithmetic_sequence",
+            name="verifier names a param_key the generator never produces",
+            artifact_type="srs_card",
+            problem_spec={"kind": "tn", "a_range": [1, 9]},  # produces {a}
+            verifier_spec={
+                "kind": "symbolic_equality",
+                "marks_possible": 1,
+                "param_key": "answer",  # not in params — must not default to 0
+            },
+        ),
     ]
 
 
