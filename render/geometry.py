@@ -25,9 +25,14 @@ _MARK = "#2563EB"  # angle / parallel / tick marks — blue, distinct from outli
 
 @dataclass(frozen=True)
 class Point:
-    name: str  # vertex label, e.g. "A"; "" draws the dot but no text
+    name: str  # unique id, referenced by Segment/Angle; default label text too
     x: float
     y: float
+    dot: bool = True  # False = no marker dot (e.g. a construction-line endpoint)
+    label: str | None = None  # display text: None = use name; "" = draw no label
+    label_dir: tuple[float, float] | None = None  # layout-space (x→right, y→up),
+    # figure-relative push direction for the label (rotates/reflects with the pose);
+    # None = radially outward from the centroid
 
 
 @dataclass(frozen=True)
@@ -37,6 +42,7 @@ class Segment:
     arrows: int = 0  # parallel-mark chevrons: 0 none, 1 single, 2 double
     ticks: int = 0  # equal-length tick marks: 0..3
     dashed: bool = False
+    mark_pos: float = 0.5  # fraction along p1->p2 for chevrons/ticks (0.5 = midpoint)
 
 
 @dataclass(frozen=True)
@@ -142,9 +148,9 @@ def render_figure(fig: GeometryFigure) -> str:
             f' stroke="{_STROKE}" stroke-width="1.6"{dash}/>'
         )
         if seg.arrows:
-            out += _chevrons(x1, y1, x2, y2, seg.arrows)
+            out += _chevrons(x1, y1, x2, y2, seg.arrows, seg.mark_pos)
         if seg.ticks:
-            out += _ticks(x1, y1, x2, y2, seg.ticks)
+            out += _ticks(x1, y1, x2, y2, seg.ticks, seg.mark_pos)
 
     # ── angle marks ───────────────────────────────────────────────────────────
     for ang in fig.angles:
@@ -156,16 +162,26 @@ def render_figure(fig: GeometryFigure) -> str:
     # ── vertices + labels ─────────────────────────────────────────────────────
     for p in fig.points:
         px, py = S(p.name)
-        out.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="2.1" fill="{_STROKE}"/>')
-        if p.name:
-            dx, dy = px - cx, py - cy
+        if p.dot:
+            out.append(
+                f'<circle cx="{px:.1f}" cy="{py:.1f}" r="2.1" fill="{_STROKE}"/>'
+            )
+        text = p.name if p.label is None else p.label
+        if text:
+            if p.label_dir is not None:
+                # figure-relative (layout y-up): reflect, rotate, then flip to screen
+                ldx, ldy = p.label_dir[0] * sgn, p.label_dir[1]
+                dx = ldx * cos_t - ldy * sin_t
+                dy = -(ldx * sin_t + ldy * cos_t)
+            else:
+                dx, dy = px - cx, py - cy
             d = math.hypot(dx, dy) or 1.0
             lx = px + dx / d * 14
             ly = py + dy / d * 14
             out.append(
                 f'<text x="{lx:.1f}" y="{ly + 4:.1f}" font-size="13"'
                 f' text-anchor="middle" fill="{_LABEL}"'
-                f' font-style="italic">{p.name}</text>'
+                f' font-style="italic">{text}</text>'
             )
 
     out.append("</svg>")
@@ -180,9 +196,11 @@ def _unit(dx: float, dy: float) -> tuple[float, float]:
     return dx / d, dy / d
 
 
-def _chevrons(x1: float, y1: float, x2: float, y2: float, n: int) -> list[str]:
-    """`n` ">" chevrons at the midpoint, pointing along the segment."""
-    mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+def _chevrons(
+    x1: float, y1: float, x2: float, y2: float, n: int, pos: float = 0.5
+) -> list[str]:
+    """`n` ">" chevrons at `pos` along the segment, pointing along it."""
+    mx, my = x1 + (x2 - x1) * pos, y1 + (y2 - y1) * pos
     ux, uy = _unit(x2 - x1, y2 - y1)  # along
     px, py = -uy, ux  # perpendicular
     size = 5.0
@@ -202,9 +220,11 @@ def _chevrons(x1: float, y1: float, x2: float, y2: float, n: int) -> list[str]:
     return out
 
 
-def _ticks(x1: float, y1: float, x2: float, y2: float, n: int) -> list[str]:
-    """`n` short perpendicular tick marks at the midpoint (equal-length marks)."""
-    mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+def _ticks(
+    x1: float, y1: float, x2: float, y2: float, n: int, pos: float = 0.5
+) -> list[str]:
+    """`n` short perpendicular tick marks at `pos` along the segment."""
+    mx, my = x1 + (x2 - x1) * pos, y1 + (y2 - y1) * pos
     ux, uy = _unit(x2 - x1, y2 - y1)
     px, py = -uy, ux
     half = 5.0
