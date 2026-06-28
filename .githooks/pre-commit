@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+#
+# Pre-commit hook: ruff lint + format-check on staged Python files.
+#
+# Version-controlled (lives in the repo, not .git/hooks). Activate once with:
+#     git config core.hooksPath .githooks
+#
+# Bypass for a single commit with:  git commit --no-verify
+#
+set -euo pipefail
+
+# Resolve ruff: prefer the project venv, then uv, then PATH.
+if [ -x ".venv/bin/ruff" ]; then
+    RUFF=".venv/bin/ruff"
+elif command -v uv >/dev/null 2>&1; then
+    RUFF="uv run ruff"
+elif command -v ruff >/dev/null 2>&1; then
+    RUFF="ruff"
+else
+    echo "pre-commit: ruff not found (.venv/bin/ruff, uv, or PATH) — skipping." >&2
+    exit 0
+fi
+
+# Staged Python files (added / copied / modified; deletions excluded).
+mapfile -t files < <(git diff --cached --name-only --diff-filter=ACM -- '*.py')
+if [ ${#files[@]} -eq 0 ]; then
+    exit 0
+fi
+
+fail=0
+if ! $RUFF check "${files[@]}"; then
+    echo "✗ ruff check failed — fix with: $RUFF check --fix" >&2
+    fail=1
+fi
+if ! $RUFF format --check "${files[@]}"; then
+    echo "✗ ruff format failed — fix with: $RUFF format" >&2
+    fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+    echo "pre-commit: blocked. (bypass with: git commit --no-verify)" >&2
+fi
+exit "$fail"
