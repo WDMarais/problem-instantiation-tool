@@ -1,14 +1,33 @@
 """
-Smoke test: exercise the engine against real nsc_papers content definitions.
+Smoke test: exercise the engine against real content generators, and assert that
+malformed specs fail loudly.
 
-Run with:  uv run python main.py
+Two halves:
+  * REAL_PROBLEMS — actual content/examples generators (they compute answers).
+    Each must instantiate, round-trip (the canonical solution is accepted),
+    reconstruct from stored params, and reject a wrong answer.
+  * GAP_MARKERS — deliberately incomplete dict specs whose canonical is ambiguous
+    (the generator samples ranges but never computes an answer, and there is no
+    param_key). The engine must refuse to guess and raise CanonicalResolutionError.
+    A marker that *fires* is a PASS — it is a regression guard for that behaviour.
+
+Run with:  uv run python main.py   (exit code 0 = all good, 1 = gaps)
 """
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 
+from content.examples.arithmetic_sequence import (
+    find_term,
+    next_terms,
+    nth_term_formula,
+)
+from content.examples.monic_factorise import problem as monic_factorise
+from content.examples.quadratic_roots import problem as quadratic_factor
 from problem_instantiation_tool.engine import Engine
+from problem_instantiation_tool.exceptions import CanonicalResolutionError
 from problem_instantiation_tool.registry import InMemoryRegistry
 from problem_instantiation_tool.schemas import Problem, SolutionAttempt, SubmittedStep
 
@@ -28,173 +47,117 @@ def run(label: str, fn) -> Result:
         return Result(label, False, f"{type(e).__name__}: {e}")
 
 
-# ---------------------------------------------------------------------------
-# Candidate problems derived directly from nsc_papers algebra.yaml
-# ---------------------------------------------------------------------------
+# --- Real content generators (computed answers; must all pass) ----------------
+REAL_PROBLEMS: list[Problem] = [
+    find_term,  # symbolic_equality, integer Tn
+    nth_term_formula,  # symbolic_equality, expression in n
+    next_terms,  # two-step, param_key per step
+    quadratic_factor,  # set_equality (roots)
+    monic_factorise,  # symbolic_equality (factorised form)
+]
 
 
-def build_problems() -> dict[str, Problem]:
-    problems: dict[str, Problem] = {}
-
-    # quadratic_factor — uses set_equality (we have this); leading_coeff_range is extra
-    problems["nsc_quadratic_factor"] = Problem(
-        id="nsc_quadratic_factor",
-        type_id="quadratic_equation",
-        name="Solve a factorisable quadratic (integer roots)",
-        artifact_type="srs_card",
-        problem_spec={
-            "kind": "quadratic_factor",
-            "root_range": [-10, 10],
-            "leading_coeff_range": [1, 3],
-        },
-        verifier_spec={"kind": "set_equality", "marks_possible": 1},
-    )
-
-    # arith_seq_nth_term — GAP: the dict generator only samples a/d/n ranges; it
-    # never computes the answer (Tn = a+(n-1)d), so the spec carries no answer
-    # param. The verifier now raises CanonicalResolutionError rather than guessing.
-    # To support this: a callable generator that computes an `answer` param.
-    problems["nsc_arith_seq"] = Problem(
-        id="nsc_arith_seq",
-        type_id="arithmetic_sequence",
-        name="Calculate the nth term of an arithmetic sequence",
-        artifact_type="srs_card",
-        problem_spec={
-            "kind": "sequence_nth_term",
-            "sequence_type": "arithmetic",
-            "a_range": [-15, 30],
-            "d_range": [1, 12],
-            "n_range": [5, 25],
-        },
-        verifier_spec={"kind": "symbolic_equality", "marks_possible": 1},
-    )
-
-    # quadratic_formula — same GAP: the dict generator samples a/b/c but never
-    # computes the roots, so there is no answer param for numeric_equality to use.
-    # Needs a callable generator that computes the two roots as the `answer`.
-    problems["nsc_quadratic_formula"] = Problem(
-        id="nsc_quadratic_formula",
-        type_id="quadratic_equation",
-        name="Solve a quadratic using the formula (irrational roots, 2 d.p.)",
-        artifact_type="srs_card",
-        problem_spec={
-            "kind": "quadratic_formula",
-            "a_range": [1, 4],
-            "b_range": [-10, 10],
-            "c_range": [-15, 15],
-        },
-        verifier_spec={
-            "kind": "numeric_equality",
-            "tolerance": 0.005,
-            "count": 2,
-            "marks_possible": 1,
-        },
-    )
-
-    return problems
+# --- Gap markers: specs that SHOULD fail loudly -------------------------------
+# Incomplete YAML-style dict specs: the generator samples ranges but never
+# computes an answer, so the canonical is ambiguous. The engine must raise
+# CanonicalResolutionError rather than silently picking a wrong param. A marker
+# that *fires* is a PASS — a regression guard for "the verifier refuses to guess".
+def build_gap_markers() -> list[Problem]:
+    return [
+        Problem(
+            id="gap_ambiguous_symbolic",
+            type_id="arithmetic_sequence",
+            name="Tn spec missing a computed answer (ambiguous canonical)",
+            artifact_type="srs_card",
+            problem_spec={
+                "kind": "sequence_nth_term",
+                "sequence_type": "arithmetic",
+                "a_range": [-15, 30],
+                "d_range": [1, 12],
+                "n_range": [5, 25],
+            },
+            verifier_spec={"kind": "symbolic_equality", "marks_possible": 1},
+        ),
+        Problem(
+            id="gap_ambiguous_numeric",
+            type_id="quadratic_equation",
+            name="Quadratic-formula spec missing computed roots (ambiguous)",
+            artifact_type="srs_card",
+            problem_spec={
+                "kind": "quadratic_formula",
+                "a_range": [1, 4],
+                "b_range": [-10, 10],
+                "c_range": [-15, 15],
+            },
+            verifier_spec={
+                "kind": "numeric_equality",
+                "tolerance": 0.005,
+                "count": 2,
+                "marks_possible": 1,
+            },
+        ),
+    ]
 
 
 def main() -> None:
-    problems = build_problems()
-    engine = Engine(registry=InMemoryRegistry(problems))
+    engine = Engine(registry=InMemoryRegistry({p.id: p for p in REAL_PROBLEMS}))
     results: list[Result] = []
 
-    # --- 1. Construction (Problem() call itself) ---
-    for pid in ["nsc_quadratic_factor", "nsc_arith_seq", "nsc_quadratic_formula"]:
-        label = f"construct:{pid}"
-        try:
-            _ = problems[pid]
-            results.append(Result(label, True, "ok"))
-        except Exception as e:
-            results.append(Result(label, False, f"{type(e).__name__}: {e}"))
-
-    # --- 2. Instantiation ---
-    for pid in problems:
+    # 1. Instantiation
+    for p in REAL_PROBLEMS:
         results.append(
             run(
-                f"instantiate:{pid}",
-                lambda p=pid: str(engine.instantiate(p, seed=42).params),
+                f"instantiate:{p.id}",
+                lambda p=p: str(engine.instantiate(p.id, seed=42).params),
             )
         )
 
-    # --- 3. Round-trip: instantiate + rate the canonical solution ---
+    # 2. Round-trip: the canonical solution must be accepted
     def roundtrip(pid: str) -> str:
-        instance = engine.instantiate(pid, seed=42)
-        rating = instance.verifier.rate(instance.solution)
-        assert rating.is_correct, f"canonical solution rated as incorrect: {rating}"
-        return (
-            f"params={instance.params}  "
-            f"marks={rating.marks_awarded}/{rating.marks_possible}"
-        )
+        inst = engine.instantiate(pid, seed=42)
+        rating = inst.verifier.rate(inst.solution)
+        assert rating.is_correct, f"canonical solution rated incorrect: {rating}"
+        return f"marks={rating.marks_awarded}/{rating.marks_possible}"
 
-    for pid in problems:
-        results.append(run(f"roundtrip:{pid}", lambda p=pid: roundtrip(p)))
+    for p in REAL_PROBLEMS:
+        results.append(run(f"roundtrip:{p.id}", lambda p=p: roundtrip(p.id)))
 
-    # --- 4. Reconstruction from params ---
+    # 3. Reconstruction from stored params
     def reconstruct(pid: str) -> str:
         fresh = engine.instantiate(pid, seed=42)
         recon = engine.instantiate(pid, params=fresh.params)
         assert recon.params == fresh.params
-        rating = recon.verifier.rate(recon.solution)
-        assert rating.is_correct
+        assert recon.verifier.rate(recon.solution).is_correct
         return f"params={recon.params}"
 
-    for pid in problems:
-        results.append(run(f"reconstruct:{pid}", lambda p=pid: reconstruct(p)))
+    for p in REAL_PROBLEMS:
+        results.append(run(f"reconstruct:{p.id}", lambda p=p: reconstruct(p.id)))
 
-    # --- 5. Known-correct answer acceptance ---
-    # Checks that a value we know is the right answer IS accepted. The engine now
-    # raises CanonicalResolutionError at instantiate when the canonical is
-    # ambiguous (so the arith_seq/quadratic specs below fail loudly upstream); this
-    # stays as a backstop against any spec whose canonical resolves to a wrong param.
-    known_correct: dict[str, object] = {
-        # set_equality: frozenset of roots
-        "nsc_quadratic_factor": frozenset({10, -7}),
-        # symbolic_equality → should accept T_5 = a + (n-1)d = 25 + 4*2 = 33
-        # (params are {'sequence_type':'arithmetic', 'a':25, 'd':2, 'n':5} at seed=42)
-        "nsc_arith_seq": 33,
-        # numeric_approx → should accept a root of x² - 10x + 8 = 0 ≈ 9.13
-        # (params are {'a':1, 'b':-10, 'c':8} at seed=42)
-        "nsc_quadratic_formula": 9.13,
-    }
-
-    def known_correct_accepted(pid: str) -> str:
-        instance = engine.instantiate(pid, seed=42)
-        answer = known_correct[pid]
-        attempt = SolutionAttempt(steps=[SubmittedStep(answer)])
-        rating = instance.verifier.rate(attempt)
-        assert rating.is_correct, (
-            f"known-correct answer {answer!r} was NOT accepted — "
-            f"verifier kind may be silently broken (params={instance.params}, "
-            f"canonical={instance.verifier.canonicals})"
-        )
-        return f"known-correct {answer!r} accepted"
-
-    for pid in problems:
-        results.append(
-            run(f"known_correct:{pid}", lambda p=pid: known_correct_accepted(p))
-        )
-
-    # --- 6. Wrong-answer rejection: a wrong submission must NOT be rated correct ---
-    # This catches verifiers that silently fall through to a wrong kind and
-    # always return is_correct because they compare canonical to itself.
-    def wrong_answer_rejected(pid: str) -> str:
-        instance = engine.instantiate(pid, seed=42)
-        # Submit a deliberately wrong value for every step
+    # 4. Wrong-answer rejection
+    def wrong_rejected(pid: str) -> str:
+        inst = engine.instantiate(pid, seed=42)
         wrong = SolutionAttempt(steps=[SubmittedStep("WRONG_ANSWER_99999")])
-        rating = instance.verifier.rate(wrong)
-        assert not rating.is_correct, (
-            f"VERIFIER SILENT FAILURE: wrong answer rated as correct — "
-            f"verifier kind may not be implemented (params={instance.params})"
-        )
-        return (
-            f"wrong answer correctly rejected "
-            f"(marks={rating.marks_awarded}/{rating.marks_possible})"
+        rating = inst.verifier.rate(wrong)
+        assert not rating.is_correct, "wrong answer rated correct (verifier broken)"
+        return f"rejected (marks={rating.marks_awarded}/{rating.marks_possible})"
+
+    for p in REAL_PROBLEMS:
+        results.append(run(f"wrong_rejected:{p.id}", lambda p=p: wrong_rejected(p.id)))
+
+    # 5. Gap markers: instantiate MUST raise CanonicalResolutionError
+    def gap_marker_fires(prob: Problem) -> str:
+        try:
+            engine.instantiate(prob, seed=42)
+        except CanonicalResolutionError as e:
+            return f"correctly refused to guess: {e.reason}"
+        raise AssertionError(
+            "expected CanonicalResolutionError, but instantiate succeeded "
+            "(verifier silently guessed a canonical)"
         )
 
-    for pid in problems:
+    for prob in build_gap_markers():
         results.append(
-            run(f"wrong_rejected:{pid}", lambda p=pid: wrong_answer_rejected(p))
+            run(f"gap_marker:{prob.id}", lambda prob=prob: gap_marker_fires(prob))
         )
 
     # --- Report ---
@@ -217,11 +180,12 @@ def main() -> None:
         print("\nGaps to address:")
         seen: set[str] = set()
         for r in failed:
-            # Extract just the error type + first line for deduplication
             key = r.detail.split("\n")[0]
             if key not in seen:
                 seen.add(key)
                 print(f"  - {key}")
+
+    sys.exit(1 if failed else 0)
 
 
 if __name__ == "__main__":
