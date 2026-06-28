@@ -1,15 +1,11 @@
 """
-Smoke test: exercise the engine against real content generators, and assert that
-malformed specs fail loudly.
+Smoke test: exercise the engine against real content/examples generators — each
+must instantiate, round-trip (the canonical solution is accepted), reconstruct
+from stored params, and reject a wrong answer.
 
-Two halves:
-  * REAL_PROBLEMS — actual content/examples generators (they compute answers).
-    Each must instantiate, round-trip (the canonical solution is accepted),
-    reconstruct from stored params, and reject a wrong answer.
-  * GAP_MARKERS — deliberately incomplete dict specs whose canonical is ambiguous
-    (the generator samples ranges but never computes an answer, and there is no
-    param_key). The engine must refuse to guess and raise CanonicalResolutionError.
-    A marker that *fires* is a PASS — it is a regression guard for that behaviour.
+The malformed-spec failure modes (the engine raising CanonicalResolutionError
+rather than guessing a canonical) are guarded as proper pytest cases in
+tests/test_failure_modes.py — this smoke test stays focused on real content.
 
 Run with:  uv run python main.py   (exit code 0 = all good, 1 = gaps)
 """
@@ -27,7 +23,6 @@ from content.examples.arithmetic_sequence import (
 from content.examples.monic_factorise import problem as monic_factorise
 from content.examples.quadratic_roots import problem as quadratic_factor
 from problem_instantiation_tool.engine import Engine
-from problem_instantiation_tool.exceptions import CanonicalResolutionError
 from problem_instantiation_tool.registry import InMemoryRegistry
 from problem_instantiation_tool.schemas import Problem, SolutionAttempt, SubmittedStep
 
@@ -55,70 +50,6 @@ REAL_PROBLEMS: list[Problem] = [
     quadratic_factor,  # set_equality (roots)
     monic_factorise,  # symbolic_equality (factorised form)
 ]
-
-
-# --- Gap markers: specs that SHOULD fail loudly -------------------------------
-# Incomplete YAML-style dict specs: the generator samples ranges but never
-# computes an answer, so the canonical is ambiguous. The engine must raise
-# CanonicalResolutionError rather than silently picking a wrong param. A marker
-# that *fires* is a PASS — a regression guard for "the verifier refuses to guess".
-def build_gap_markers() -> list[Problem]:
-    return [
-        Problem(
-            id="gap_ambiguous_symbolic",
-            type_id="arithmetic_sequence",
-            name="Tn spec missing a computed answer (ambiguous canonical)",
-            artifact_type="srs_card",
-            problem_spec={
-                "kind": "sequence_nth_term",
-                "sequence_type": "arithmetic",
-                "a_range": [-15, 30],
-                "d_range": [1, 12],
-                "n_range": [5, 25],
-            },
-            verifier_spec={"kind": "symbolic_equality", "marks_possible": 1},
-        ),
-        Problem(
-            id="gap_ambiguous_numeric",
-            type_id="quadratic_equation",
-            name="Quadratic-formula spec missing computed roots (ambiguous)",
-            artifact_type="srs_card",
-            problem_spec={
-                "kind": "quadratic_formula",
-                "a_range": [1, 4],
-                "b_range": [-10, 10],
-                "c_range": [-15, 15],
-            },
-            verifier_spec={
-                "kind": "numeric_equality",
-                "tolerance": 0.005,
-                "count": 2,
-                "marks_possible": 1,
-            },
-        ),
-        Problem(
-            id="gap_ambiguous_set",
-            type_id="quadratic_equation",
-            name="set_equality spec with no root* params (ambiguous answer set)",
-            artifact_type="srs_card",
-            # no root* params, >1 field: the verifier must not sweep {a, b} into
-            # the answer set — it must refuse to guess.
-            problem_spec={"kind": "roots", "a_range": [1, 9], "b_range": [1, 9]},
-            verifier_spec={"kind": "set_equality", "marks_possible": 1},
-        ),
-        Problem(
-            id="gap_missing_param_key",
-            type_id="arithmetic_sequence",
-            name="verifier names a param_key the generator never produces",
-            artifact_type="srs_card",
-            problem_spec={"kind": "tn", "a_range": [1, 9]},  # produces {a}
-            verifier_spec={
-                "kind": "symbolic_equality",
-                "marks_possible": 1,
-                "param_key": "answer",  # not in params — must not default to 0
-            },
-        ),
-    ]
 
 
 def main() -> None:
@@ -165,22 +96,6 @@ def main() -> None:
 
     for p in REAL_PROBLEMS:
         results.append(run(f"wrong_rejected:{p.id}", lambda p=p: wrong_rejected(p.id)))
-
-    # 5. Gap markers: instantiate MUST raise CanonicalResolutionError
-    def gap_marker_fires(prob: Problem) -> str:
-        try:
-            engine.instantiate(prob, seed=42)
-        except CanonicalResolutionError as e:
-            return f"correctly refused to guess: {e.reason}"
-        raise AssertionError(
-            "expected CanonicalResolutionError, but instantiate succeeded "
-            "(verifier silently guessed a canonical)"
-        )
-
-    for prob in build_gap_markers():
-        results.append(
-            run(f"gap_marker:{prob.id}", lambda prob=prob: gap_marker_fires(prob))
-        )
 
     # --- Report ---
     print("\n=== Smoke test results ===\n")

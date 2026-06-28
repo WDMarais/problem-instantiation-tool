@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.exceptions import (
     AttemptValidationError,
+    CanonicalResolutionError,
     InstantiationError,
     ParamsIncompatibleError,
     ProblemEngineError,
@@ -221,6 +222,124 @@ def test_srs_card_with_self_graded_verifier_raises_validation_error_at_construct
                 {"kind": "self_graded", "marks_possible": 1},
             ],
         )
+
+
+# ---------------------------------------------------------------------------
+# CanonicalResolutionError — the verifier refuses to guess a canonical
+# ---------------------------------------------------------------------------
+#
+# These mirror main.py's smoke-test gap markers as proper pytest cases: when a
+# verifier step cannot resolve its canonical answer (no param_key, no answer key,
+# ambiguous params) the engine must raise at instantiate, never silently pick an
+# arbitrary param.
+
+
+def _instantiate(problem_spec, verifier_spec, seed=1):
+    problem = Problem(
+        id="p",
+        type_id="algebra",
+        name="p",
+        artifact_type="practice",
+        problem_spec=problem_spec,
+        verifier_spec=verifier_spec,
+    )
+    engine = Engine(registry=InMemoryRegistry({"p": problem}))
+    return engine.instantiate("p", seed=seed)
+
+
+@pytest.mark.failure_modes
+def test_canonical_resolution_error_is_subclass_of_problem_engine_error():
+    """CanonicalResolutionError inherits from ProblemEngineError."""
+    assert issubclass(CanonicalResolutionError, ProblemEngineError)
+
+
+@pytest.mark.failure_modes
+def test_ambiguous_symbolic_canonical_raises():
+    """symbolic_equality with several params and no 'answer'/param_key cannot pick
+    a canonical and must raise rather than guess the first param."""
+    with pytest.raises(CanonicalResolutionError):
+        _instantiate(
+            {"kind": "x", "a_range": [1, 9], "b_range": [1, 9]},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+        )
+
+
+@pytest.mark.failure_modes
+def test_ambiguous_numeric_canonical_raises():
+    """numeric_equality resolves via 'answer' like the symbolic path; ambiguous
+    params raise."""
+    with pytest.raises(CanonicalResolutionError):
+        _instantiate(
+            {"kind": "x", "a_range": [1, 9], "b_range": [1, 9]},
+            {"kind": "numeric_equality", "tolerance": 0.01, "marks_possible": 1},
+        )
+
+
+@pytest.mark.failure_modes
+def test_ambiguous_set_equality_canonical_raises():
+    """set_equality with no root* params must not sweep every field into the
+    answer set — it raises instead."""
+    with pytest.raises(CanonicalResolutionError):
+        _instantiate(
+            {"kind": "x", "a_range": [1, 9], "b_range": [1, 9]},
+            {"kind": "set_equality", "marks_possible": 1},
+        )
+
+
+@pytest.mark.failure_modes
+def test_missing_param_key_raises():
+    """A param_key the generator never produced raises (no silent default to 0)."""
+    with pytest.raises(CanonicalResolutionError):
+        _instantiate(
+            {"kind": "x", "a_range": [1, 9]},
+            {"kind": "symbolic_equality", "marks_possible": 1, "param_key": "answer"},
+        )
+
+
+@pytest.mark.failure_modes
+def test_canonical_resolution_error_carries_kind_and_keys():
+    """The exception names the verifier kind and the params it had to choose from,
+    so the authoring fix is obvious."""
+    with pytest.raises(CanonicalResolutionError) as exc_info:
+        _instantiate(
+            {"kind": "x", "a_range": [1, 9], "b_range": [1, 9]},
+            {"kind": "symbolic_equality", "marks_possible": 1},
+        )
+    assert exc_info.value.kind == "symbolic_equality"
+    assert set(exc_info.value.available_keys) == {"a", "b"}
+
+
+@pytest.mark.failure_modes
+def test_sole_param_is_unambiguous_and_does_not_raise():
+    """A single generated param is the answer by elimination — kept as a
+    convenience, so this must NOT raise."""
+    inst = _instantiate(
+        {"kind": "x", "a_range": [3, 3]},  # sole param a == 3
+        {"kind": "symbolic_equality", "marks_possible": 1},
+    )
+    assert inst.verifier.canonicals == [3]
+
+
+@pytest.mark.failure_modes
+def test_explicit_answer_param_does_not_raise():
+    """An explicit 'answer' param resolves the canonical even amid other fields."""
+    inst = _instantiate(
+        {"kind": "x", "a_range": [1, 9], "answer": 7},
+        {"kind": "symbolic_equality", "marks_possible": 1},
+    )
+    assert inst.verifier.canonicals == [7]
+
+
+@pytest.mark.failure_modes
+def test_root_params_resolve_set_equality_without_raising():
+    """The root* convention resolves set_equality even with extra fields present."""
+    inst = _instantiate(
+        {"kind": "x", "root_range": [-9, 9], "leading_coeff_range": [1, 3]},
+        {"kind": "set_equality", "marks_possible": 1},
+    )
+    (canonical,) = inst.verifier.canonicals
+    assert isinstance(canonical, frozenset)
+    assert "leading_coeff" not in canonical  # extra field excluded from the set
 
 
 # === SPEC GAPS ===
