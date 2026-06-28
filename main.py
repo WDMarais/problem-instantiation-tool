@@ -50,7 +50,10 @@ def build_problems() -> dict[str, Problem]:
         verifier_spec={"kind": "set_equality", "marks_possible": 1},
     )
 
-    # arith_seq_nth_term — uses symbolic_equality (NOT yet a known kind in our verifier)
+    # arith_seq_nth_term — GAP: the dict generator only samples a/d/n ranges; it
+    # never computes the answer (Tn = a+(n-1)d), so the spec carries no answer
+    # param. The verifier now raises CanonicalResolutionError rather than guessing.
+    # To support this: a callable generator that computes an `answer` param.
     problems["nsc_arith_seq"] = Problem(
         id="nsc_arith_seq",
         type_id="arithmetic_sequence",
@@ -66,7 +69,9 @@ def build_problems() -> dict[str, Problem]:
         verifier_spec={"kind": "symbolic_equality", "marks_possible": 1},
     )
 
-    # quadratic_formula — uses numeric_approx (NOT yet implemented)
+    # quadratic_formula — same GAP: the dict generator samples a/b/c but never
+    # computes the roots, so there is no answer param for numeric_equality to use.
+    # Needs a callable generator that computes the two roots as the `answer`.
     problems["nsc_quadratic_formula"] = Problem(
         id="nsc_quadratic_formula",
         type_id="quadratic_equation",
@@ -138,9 +143,10 @@ def main() -> None:
         results.append(run(f"reconstruct:{pid}", lambda p=pid: reconstruct(p)))
 
     # --- 5. Known-correct answer acceptance ---
-    # Checks that a value we know is the right answer IS accepted.
-    # This catches silent fallthrough where canonical = first param (e.g. "arithmetic")
-    # and a legitimately correct numeric answer would be rejected.
+    # Checks that a value we know is the right answer IS accepted. The engine now
+    # raises CanonicalResolutionError at instantiate when the canonical is
+    # ambiguous (so the arith_seq/quadratic specs below fail loudly upstream); this
+    # stays as a backstop against any spec whose canonical resolves to a wrong param.
     known_correct: dict[str, object] = {
         # set_equality: frozenset of roots
         "nsc_quadratic_factor": frozenset({10, -7}),

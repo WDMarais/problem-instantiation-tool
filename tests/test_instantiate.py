@@ -189,7 +189,9 @@ def test_callable_problem_spec_produces_same_instance_shape():
     def discriminant_generator(rng):
         # Minimal implementation: returns fixed params. Real generators use rng for
         # case branching (d>0/d=0/d<0) that a YAML DSL cannot express as one concept.
-        return {"a": 1, "b": 0, "c": -1}
+        # `answer` names the canonical (discriminant b^2-4ac); without it a
+        # multi-param spec is ambiguous and the verifier now refuses to guess.
+        return {"a": 1, "b": 0, "c": -1, "answer": 4}
 
     problem = Problem(
         id="discriminant_generator",

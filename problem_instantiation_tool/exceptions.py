@@ -33,3 +33,17 @@ class AttemptValidationError(ProblemEngineError):
         super().__init__(step_index, reason)
         self.step_index = step_index
         self.reason = reason
+
+
+class CanonicalResolutionError(ProblemEngineError):
+    """A verifier step could not determine its canonical answer from the params:
+    no ``param_key``, no conventional answer key (``answer``/``correct``), and the
+    params are ambiguous (more than one, so the answer cannot be guessed). The fix
+    is in the *content* — name the answer param or give the verifier a ``param_key``
+    — not to let the verifier silently pick an arbitrary field."""
+
+    def __init__(self, kind: str, available_keys: list[str], reason: str = "") -> None:
+        super().__init__(kind, available_keys, reason)
+        self.kind = kind
+        self.available_keys = available_keys
+        self.reason = reason

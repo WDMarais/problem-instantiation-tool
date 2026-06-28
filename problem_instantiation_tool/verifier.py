@@ -5,7 +5,7 @@ from typing import Any
 
 import sympy
 
-from .exceptions import AttemptValidationError
+from .exceptions import AttemptValidationError, CanonicalResolutionError
 from .schemas import (
     MistakeType,
     ProvidedStep,
@@ -54,6 +54,25 @@ def _eval_symbolic(
     return result
 
 
+def _answer_param(params: dict, kind: str, key: str) -> Any:
+    """Resolve the canonical answer from a conventional key (``answer``/``correct``).
+
+    Falls back to the sole param when there is exactly one (unambiguous). Raises
+    rather than silently grabbing the first of several — guessing an answer out of
+    {sequence_type, a, d, n} is how a verifier ends up comparing 33 to 'arithmetic'.
+    """
+    if key in params:
+        return params[key]
+    if len(params) == 1:
+        return next(iter(params.values()))
+    raise CanonicalResolutionError(
+        kind,
+        list(params.keys()),
+        f"no '{key}' param and {len(params)} params are ambiguous; add an "
+        f"'{key}' param to the generator or a 'param_key' to the verifier spec",
+    )
+
+
 def _compute_canonicals(specs: list[dict], params: dict) -> list[Any]:
     canonicals: list[Any] = []
     for spec in specs:
@@ -68,9 +87,9 @@ def _compute_canonicals(specs: list[dict], params: dict) -> list[Any]:
         elif "param_key" in spec:
             canonical = params.get(spec["param_key"], 0)
         elif kind == "mcq":
-            canonical = params.get("correct", next(iter(params.values()), None))
+            canonical = _answer_param(params, kind, "correct")
         elif kind == "exact_equality":
-            canonical = params.get("answer", next(iter(params.values()), None))
+            canonical = _answer_param(params, kind, "answer")
         elif kind == "self_graded":
             canonical = True
         elif kind == "set_equality":
@@ -78,10 +97,10 @@ def _compute_canonicals(specs: list[dict], params: dict) -> list[Any]:
             canonical = (
                 frozenset(root_vals) if root_vals else frozenset(params.values())
             )
-        else:  # symbolic_equality (and unknown kinds)
-            canonical = (
-                params.get("answer", next(iter(params.values()), 0)) if params else 0
-            )
+        elif not params:
+            canonical = 0
+        else:  # symbolic_equality, numeric_equality, and unknown kinds
+            canonical = _answer_param(params, kind, "answer")
 
         canonicals.append(canonical)
     return canonicals
