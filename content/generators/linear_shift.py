@@ -6,7 +6,7 @@ from fractions import Fraction
 from random import Random
 
 from content.generators import Kind
-from content.generators.base import LinearGenerator, _SMALL_DENOMS, _VAR_POOL, _fmt
+from content.generators.base import _SMALL_DENOMS, _VAR_POOL, LinearGenerator, _fmt
 from content.sheet import ThreeStep
 
 
@@ -71,7 +71,8 @@ def _gen_symbol(rng: Random) -> ThreeStep:
 class ShiftGenerator(LinearGenerator):
     title = "x ± a = b  —  Non-Zero Right-Hand Side"
     caption = (
-        "The 3 does not simply disappear from the left and reappear as $-3$ on the right. "
+        "The 3 does not simply disappear from the left "
+        "and reappear as $-3$ on the right. "
         "You subtract 3 from both sides: on the left it cancels to zero; "
         "on the right, 7 becomes $7 - 3 = 4$. "
         "The right-hand side is always affected too."

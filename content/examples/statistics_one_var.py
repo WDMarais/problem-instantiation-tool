@@ -107,7 +107,8 @@ if __name__ == "__main__":
         attempt = SolutionAttempt(steps=[SubmittedStep(a) for a in answers])
         r = instance.verifier.rate(attempt)
         print(
-            f"  {label}: {r.marks_awarded}/{r.marks_possible}  is_correct={r.is_correct}"
+            f"  {label}: {r.marks_awarded}/{r.marks_possible}  "
+            f"is_correct={r.is_correct}"
         )
 
     show(

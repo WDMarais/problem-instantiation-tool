@@ -14,7 +14,8 @@ Skill chain:
 
 Usage (from project root):
     .venv/bin/python content/examples/quadratics_tutorial.py
-    .venv/bin/python content/examples/quadratics_tutorial.py --seed 3 --output quad_tut.html
+    .venv/bin/python content/examples/quadratics_tutorial.py --seed 3
+        --output quad_tut.html
 """
 
 from __future__ import annotations
@@ -49,7 +50,8 @@ def build_tutorial(
     cards = []
     for prob_id, count in TUTORIAL_SEQUENCE:
         entry = PROBLEMS[prob_id]
-        # detail="full" for all (long_count == count): tutorial favours full worked steps
+        # detail="full" for all (long_count == count): tutorial favours full
+        # worked steps
         cards.extend(_generate_cards(engine, entry, rng, count, count))
     # No shuffle — preserve pedagogical order
     return build_html(title, cards, per_page=3)

@@ -6,7 +6,6 @@ Run with:  uv run python main.py
 
 from __future__ import annotations
 
-import traceback
 from dataclasses import dataclass
 
 from problem_instantiation_tool.engine import Engine
@@ -118,7 +117,10 @@ def main() -> None:
         instance = engine.instantiate(pid, seed=42)
         rating = instance.verifier.rate(instance.solution)
         assert rating.is_correct, f"canonical solution rated as incorrect: {rating}"
-        return f"params={instance.params}  marks={rating.marks_awarded}/{rating.marks_possible}"
+        return (
+            f"params={instance.params}  "
+            f"marks={rating.marks_awarded}/{rating.marks_possible}"
+        )
 
     for pid in problems:
         results.append(run(f"roundtrip:{pid}", lambda p=pid: roundtrip(p)))
@@ -169,7 +171,8 @@ def main() -> None:
 
     # --- 6. Wrong-answer rejection: a wrong submission must NOT be rated correct ---
     # This catches verifiers that silently fall through to a wrong kind and
-    # always return is_correct because they compare canonical to itself.: a wrong submission must NOT be rated correct ---
+    # always return is_correct because they compare canonical to itself.: a
+    # wrong submission must NOT be rated correct ---
     # This catches verifiers that silently fall through to a wrong kind and
     # always return is_correct because they compare canonical to itself.
     def wrong_answer_rejected(pid: str) -> str:
@@ -181,7 +184,10 @@ def main() -> None:
             f"VERIFIER SILENT FAILURE: wrong answer rated as correct — "
             f"verifier kind may not be implemented (params={instance.params})"
         )
-        return f"wrong answer correctly rejected (marks={rating.marks_awarded}/{rating.marks_possible})"
+        return (
+            f"wrong answer correctly rejected "
+            f"(marks={rating.marks_awarded}/{rating.marks_possible})"
+        )
 
     for pid in problems:
         results.append(
@@ -205,7 +211,7 @@ def main() -> None:
 
     print(f"\n{len(passed)}/{len(results)} passed")
     if failed:
-        print(f"\nGaps to address:")
+        print("\nGaps to address:")
         seen: set[str] = set()
         for r in failed:
             # Extract just the error type + first line for deduplication

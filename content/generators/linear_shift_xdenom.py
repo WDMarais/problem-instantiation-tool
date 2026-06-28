@@ -6,7 +6,7 @@ from fractions import Fraction
 from random import Random
 
 from content.generators import Kind
-from content.generators.base import LinearGenerator, _SMALL_DENOMS, _VAR_POOL, _fmt
+from content.generators.base import _SMALL_DENOMS, _VAR_POOL, LinearGenerator, _fmt
 from content.sheet import SixStep
 
 
@@ -38,7 +38,8 @@ def _gen_integer(rng: Random) -> SixStep:
 
 
 def _gen_fraction(rng: Random) -> SixStep:
-    # b is a positive fraction; a = b.numerator * k ensures x = -k*b.denominator (integer).
+    # b is a positive fraction; a = b.numerator * k ensures
+    # x = -k*b.denominator (integer).
     k = rng.randint(1, 4)
     d = rng.choice(_SMALL_DENOMS)
     p = rng.randint(1, d - 1)

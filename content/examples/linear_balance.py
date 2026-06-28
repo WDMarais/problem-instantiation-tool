@@ -4,7 +4,8 @@ Acquisition sheet: x ± a = 0 (balance method).
 
 Usage:
     .venv/bin/python content/examples/linear_balance.py
-    .venv/bin/python content/examples/linear_balance.py --seed 42 --kinds integer fraction
+    .venv/bin/python content/examples/linear_balance.py --seed 42
+        --kinds integer fraction
 """
 
 from __future__ import annotations

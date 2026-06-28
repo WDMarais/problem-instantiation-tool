@@ -151,8 +151,10 @@ class FuncEvalGenerator:
     title = "f(x) = ax + b  —  Evaluate a Function"
     caption = (
         r"A function is a rule: the same input always gives the same output. "
-        r"The name ($\text{blorp}$, $f$, $g$) is arbitrary — it just labels which rule. "
-        r"To evaluate: replace every $x$ in the rule with the given input, then simplify."
+        r"The name ($\text{blorp}$, $f$, $g$) is arbitrary — "
+        r"it just labels which rule. "
+        r"To evaluate: replace every $x$ in the rule with the given input, "
+        r"then simplify."
     )
     output_name = "func_eval.html"
     n_detailed = 6

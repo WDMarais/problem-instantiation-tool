@@ -170,7 +170,8 @@ if __name__ == "__main__":
         attempt = SolutionAttempt(steps=[SubmittedStep(answer)])
         r = instance.verifier.rate(attempt)
         print(
-            f"  {label}: {r.marks_awarded}/{r.marks_possible}  is_correct={r.is_correct}"
+            f"  {label}: {r.marks_awarded}/{r.marks_possible}  "
+            f"is_correct={r.is_correct}"
         )
 
     # --- exponent_variable_simplify ---
@@ -179,7 +180,8 @@ if __name__ == "__main__":
     p = inst.params
     # Display as: (k·b^(pn+a) − m·b^(pn+c)) / (denom_base)^n · b^d
     print(
-        f"  ({p['k']}·{p['base']}^({p['p']}n+{p['a']}) − {p['m']}·{p['base']}^({p['p']}n+{p['c']}))"
+        f"  ({p['k']}·{p['base']}^({p['p']}n+{p['a']})"
+        f" − {p['m']}·{p['base']}^({p['p']}n+{p['c']}))"
         f" / ({p['denom_base']}^n · {p['base']}^{p['d']})"
     )
     print(f"  Canonical: {inst.verifier.canonicals[0]}")
@@ -199,7 +201,8 @@ if __name__ == "__main__":
             break
     p = inst.params
     print(
-        f"  ({p['Ck']}x^{p['ka']})^(−1/{p['k']}) × {p['B']}x^(−{p['a']}) − x^(−{2 * p['a']})"
+        f"  ({p['Ck']}x^{p['ka']})^(−1/{p['k']})"
+        f" × {p['B']}x^(−{p['a']}) − x^(−{2 * p['a']})"
     )
     print(f"  Canonical: {inst.verifier.canonicals[0]}")
     show("Answer 0 (correct)          ", inst, 0)
@@ -215,7 +218,8 @@ if __name__ == "__main__":
             break
     p = inst.params
     print(
-        f"  ({p['Ck']}x^{p['ka']})^(−1/{p['k']}) × {p['B']}x^(−{p['a']}) − x^(−{2 * p['a']})"
+        f"  ({p['Ck']}x^{p['ka']})^(−1/{p['k']})"
+        f" × {p['B']}x^(−{p['a']}) − x^(−{2 * p['a']})"
     )
     print(f"  Canonical: {inst.verifier.canonicals[0]}")
     canonical = inst.verifier.canonicals[0]

@@ -26,7 +26,6 @@ import sympy
 
 from problem_instantiation_tool.schemas import Problem
 
-
 # ── shared helpers ────────────────────────────────────────────────────────────
 
 _SIGN_LABELS = {
@@ -179,7 +178,8 @@ if __name__ == "__main__":
     p = inst.params
     print(f"  x² + {p['b']}x + {p['c']} = 0  →  mn=?, m+n=?")
     print(
-        f"  Canonical: mn={inst.verifier.canonicals[0]}, m+n={inst.verifier.canonicals[1]}"
+        f"  Canonical: mn={inst.verifier.canonicals[0]}, "
+        f"m+n={inst.verifier.canonicals[1]}"
     )
     show(
         "Correct mn then m+n",

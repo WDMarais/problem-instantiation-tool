@@ -12,12 +12,9 @@ from problem_instantiation_tool.exceptions import AttemptValidationError
 from problem_instantiation_tool.registry import InMemoryRegistry
 from problem_instantiation_tool.schemas import (
     Problem,
-    ProblemInstance,
     ProvidedStep,
-    SolutionAttempt,
     SubmittedStep,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -103,7 +100,8 @@ def engine(quad_problem):
 
 @pytest.mark.instantiate
 def test_instantiate_returns_problem_instance_with_all_fields(engine):
-    """Seeded instantiate() returns a ProblemInstance with spec, params, solution, verifier, seed."""
+    """Seeded instantiate() returns a ProblemInstance with spec, params,
+    solution, verifier, seed."""
     instance = engine.instantiate("quadratic_factor", seed=42)
     assert instance.spec.id == "quadratic_factor"
     assert isinstance(instance.params, dict)
@@ -126,7 +124,8 @@ def test_fresh_instantiate_records_seed_on_instance(engine):
 
 @pytest.mark.instantiate
 def test_fresh_instantiate_twice_produces_independent_instances(engine):
-    """Two unseeded calls produce statistically independent instances (different seeds)."""
+    """Two unseeded calls produce statistically independent instances
+    (different seeds)."""
     a = engine.instantiate("quadratic_factor")
     b = engine.instantiate("quadratic_factor")
     # Seeds should differ; collisions are astronomically unlikely with a good RNG.
@@ -184,7 +183,8 @@ def test_instantiate_accepts_problem_object_directly(quad_problem):
 
 @pytest.mark.instantiate
 def test_callable_problem_spec_produces_same_instance_shape():
-    """A callable problem_spec (code generator) produces the same ProblemInstance shape as YAML."""
+    """A callable problem_spec (code generator) produces the same
+    ProblemInstance shape as YAML."""
 
     def discriminant_generator(rng):
         # Minimal implementation: returns fixed params. Real generators use rng for
@@ -272,7 +272,8 @@ def test_gap_fill_single_blank_presented_attempt_shape(surd_gap_problem):
 
 @pytest.mark.instantiate
 def test_gap_fill_solution_is_fully_submitted(surd_gap_problem):
-    """Gap-fill solution (golden-path) has SubmittedStep at every index, including blanks."""
+    """Gap-fill solution (golden-path) has SubmittedStep at every index,
+    including blanks."""
     registry = InMemoryRegistry({"surd_gap_step1": surd_gap_problem})
     engine = Engine(registry=registry)
     instance = engine.instantiate("surd_gap_step1", seed=7)
@@ -289,9 +290,7 @@ def test_gap_fill_noncontiguous_blanks_presented_attempt_shape(
     surd_gap_noncontiguous_problem,
 ):
     """Gap-fill with blank_steps=[0, 2] produces None at indices 0 and 2."""
-    registry = InMemoryRegistry(
-        {"surd_gap_steps0_2": surd_gap_noncontiguous_problem}
-    )
+    registry = InMemoryRegistry({"surd_gap_steps0_2": surd_gap_noncontiguous_problem})
     engine = Engine(registry=registry)
     instance = engine.instantiate("surd_gap_steps0_2", seed=7)
     steps = instance.presented_attempt.steps
@@ -307,7 +306,8 @@ def test_gap_fill_noncontiguous_blanks_presented_attempt_shape(
 
 @pytest.mark.instantiate
 def test_gap_fill_difficulty_defaults_one_below_source():
-    """Gap-fill without authored difficulty carries one tier below the source problem."""
+    """Gap-fill without authored difficulty carries one tier below the source
+    problem."""
     source_problem = Problem(
         id="surd_equation_linear_rhs",
         type_id="algebra",
@@ -350,7 +350,8 @@ def test_gap_fill_difficulty_defaults_one_below_source():
 
 @pytest.mark.instantiate
 def test_gap_fill_authored_difficulty_overrides_default():
-    """Authored difficulty on a gap-fill problem overrides the one-below-source default."""
+    """Authored difficulty on a gap-fill problem overrides the one-below-source
+    default."""
     gap_problem = Problem(
         id="surd_gap_hard",
         type_id="algebra",
@@ -379,7 +380,8 @@ def test_gap_fill_authored_difficulty_overrides_default():
 
 @pytest.mark.instantiate
 def test_cq_domain_produces_identical_instance_shape(nihao_problem):
-    """Chinese vocabulary (cq) problems produce the same ProblemInstance shape as math."""
+    """Chinese vocabulary (cq) problems produce the same ProblemInstance shape
+    as math."""
     registry = InMemoryRegistry({"nihao_card": nihao_problem})
     engine = Engine(registry=registry)
     instance = engine.instantiate("nihao_card", seed=1)
@@ -396,14 +398,11 @@ def test_cq_reconstruction_retains_prior_score_after_annotation_fix(nihao_proble
     registry = InMemoryRegistry({"nihao_card": nihao_problem})
     engine = Engine(registry=registry)
     # Store params (as a consumer would), then reconstruct.
-    original = engine.instantiate(
-        "nihao_card", params={"hanzi": "你好"}
-    )
-    reconstructed = engine.instantiate(
-        "nihao_card", params={"hanzi": "你好"}
-    )
-    # Engine returns a fresh ProblemInstance; consumer is responsible for retained rating.
-    assert reconstructed.params == {"hanzi": "你好"}
+    original = engine.instantiate("nihao_card", params={"hanzi": "你好"})
+    reconstructed = engine.instantiate("nihao_card", params={"hanzi": "你好"})
+    # Engine returns a fresh ProblemInstance; consumer is responsible for
+    # retained rating.
+    assert reconstructed.params == original.params == {"hanzi": "你好"}
     assert reconstructed.solution is not None
 
 

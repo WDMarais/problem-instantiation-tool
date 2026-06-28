@@ -6,7 +6,8 @@ Prerequisites: linear_balance.py (x±a=0), linear_shift.py (x±a=b).
 
 Usage:
     .venv/bin/python content/examples/linear_divide.py
-    .venv/bin/python content/examples/linear_divide.py --seed 42 --kinds integer fraction
+    .venv/bin/python content/examples/linear_divide.py --seed 42
+        --kinds integer fraction
 """
 
 from __future__ import annotations

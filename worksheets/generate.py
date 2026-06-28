@@ -28,44 +28,34 @@ import sympy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from render.graph import render_trig_graph
-from render.geometry import (
-    Angle,
-    GeometryFigure,
-    Point,
-    Pose,
-    Segment,
-    render_figure,
-)
-
 from content.examples.factorise_skills import (
-    factorise_constraints,
-    factorise_sign_case,
-    factorise_enumerate,
     factor_pairs_for_display,
+    factorise_constraints,
+    factorise_enumerate,
+    factorise_sign_case,
 )
 from content.examples.monic_factorise import problem as monic_factorise_problem
+from content.examples.parallelogram_angles import (
+    parallelogram_alternate,
+    parallelogram_cointerior,
+    parallelogram_opposite,
+)
 from content.examples.rform_skills import (
-    rform_find_R,
     rform_find_phi,
+    rform_find_R,
     rform_match_coefficients,
     rform_solve,
+)
+from content.examples.triangle_angles import (
+    triangle_angle_sum,
+    triangle_exterior,
+    triangle_isosceles,
 )
 from content.examples.trig_graph_properties import (
     trig_graph_amplitude,
     trig_graph_decreasing,
     trig_graph_range,
     trig_graph_solve,
-)
-from content.examples.parallelogram_angles import (
-    parallelogram_alternate,
-    parallelogram_cointerior,
-    parallelogram_opposite,
-)
-from content.examples.triangle_angles import (
-    triangle_angle_sum,
-    triangle_exterior,
-    triangle_isosceles,
 )
 from content.examples.zero_product_rule import (
     atomic_shuffled_n,
@@ -75,7 +65,15 @@ from content.examples.zero_product_rule import (
 )
 from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.registry import InMemoryRegistry
-
+from render.geometry import (
+    Angle,
+    GeometryFigure,
+    Point,
+    Pose,
+    Segment,
+    render_figure,
+)
+from render.graph import render_trig_graph
 
 # ── data models ───────────────────────────────────────────────────────────────
 
@@ -207,7 +205,10 @@ def template_zero_product_extension(params: dict, **_) -> ProblemCard:
     q_str = "i" if q == 1 else rf"{q}i"
     neg_p = -p
     return ProblemCard(
-        instruction=r"State the root — you do not need to know what $i$ means, just apply the rule:",
+        instruction=(
+            r"State the root — you do not need to know what $i$ means, "
+            r"just apply the rule:"
+        ),
         display_math=rf"(x {p_sign} {p_abs} + {q_str}) = 0",
         worked_steps=[
             rf"x {p_sign} {p_abs} + {q_str} = 0 \;\Rightarrow\; x = {neg_p} - {q_str}"
@@ -233,9 +234,15 @@ def template_factorise_sign_case(params: dict, **_) -> ProblemCard:
     mn, s = params["mn"], params["m_plus_n"]
     case = params["sign_case"]
     if case == "both_positive":
-        reasoning = rf"mn = {mn} > 0 \Rightarrow \text{{same sign}};\; m+n = {s} > 0 \Rightarrow \text{{both positive}}"
+        reasoning = (
+            rf"mn = {mn} > 0 \Rightarrow \text{{same sign}};"
+            rf"\; m+n = {s} > 0 \Rightarrow \text{{both positive}}"
+        )
     elif case == "both_negative":
-        reasoning = rf"mn = {mn} > 0 \Rightarrow \text{{same sign}};\; m+n = {s} < 0 \Rightarrow \text{{both negative}}"
+        reasoning = (
+            rf"mn = {mn} > 0 \Rightarrow \text{{same sign}};"
+            rf"\; m+n = {s} < 0 \Rightarrow \text{{both negative}}"
+        )
     else:
         reasoning = rf"mn = {mn} < 0 \Rightarrow \text{{opposite signs}}"
     return ProblemCard(
@@ -334,14 +341,20 @@ def template_trig_graph_decreasing(params: dict, **_) -> ProblemCard:
     }
     svg = render_trig_graph(graph, highlight_x=(lo, hi))
     steps = [
-        rf"f \text{{ is maximum at }} x={lo}^\circ \text{{ and minimum at }} x={hi}^\circ",
+        (
+            rf"f \text{{ is maximum at }} x={lo}^\circ "
+            rf"\text{{ and minimum at }} x={hi}^\circ"
+        ),
         rf"a = {a} > 0"
         + (rf",\; q = {q}" if q != 0 else "")
         + r"\text{ do not change the decreasing interval}",
         rf"f \text{{ is strictly decreasing on }} ({lo}^\circ,\; {hi}^\circ)",
     ]
     return ProblemCard(
-        instruction=f"For x ∈ [{dl}°, {du}°], state the interval on which f is strictly decreasing.",
+        instruction=(
+            f"For x ∈ [{dl}°, {du}°], state the interval on which f is "
+            f"strictly decreasing."
+        ),
         display_math=rf"f(x) = {expr}",
         worked_steps=steps,
         graph_svg=svg,
@@ -362,15 +375,27 @@ def template_trig_graph_solve(params: dict, **_) -> ProblemCard:
     b_str = "" if b == 1 else str(b)
     svg = render_trig_graph(params["graph"])
     steps = [
-        rf"R^2 = {a_str if a_str else 1}^2 + {b_str if b_str else 1}^2 = {a**2} + {b**2} = {a**2 + b**2} \;\Rightarrow\; R = {R_latex}",
-        rf"\tan\varphi = \tfrac{{{b}}}{{{a}}} \;\Rightarrow\; \varphi \approx {phi:.1f}^\circ",
+        (
+            rf"R^2 = {a_str if a_str else 1}^2 + {b_str if b_str else 1}^2 "
+            rf"= {a**2} + {b**2} = {a**2 + b**2} "
+            rf"\;\Rightarrow\; R = {R_latex}"
+        ),
+        (
+            rf"\tan\varphi = \tfrac{{{b}}}{{{a}}} "
+            rf"\;\Rightarrow\; \varphi \approx {phi:.1f}^\circ"
+        ),
         rf"{R_latex}\sin({np}x - {phi:.1f}^\circ) = {k}",
-        rf"\sin({np}x - {phi:.1f}^\circ) = \tfrac{{{k}}}{{{R_latex}}} \;\Rightarrow\; {np}x - {phi:.1f}^\circ \approx {alpha:.1f}^\circ\text{{ or }}{180 - alpha:.1f}^\circ",
+        (
+            rf"\sin({np}x - {phi:.1f}^\circ) = \tfrac{{{k}}}{{{R_latex}}} "
+            rf"\;\Rightarrow\; {np}x - {phi:.1f}^\circ \approx {alpha:.1f}^\circ"
+            rf"\text{{ or }}{180 - alpha:.1f}^\circ"
+        ),
     ]
     if n > 1:
         nx1, nx2 = round(x1 * n, 1), round(x2 * n, 1)
         steps.append(
-            rf"{np}x \approx {nx1:.1f}^\circ\quad\text{{or}}\quad {np}x \approx {nx2:.1f}^\circ"
+            rf"{np}x \approx {nx1:.1f}^\circ\quad\text{{or}}\quad "
+            rf"{np}x \approx {nx2:.1f}^\circ"
         )
     steps.append(
         rf"x \approx {x1:.1f}^\circ\quad\text{{or}}\quad x \approx {x2:.1f}^\circ"
@@ -433,10 +458,16 @@ def template_parallelogram_cointerior(params: dict, **_) -> ProblemCard:
         pose=g["pose"],
     )
     return ProblemCard(
-        instruction=r"$ABCD$ is a parallelogram. Determine the size of $\hat{B}$, giving a reason.",
+        instruction=(
+            r"$ABCD$ is a parallelogram. Determine the size of $\hat{B}$, "
+            r"giving a reason."
+        ),
         display_math=rf"\hat{{A}} = {given}^\circ",
         worked_steps=[
-            r"\hat{A} + \hat{B} = 180^\circ \quad (\text{co-interior } \angle\text{s};\ AD \parallel BC)",
+            (
+                r"\hat{A} + \hat{B} = 180^\circ \quad "
+                r"(\text{co-interior } \angle\text{s};\ AD \parallel BC)"
+            ),
             rf"\hat{{B}} = 180^\circ - {given}^\circ = {ans}^\circ",
         ],
         graph_svg=render_figure(fig),
@@ -457,10 +488,16 @@ def template_parallelogram_opposite(params: dict, **_) -> ProblemCard:
         pose=g["pose"],
     )
     return ProblemCard(
-        instruction=r"$ABCD$ is a parallelogram. Determine the size of $\hat{C}$, giving a reason.",
+        instruction=(
+            r"$ABCD$ is a parallelogram. Determine the size of $\hat{C}$, "
+            r"giving a reason."
+        ),
         display_math=rf"\hat{{A}} = {given}^\circ",
         worked_steps=[
-            r"\hat{C} = \hat{A} \quad (\text{opposite } \angle\text{s of a } \parallel^{\text{m}})",
+            (
+                r"\hat{C} = \hat{A} \quad "
+                r"(\text{opposite } \angle\text{s of a } \parallel^{\text{m}})"
+            ),
             rf"\hat{{C}} = {ans}^\circ",
         ],
         graph_svg=render_figure(fig),
@@ -481,10 +518,16 @@ def template_parallelogram_alternate(params: dict, **_) -> ProblemCard:
         pose=g["pose"],
     )
     return ProblemCard(
-        instruction=r"$ABCD$ is a parallelogram with diagonal $AC$. Determine $B\hat{A}C$, giving a reason.",
+        instruction=(
+            r"$ABCD$ is a parallelogram with diagonal $AC$. "
+            r"Determine $B\hat{A}C$, giving a reason."
+        ),
         display_math=rf"D\hat{{C}}A = {given}^\circ",
         worked_steps=[
-            r"B\hat{A}C = D\hat{C}A \quad (\text{alternate } \angle\text{s};\ AB \parallel DC)",
+            (
+                r"B\hat{A}C = D\hat{C}A \quad "
+                r"(\text{alternate } \angle\text{s};\ AB \parallel DC)"
+            ),
             rf"B\hat{{A}}C = {ans}^\circ",
         ],
         graph_svg=render_figure(fig),
@@ -527,10 +570,16 @@ def template_triangle_angle_sum(params: dict, **_) -> ProblemCard:
         pose=Pose(**params["pose"]),
     )
     return ProblemCard(
-        instruction=r"In $\triangle ABC$, determine the size of $\hat{C}$, giving a reason.",
+        instruction=(
+            r"In $\triangle ABC$, determine the size of $\hat{C}$, "
+            r"giving a reason."
+        ),
         display_math=rf"\hat{{A}} = {alpha}^\circ,\quad \hat{{B}} = {beta}^\circ",
         worked_steps=[
-            r"\hat{A} + \hat{B} + \hat{C} = 180^\circ \quad (\angle\text{s of a } \triangle)",
+            (
+                r"\hat{A} + \hat{B} + \hat{C} = 180^\circ \quad "
+                r"(\angle\text{s of a } \triangle)"
+            ),
             rf"\hat{{C}} = 180^\circ - {alpha}^\circ - {beta}^\circ = {ans}^\circ",
         ],
         graph_svg=render_figure(fig),
@@ -556,11 +605,20 @@ def template_triangle_isosceles(params: dict, **_) -> ProblemCard:
         pose=Pose(**params["pose"]),
     )
     return ProblemCard(
-        instruction=r"In $\triangle ABC$, $AB = AC$. Determine the size of $\hat{A}$, giving reasons.",
+        instruction=(
+            r"In $\triangle ABC$, $AB = AC$. Determine the size of $\hat{A}$, "
+            r"giving reasons."
+        ),
         display_math=rf"\hat{{B}} = {base_angle}^\circ",
         worked_steps=[
-            rf"\hat{{C}} = \hat{{B}} = {base_angle}^\circ \quad (\angle\text{{s opp equal sides}};\ AB = AC)",
-            rf"\hat{{A}} = 180^\circ - 2({base_angle}^\circ) = {ans}^\circ \quad (\angle\text{{s of a }} \triangle)",
+            (
+                rf"\hat{{C}} = \hat{{B}} = {base_angle}^\circ \quad "
+                rf"(\angle\text{{s opp equal sides}};\ AB = AC)"
+            ),
+            (
+                rf"\hat{{A}} = 180^\circ - 2({base_angle}^\circ) = {ans}^\circ "
+                rf"\quad (\angle\text{{s of a }} \triangle)"
+            ),
         ],
         graph_svg=render_figure(fig),
     )
@@ -583,10 +641,16 @@ def template_triangle_exterior(params: dict, **_) -> ProblemCard:
         pose=Pose(**params["pose"]),
     )
     return ProblemCard(
-        instruction=r"$AB$ is extended to $P$. Determine the size of $C\hat{B}P$, giving a reason.",
+        instruction=(
+            r"$AB$ is extended to $P$. Determine the size of $C\hat{B}P$, "
+            r"giving a reason."
+        ),
         display_math=rf"\hat{{A}} = {alpha}^\circ,\quad \hat{{C}} = {gamma}^\circ",
         worked_steps=[
-            r"C\hat{B}P = \hat{A} + \hat{C} \quad (\text{ext } \angle \text{ of } \triangle)",
+            (
+                r"C\hat{B}P = \hat{A} + \hat{C} \quad "
+                r"(\text{ext } \angle \text{ of } \triangle)"
+            ),
             rf"C\hat{{B}}P = {alpha}^\circ + {gamma}^\circ = {ans}^\circ",
         ],
         graph_svg=render_figure(fig),
@@ -603,7 +667,12 @@ def _ab_display(a: int, b: int) -> str:
 def template_rform_match_coefficients(params: dict, **_) -> ProblemCard:
     a, b = params["a"], params["b"]
     return ProblemCard(
-        instruction=r"Using $\sin(A-B) = \sin A\cos B - \cos A\sin B$, expand $R\sin(x-\varphi)$ and match coefficients. Fill in: $R\cos\varphi = \square$ and $R\sin\varphi = \square$",
+        instruction=(
+            r"Using $\sin(A-B) = \sin A\cos B - \cos A\sin B$, "
+            r"expand $R\sin(x-\varphi)$ and match coefficients. "
+            r"Fill in: $R\cos\varphi = \square$ and "
+            r"$R\sin\varphi = \square$"
+        ),
         display_math=_ab_display(a, b),
         worked_steps=[
             r"R\sin(x-\varphi) = R\cos\varphi\cdot\sin x - R\sin\varphi\cdot\cos x",
@@ -633,7 +702,10 @@ def template_rform_find_phi(params: dict, **_) -> ProblemCard:
         instruction=r"Divide the second equation by the first to find $\varphi$:",
         display_math=rf"R\cos\varphi = {a},\quad R\sin\varphi = {b}",
         worked_steps=[
-            rf"\frac{{R\sin\varphi}}{{R\cos\varphi}} = \frac{{{b}}}{{{a}}} \;\Rightarrow\; \tan\varphi = \frac{{{b}}}{{{a}}}",
+            (
+                rf"\frac{{R\sin\varphi}}{{R\cos\varphi}} = \frac{{{b}}}{{{a}}} "
+                rf"\;\Rightarrow\; \tan\varphi = \frac{{{b}}}{{{a}}}"
+            ),
             rf"\varphi = \arctan\frac{{{b}}}{{{a}}} \approx {phi:.1f}^\circ",
         ],
     )
@@ -651,7 +723,10 @@ def template_rform_solve(params: dict, **_) -> ProblemCard:
         display_math=rf"{R_latex}\sin(x - {phi:.1f}^\circ) = {k}",
         worked_steps=[
             rf"\sin(x - {phi:.1f}^\circ) = \tfrac{{{k}}}{{{R_latex}}}",
-            rf"x - {phi:.1f}^\circ \approx {alpha:.1f}^\circ\text{{ or }}{180 - alpha:.1f}^\circ",
+            (
+                rf"x - {phi:.1f}^\circ \approx {alpha:.1f}^\circ"
+                rf"\text{{ or }}{180 - alpha:.1f}^\circ"
+            ),
             rf"x \approx {x1:.1f}^\circ\quad\text{{or}}\quad x \approx {x2:.1f}^\circ",
         ],
     )
@@ -1051,7 +1126,10 @@ def main() -> None:
         default=None,
         dest="long_count",
         metavar="N",
-        help="First N problems get full 6-step worked answer; rest use 3-step short form.",
+        help=(
+            "First N problems get full 6-step worked answer; "
+            "rest use 3-step short form."
+        ),
     )
     args = ap.parse_args()
 

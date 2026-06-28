@@ -238,7 +238,8 @@ if __name__ == "__main__":
         attempt = SolutionAttempt(steps=[SubmittedStep(a) for a in answers])
         r = instance.verifier.rate(attempt)
         print(
-            f"  {label}: {r.marks_awarded}/{r.marks_possible}  is_correct={r.is_correct}"
+            f"  {label}: {r.marks_awarded}/{r.marks_possible}  "
+            f"is_correct={r.is_correct}"
         )
 
     # --- trig_cast_ratios ---
@@ -285,7 +286,8 @@ if __name__ == "__main__":
         p = inst.params
         ans = inst.verifier.canonicals[0]
         print(
-            f"  {p['func1']} {p['angle1']}° {p['op']} {p['func2']} {p['angle2']}°  =  {ans}"
+            f"  {p['func1']} {p['angle1']}° {p['op']} {p['func2']} {p['angle2']}°"
+            f"  =  {ans}"
         )
         r = inst.verifier.rate(SolutionAttempt(steps=[SubmittedStep(ans)]))
         assert r.is_correct

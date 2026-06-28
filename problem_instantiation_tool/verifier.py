@@ -193,7 +193,8 @@ def _rate_submitted_step(
     is_ca_match = _sympy_equal(student_value, ca_canonical)
     ca_equals_canonical = _sympy_equal(ca_canonical, spec.canonical)
 
-    # When ProvidedStep reset the chain, ca_canonical == canonical → treat as independent step
+    # When ProvidedStep reset the chain, ca_canonical == canonical → treat as
+    # independent step
     if ca_equals_canonical:
         if is_canonical_match:
             return MistakeType.correct, spec.marks_possible

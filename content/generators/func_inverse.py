@@ -7,14 +7,15 @@ from random import Random
 
 from content.generators import Kind
 from content.generators.base import _SMALL_DENOMS, _VAR_POOL, _fmt
-from content.generators.func_eval import _FUNC_POOL, _fn, _fdef
+from content.generators.func_eval import _FUNC_POOL, _fdef, _fn
 from content.sheet import CollapsedEx, FourStep, PracticeEx, SheetData
 
 _KIND_ORDER = (Kind.INTEGER, Kind.FRACTION, Kind.SYMBOL, Kind.VARARG)
 
 _PRACTICE_INTRO = (
     "Find the unknown variable for each problem. Show your working on a separate sheet "
-    'and write only your answer in the box. Problems marked <span class="star">*</span> '
+    "and write only your answer in the box. "
+    'Problems marked <span class="star">*</span> '
     "have answers at the bottom."
 )
 

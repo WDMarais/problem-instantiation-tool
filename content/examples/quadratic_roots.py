@@ -65,5 +65,7 @@ if __name__ == "__main__":
     ]:
         r = instance.verifier.rate(attempt)
         print(
-            f"{label}: {r.marks_awarded}/{r.marks_possible}  is_correct={r.is_correct}  mistake={r.steps[0].mistake_type}"
+            f"{label}: {r.marks_awarded}/{r.marks_possible}  "
+            f"is_correct={r.is_correct}  "
+            f"mistake={r.steps[0].mistake_type}"
         )

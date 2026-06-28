@@ -4,7 +4,8 @@ Acquisition sheet: a/x = b (x in the denominator).
 
 Usage:
     .venv/bin/python content/examples/linear_xdenom.py
-    .venv/bin/python content/examples/linear_xdenom.py --seed 42 --kinds integer fraction
+    .venv/bin/python content/examples/linear_xdenom.py --seed 42
+        --kinds integer fraction
 """
 
 from __future__ import annotations

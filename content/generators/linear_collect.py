@@ -6,7 +6,7 @@ from fractions import Fraction
 from random import Random
 
 from content.generators import Kind
-from content.generators.base import LinearGenerator, _SMALL_DENOMS, _VAR_POOL, _fmt
+from content.generators.base import _SMALL_DENOMS, _VAR_POOL, LinearGenerator, _fmt
 from content.sheet import SixStep
 
 
@@ -87,7 +87,8 @@ def _gen_symbol(rng: Random) -> SixStep:
 class CollectGenerator(LinearGenerator):
     title = "ax + b = cx + d  —  Collect x Terms"
     caption = (
-        "When x appears on both sides, subtract the smaller x term from both sides first. "
+        "When x appears on both sides, "
+        "subtract the smaller x term from both sides first. "
         "This gives a form you already know: shift the constant, then divide."
     )
     output_name = "linear_collect.html"

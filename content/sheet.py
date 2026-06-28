@@ -115,12 +115,14 @@ class SheetData:
         first_type = type(self.detailed[0])
         if not all(type(d) is first_type for d in self.detailed):
             raise LayoutOverflowError(
-                "All detailed examples must be the same type (ThreeStep, FourStep, FiveStep, or SixStep)"
+                "All detailed examples must be the same type "
+                "(ThreeStep, FourStep, FiveStep, or SixStep)"
             )
 
         if first_type is ThreeStep and len(self.detailed) > _MAX_DETAILED_THREE:
             raise LayoutOverflowError(
-                f"ThreeStep layout fits at most {_MAX_DETAILED_THREE} detailed examples; "
+                f"ThreeStep layout fits at most {_MAX_DETAILED_THREE} "
+                "detailed examples; "
                 f"got {len(self.detailed)}"
             )
         if first_type is FourStep and len(self.detailed) > _MAX_DETAILED_FOUR:

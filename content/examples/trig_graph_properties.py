@@ -284,7 +284,8 @@ if __name__ == "__main__":
         attempt = SolutionAttempt(steps=[SubmittedStep(a) for a in answers])
         r = instance.verifier.rate(attempt)
         print(
-            f"  {label}: {r.marks_awarded}/{r.marks_possible}  is_correct={r.is_correct}"
+            f"  {label}: {r.marks_awarded}/{r.marks_possible}  "
+            f"is_correct={r.is_correct}"
         )
 
     print("=== trig_graph_amplitude ===")
@@ -313,7 +314,8 @@ if __name__ == "__main__":
     inst = engine.instantiate(trig_graph_decreasing.id, seed=1)
     p = inst.params
     print(
-        f"  f(x) = {p['expr_latex']},  domain [{p['domain_lower']}°, {p['domain_upper']}°]"
+        f"  f(x) = {p['expr_latex']},"
+        f"  domain [{p['domain_lower']}°, {p['domain_upper']}°]"
     )
     lo, hi = inst.verifier.canonicals
     print(f"  Decreasing on ({lo}°, {hi}°)")
@@ -326,7 +328,8 @@ if __name__ == "__main__":
     inst = engine.instantiate(trig_graph_solve.id, seed=1)
     p = inst.params
     print(
-        f"  {p['a']}·sin({p['n']}x) − {p['b']}·cos({p['n']}x) = {p['k']},  x ∈ [0°, {p['period']}°]"
+        f"  {p['a']}·sin({p['n']}x) − {p['b']}·cos({p['n']}x) = {p['k']},"
+        f"  x ∈ [0°, {p['period']}°]"
     )
     x1, x2 = inst.verifier.canonicals
     print(f"  Solutions: x ≈ {x1:.2f}°,  x ≈ {x2:.2f}°")

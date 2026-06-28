@@ -6,7 +6,7 @@ from fractions import Fraction
 from random import Random
 
 from content.generators import Kind
-from content.generators.base import LinearGenerator, _SMALL_DENOMS, _VAR_POOL, _fmt
+from content.generators.base import _SMALL_DENOMS, _VAR_POOL, LinearGenerator, _fmt
 from content.sheet import ThreeStep
 
 

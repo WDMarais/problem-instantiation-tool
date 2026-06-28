@@ -5,7 +5,6 @@ Spec section: ## Section 3 — Failure modes
 """
 
 import pytest
-
 from pydantic import ValidationError
 
 from problem_instantiation_tool.engine import Engine
@@ -22,7 +21,6 @@ from problem_instantiation_tool.schemas import (
     SolutionAttempt,
     SubmittedStep,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -143,7 +141,8 @@ def test_overconstrained_generator_raises_instantiation_error():
 
 @pytest.mark.failure_modes
 def test_renamed_param_raises_params_incompatible_error(engine):
-    """Stored params with a renamed field raise ParamsIncompatibleError on reconstruction."""
+    """Stored params with a renamed field raise ParamsIncompatibleError
+    on reconstruction."""
     with pytest.raises(ParamsIncompatibleError) as exc_info:
         engine.instantiate(
             "quadratic_factor",
@@ -156,7 +155,8 @@ def test_renamed_param_raises_params_incompatible_error(engine):
 
 @pytest.mark.failure_modes
 def test_params_incompatible_error_does_not_silently_fall_back(engine):
-    """Engine raises, never silently falls back to a fresh instantiation on param mismatch."""
+    """Engine raises, never silently falls back to a fresh instantiation
+    on param mismatch."""
     # Verify the error is raised, not swallowed.
     raised = False
     try:
@@ -202,10 +202,12 @@ def test_self_graded_non_bool_raises_attempt_validation_error(quad_problem):
 
 @pytest.mark.failure_modes
 def test_srs_card_with_self_graded_verifier_raises_validation_error_at_construction():
-    """srs_card + SelfGraded raises ValidationError at Problem() construction, not at instantiate().
+    """srs_card + SelfGraded raises ValidationError at Problem() construction,
+    not at instantiate().
 
-    This is the exact example from spec Section 3. The error must surface at construction
-    so authoring mistakes are caught immediately, not deferred to runtime.
+    This is the exact example from spec Section 3. The error must surface at
+    construction so authoring mistakes are caught immediately, not deferred to
+    runtime.
     """
     with pytest.raises(ValidationError):
         Problem(

@@ -6,8 +6,8 @@ Spec section: ## Core object schemas
 """
 
 import json
-import pytest
 
+import pytest
 from pydantic import ValidationError
 
 from problem_instantiation_tool.engine import Engine
@@ -15,14 +15,12 @@ from problem_instantiation_tool.exceptions import ProblemNotFoundError
 from problem_instantiation_tool.registry import InMemoryRegistry
 from problem_instantiation_tool.schemas import (
     Problem,
-    ProblemInstance,
     ProvidedStep,
     SolutionAttempt,
     SolutionRating,
     StepRating,
     SubmittedStep,
 )
-
 
 # ---------------------------------------------------------------------------
 # Integration smoke: Engine + InMemoryRegistry + Problem roundtrip
@@ -31,7 +29,8 @@ from problem_instantiation_tool.schemas import (
 
 @pytest.mark.schemas
 def test_engine_with_in_memory_registry_resolves_problem_by_id():
-    """Full roundtrip: Engine built with InMemoryRegistry; problem fetched and instantiated."""
+    """Full roundtrip: Engine built with InMemoryRegistry; problem fetched and
+    instantiated."""
     problem = Problem(
         id="quad_factor",
         type_id="algebra",
@@ -188,7 +187,8 @@ def test_problem_model_dump_is_json_serializable():
 
 @pytest.mark.schemas
 def test_problem_srs_card_with_self_graded_raises_validation_error():
-    """srs_card artifact_type with SelfGraded verifier raises ValidationError at construction."""
+    """srs_card artifact_type with SelfGraded verifier raises ValidationError
+    at construction."""
     with pytest.raises(ValidationError):
         Problem(
             id="bad_srs",
@@ -275,7 +275,8 @@ def test_problem_invalid_difficulty_raises_validation_error():
             artifact_type="practice",
             problem_spec={"kind": "add"},
             verifier_spec={"kind": "set_equality"},
-            difficulty="hard",  # not valid; correct values: routine/standard/challenging/non_routine
+            # not valid; correct values: routine/standard/challenging/non_routine
+            difficulty="hard",
         )
 
 
@@ -304,16 +305,16 @@ def test_solution_attempt_with_provided_step_stores_value():
 
 @pytest.mark.schemas
 def test_solution_attempt_with_none_slot_is_valid_for_presented_attempt():
-    """SolutionAttempt can hold None at a step position (for presented_attempt blank slots)."""
-    attempt = SolutionAttempt(
-        steps=[ProvidedStep(5), None, ProvidedStep(3)]
-    )
+    """SolutionAttempt can hold None at a step position (for presented_attempt
+    blank slots)."""
+    attempt = SolutionAttempt(steps=[ProvidedStep(5), None, ProvidedStep(3)])
     assert attempt.steps[1] is None
 
 
 @pytest.mark.schemas
 def test_provided_step_and_submitted_step_are_distinct_types():
-    """ProvidedStep and SubmittedStep are different types — not interchangeable wrappers."""
+    """ProvidedStep and SubmittedStep are different types — not interchangeable
+    wrappers."""
     provided = ProvidedStep(10)
     submitted = SubmittedStep(10)
     assert type(provided) is not type(submitted)
@@ -321,11 +322,11 @@ def test_provided_step_and_submitted_step_are_distinct_types():
 
 @pytest.mark.schemas
 def test_solution_is_all_submitted_steps():
-    """The canonical solution is a SolutionAttempt where every step is a SubmittedStep."""
-    # The golden-path solution has no ProvidedStep or None — all steps are SubmittedStep.
-    solution = SolutionAttempt(
-        steps=[SubmittedStep({"roots": [-3, 5]})]
-    )
+    """The canonical solution is a SolutionAttempt where every step is a
+    SubmittedStep."""
+    # The golden-path solution has no ProvidedStep or None — all steps are
+    # SubmittedStep.
+    solution = SolutionAttempt(steps=[SubmittedStep({"roots": [-3, 5]})])
     assert all(type(s) is SubmittedStep for s in solution.steps)
 
 
@@ -438,7 +439,8 @@ def test_in_memory_registry_satisfies_content_registry_protocol():
 
 @pytest.mark.schemas
 def test_ad_hoc_class_satisfies_content_registry_protocol():
-    """Any class with get() and version() satisfies ContentRegistry (structural subtyping)."""
+    """Any class with get() and version() satisfies ContentRegistry
+    (structural subtyping)."""
     from typing import Protocol, runtime_checkable
 
     @runtime_checkable
@@ -549,7 +551,8 @@ def test_problem_instance_gap_fill_has_non_none_presented_attempt():
 
 @pytest.mark.schemas
 def test_problem_instance_gap_fill_presented_attempt_has_none_at_blank_steps():
-    """presented_attempt.steps has None at blank_steps indices and ProvidedStep elsewhere."""
+    """presented_attempt.steps has None at blank_steps indices and ProvidedStep
+    elsewhere."""
     gap_problem = Problem(
         id="surd_gap",
         type_id="algebra",
@@ -585,15 +588,18 @@ def test_problem_instance_gap_fill_presented_attempt_has_none_at_blank_steps():
 
 
 # === SPEC GAPS ===
-# test_problem_instance_immutability: spec says ProblemInstance is an "immutable snapshot"
+# test_problem_instance_immutability: spec says ProblemInstance is an
+#   "immutable snapshot"
 #   but does not specify the enforcement mechanism. Unclear whether assigning to a field
 #   (e.g. instance.seed = 99) should raise AttributeError (Pydantic frozen=True) or is
 #   just "don't mutate it" by convention. Needs clarification.
 #
-# test_problem_callable_spec_model_dump: spec states problem_spec can be "dict or callable".
+# test_problem_callable_spec_model_dump: spec states problem_spec can be
+#   "dict or callable".
 #   When problem_spec is a Python callable, it is unclear how model_dump() handles it —
 #   is the callable excluded, stored as a qualified name string, or something else?
-#   The MCP serialization boundary requirement implies it cannot be a live callable in dumps.
+#   The MCP serialization boundary requirement implies it cannot be a live
+#   callable in dumps.
 #
 # test_srs_card_exactly_two_steps_is_valid: spec says srs_card allows ≤2 steps but
 #   does not explicitly confirm that 2-step verifier_spec is valid (not just 1-step).

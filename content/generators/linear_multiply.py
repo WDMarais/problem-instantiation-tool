@@ -6,7 +6,7 @@ from fractions import Fraction
 from random import Random
 
 from content.generators import Kind
-from content.generators.base import LinearGenerator, _SMALL_DENOMS, _VAR_POOL, _fmt
+from content.generators.base import _SMALL_DENOMS, _VAR_POOL, LinearGenerator, _fmt
 from content.sheet import ThreeStep
 
 
@@ -46,7 +46,8 @@ def _gen_symbol(rng: Random) -> ThreeStep:
 class MultiplyGenerator(LinearGenerator):
     title = "x / a = b  —  Multiply Both Sides"
     caption = (
-        "Principle: multiply both sides by the same value to keep the equation balanced. "
+        "Principle: multiply both sides by the same value "
+        "to keep the equation balanced. "
         "Here we multiply by the denominator under x to leave x on its own."
     )
     output_name = "linear_multiply.html"

@@ -318,16 +318,22 @@ def _page2(data: SheetData) -> str:
             data.practice_intro
             if data.practice_intro
             else (
-                "Solve for $x$. Show your working on a separate sheet and write only your final answer in the box. "
-                'Problems marked <span class="star">*</span> have answers at the bottom. '
+                "Solve for $x$. Show your working on a separate sheet "
+                "and write only your final answer in the box. "
+                'Problems marked <span class="star">*</span> '
+                "have answers at the bottom. "
                 "Some answers are negative &mdash; check your sign."
             )
         )
         + "</div>"
-        f'<div class="practice-grid" style="grid-template-columns: repeat({data.practice_cols}, 1fr);">{practice_html}</div>'
+        '<div class="practice-grid" '
+        f'style="grid-template-columns: repeat({data.practice_cols}, 1fr);">'
+        f"{practice_html}</div>"
         '<div class="answers-block">'
         '<div class="answers-label">Answers: starred problems</div>'
-        f'<div class="answers-grid" style="grid-template-columns: repeat({data.practice_cols}, 1fr);">{answers_html}</div>'
+        '<div class="answers-grid" '
+        f'style="grid-template-columns: repeat({data.practice_cols}, 1fr);">'
+        f"{answers_html}</div>"
         "</div>"
         "</section>\n"
     )

@@ -16,11 +16,9 @@ from problem_instantiation_tool.schemas import (
     ProvidedStep,
     SolutionAttempt,
     SolutionRating,
-    StepRating,
     SubmittedStep,
     ValidationMode,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -101,7 +99,8 @@ def mcq_instance():
 
 @pytest.fixture
 def exact_equality_geo_instance():
-    """ExactMatch verifier: canonical answer is 'Tanzania' (case-insensitive by default)."""
+    """ExactMatch verifier: canonical answer is 'Tanzania' (case-insensitive
+    by default)."""
     problem = Problem(
         id="country_flag",
         type_id="geography",
@@ -117,7 +116,8 @@ def exact_equality_geo_instance():
 
 @pytest.fixture
 def exact_equality_pinyin_instance():
-    """ExactMatch with accents normalization: canonical 'nǐ hǎo', normalize=[accents]."""
+    """ExactMatch with accents normalization: canonical 'nǐ hǎo',
+    normalize=[accents]."""
     problem = Problem(
         id="pinyin_nihao",
         type_id="vocabulary",
@@ -153,7 +153,8 @@ def self_graded_instance():
 
 @pytest.fixture
 def gap_fill_instance():
-    """Gap-fill with blank at step 1: [ProvidedStep, blank, ProvidedStep]. Canonical: s0, s1, s2."""
+    """Gap-fill with blank at step 1: [ProvidedStep, blank, ProvidedStep].
+    Canonical: s0, s1, s2."""
     problem = Problem(
         id="surd_gap",
         type_id="algebra",
@@ -190,7 +191,8 @@ def gap_fill_instance():
 
 @pytest.fixture
 def ca_gap_noncontiguous_instance():
-    """3-step CA gap-fill with blank_steps=[0, 2]. Step 2 CA-depends on step 1 (provided).
+    """3-step CA gap-fill with blank_steps=[0, 2]. Step 2 CA-depends on step 1
+    (provided).
 
     Canonical: a=5, step1=2*a=10, step2=step1+5=15.
     """
@@ -314,7 +316,8 @@ def test_one_step_wrong_is_computation_error(srs_instance):
 
 @pytest.mark.rate
 def test_two_step_ca_correct(two_step_ca_instance):
-    """Step 0 wrong → computation_error; step 1 correct given student's step 0 → ca_correct.
+    """Step 0 wrong → computation_error; step 1 correct given student's step 0
+    → ca_correct.
 
     Canonical: a=5, x=2a=10.
     Student:   a=10, x=20  (wrong a, but x=2×their_a correctly applied).
@@ -360,7 +363,8 @@ def test_two_step_coincidental_match_strict_is_semantic_error(two_step_ca_instan
 
     Canonical: a=5, x=2a=10.  Student: a=10, x=10.
     Student x=10 matches canonical(10) but not ca_canonical(20).
-    STRICT: coincidental match signals student did not apply method to their own prior value.
+    STRICT: coincidental match signals student did not apply method to their
+    own prior value.
     """
     attempt = SolutionAttempt(steps=[SubmittedStep(10), SubmittedStep(10)])
     rating = two_step_ca_instance.verifier.rate(
@@ -380,7 +384,8 @@ def test_two_step_coincidental_match_strict_is_semantic_error(two_step_ca_instan
 
 @pytest.mark.rate
 def test_two_step_genuine_semantic_error(two_step_ca_instance):
-    """Genuine semantic_error: wrong vs canonical AND wrong vs CA-canonical. Both modes agree.
+    """Genuine semantic_error: wrong vs canonical AND wrong vs CA-canonical.
+    Both modes agree.
 
     Canonical: a=5, x=2a=10.  Student: a=10, x=7.
     Student x=7 ≠ canonical(10) and ≠ ca_canonical(20) → semantic_error in both modes.
@@ -418,7 +423,8 @@ def test_partial_attempt_marks_possible_covers_submitted_only(two_step_ca_instan
 
 @pytest.mark.rate
 def test_gap_fill_provided_steps_skipped_in_marking(gap_fill_instance):
-    """ProvidedSteps pass through unmarked; only SubmittedStep at blank index is rated."""
+    """ProvidedSteps pass through unmarked; only SubmittedStep at blank index
+    is rated."""
     # Blank is at index 1. Student fills it with the canonical step 1 value.
     canonical_s1 = gap_fill_instance.solution.steps[1].value
     s0_value = gap_fill_instance.presented_attempt.steps[0].value
@@ -550,7 +556,8 @@ def test_exact_equality_correct_casing(exact_equality_geo_instance):
 
 @pytest.mark.rate
 def test_exact_equality_case_insensitive_by_default(exact_equality_geo_instance):
-    """Lowercase submission 'tanzania' matches canonical 'Tanzania' (case-insensitive always on)."""
+    """Lowercase submission 'tanzania' matches canonical 'Tanzania'
+    (case-insensitive always on)."""
     attempt = SolutionAttempt(steps=[SubmittedStep("tanzania")])
     rating = exact_equality_geo_instance.verifier.rate(attempt)
     assert rating.steps[0].mistake_type == "correct"
@@ -567,7 +574,8 @@ def test_exact_equality_wrong_answer(exact_equality_geo_instance):
 
 @pytest.mark.rate
 def test_exact_equality_accent_normalisation(exact_equality_pinyin_instance):
-    """'ni hao' (no tone marks) normalises to match 'nǐ hǎo' when normalize includes accents."""
+    """'ni hao' (no tone marks) normalises to match 'nǐ hǎo' when normalize
+    includes accents."""
     attempt = SolutionAttempt(steps=[SubmittedStep("ni hao")])
     rating = exact_equality_pinyin_instance.verifier.rate(attempt)
     assert rating.steps[0].mistake_type == "correct"

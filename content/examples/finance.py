@@ -82,7 +82,9 @@ def _gen_compound_growth(rng: random.Random) -> dict:
 compound_growth = Problem(
     id="finance_compound_growth",
     type_id="financial_maths",
-    name="Calculate accumulated amount with annual compound interest  A = P(1 + r/100)ⁿ",
+    name=(
+        "Calculate accumulated amount with annual compound interest  A = P(1 + r/100)ⁿ"
+    ),
     artifact_type="practice",
     problem_spec=_gen_compound_growth,
     verifier_spec={"kind": "numeric_equality", "marks_possible": 1, "tolerance": 0.01},
@@ -134,7 +136,8 @@ if __name__ == "__main__":
         attempt = SolutionAttempt(steps=[SubmittedStep(answer)])
         r = instance.verifier.rate(attempt)
         print(
-            f"  {label}: {r.marks_awarded}/{r.marks_possible}  is_correct={r.is_correct}"
+            f"  {label}: {r.marks_awarded}/{r.marks_possible}  "
+            f"is_correct={r.is_correct}"
         )
 
     print("=== simple_interest ===")
@@ -167,7 +170,8 @@ if __name__ == "__main__":
     p = inst.params
     exact = p["answer"]
     print(
-        f"  A={p['target_amount']}, r={p['rate']}%, n={p['years']} yr  →  P = {exact:.4f}"
+        f"  A={p['target_amount']}, r={p['rate']}%, n={p['years']} yr"
+        f"  →  P = {exact:.4f}"
     )
     show(inst, "Exact float                    ", exact)
     show(inst, "Rounded to 2dp                 ", round(exact, 2))

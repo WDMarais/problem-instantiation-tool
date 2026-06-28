@@ -19,7 +19,6 @@ zero_product_extension — (x + p + qi) = 0 with integers p, q. Root is −p −
 
 from __future__ import annotations
 
-import itertools
 import random
 
 import sympy
@@ -214,7 +213,9 @@ zero_product_atomic = Problem(
 zero_product_standard = Problem(
     id="zero_product_standard",
     type_id="zero_product",
-    name="Given (x − m)(x − n) = 0, state both roots (no sign flip; opaque expressions)",
+    name=(
+        "Given (x − m)(x − n) = 0, state both roots (no sign flip; opaque expressions)"
+    ),
     artifact_type="practice",
     problem_spec=_gen_standard,
     verifier_spec={"kind": "set_equality", "marks_possible": 2},
@@ -223,7 +224,10 @@ zero_product_standard = Problem(
 zero_product_extension = Problem(
     id="zero_product_extension",
     type_id="zero_product",
-    name="Given (x + p + qi) = 0, state the root (structural rule applied to complex expression)",
+    name=(
+        "Given (x + p + qi) = 0,"
+        " state the root (structural rule applied to complex expression)"
+    ),
     artifact_type="practice",
     problem_spec=_gen_extension,
     verifier_spec={
@@ -251,7 +255,8 @@ if __name__ == "__main__":
         attempt = SolutionAttempt(steps=[SubmittedStep(a) for a in answers])
         r = instance.verifier.rate(attempt)
         print(
-            f"  {label}: {r.marks_awarded}/{r.marks_possible}  is_correct={r.is_correct}"
+            f"  {label}: {r.marks_awarded}/{r.marks_possible}  "
+            f"is_correct={r.is_correct}"
         )
 
     print("=== zero_product_atomic ===")

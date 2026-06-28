@@ -187,7 +187,8 @@ def render_trig_graph(
         )
         out.append(
             f'<text x="{ml + pw + 4:.1f}" y="{kyi + 3:.1f}"'
-            f' font-size="9" fill="{_K_LINE_COLOR}" font-family="sans-serif">{k_label}</text>'
+            f' font-size="9" fill="{_K_LINE_COLOR}" '
+            f'font-family="sans-serif">{k_label}</text>'
         )
 
     # x-axis tick marks + labels
@@ -199,7 +200,8 @@ def render_trig_graph(
         )
         out.append(
             f'<text x="{xi:.1f}" y="{mt + ph + 17:.1f}"'
-            f' font-size="9" text-anchor="middle" fill="#555" font-family="sans-serif">{int(round(xt))}°</text>'
+            f' font-size="9" text-anchor="middle" fill="#555" '
+            f'font-family="sans-serif">{int(round(xt))}°</text>'
         )
 
     # y-axis tick marks + labels
@@ -212,7 +214,8 @@ def render_trig_graph(
         y_label = f"{int(round(yt))}" if abs(yt - round(yt)) < 0.01 else f"{yt:.1f}"
         out.append(
             f'<text x="{ax_x - 6:.1f}" y="{yi + 3:.1f}"'
-            f' font-size="9" text-anchor="end" fill="#555" font-family="sans-serif">{y_label}</text>'
+            f' font-size="9" text-anchor="end" fill="#555" '
+            f'font-family="sans-serif">{y_label}</text>'
         )
 
     # range band edge lines (dashed, drawn over grid but under curves)
@@ -221,7 +224,8 @@ def render_trig_graph(
             byi = sy(band_y)
             out.append(
                 f'<line x1="{ml}" y1="{byi:.1f}" x2="{ml + pw}" y2="{byi:.1f}"'
-                f' stroke="#2563EB" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.6"/>'
+                f' stroke="#2563EB" stroke-width="1.2" '
+                f'stroke-dasharray="4,3" opacity="0.6"/>'
             )
 
     # curves (clipped)

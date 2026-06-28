@@ -6,8 +6,6 @@ from typing import Any, Callable, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 
-from .exceptions import AttemptValidationError
-
 
 class ArtifactType(str, Enum):
     srs_card = "srs_card"

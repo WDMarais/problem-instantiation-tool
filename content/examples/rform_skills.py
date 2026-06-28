@@ -63,7 +63,10 @@ def _gen_match(rng: random.Random) -> dict:
 rform_match_coefficients = Problem(
     id="rform_match_coefficients",
     type_id="rform_skill",
-    name="Expand R·sin(x−φ) via compound angle identity; match coefficients with a·sinx − b·cosx",
+    name=(
+        "Expand R·sin(x−φ) via compound angle identity; "
+        "match coefficients with a·sinx − b·cosx"
+    ),
     artifact_type="practice",
     problem_spec=_gen_match,
     verifier_spec=[

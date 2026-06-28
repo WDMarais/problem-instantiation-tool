@@ -6,7 +6,7 @@ from fractions import Fraction
 from random import Random
 
 from content.generators import Kind
-from content.generators.base import LinearGenerator, _SMALL_DENOMS, _VAR_POOL, _fmt
+from content.generators.base import _SMALL_DENOMS, _VAR_POOL, LinearGenerator, _fmt
 from content.sheet import FourStep
 
 
@@ -34,7 +34,8 @@ def _gen_integer(rng: Random) -> FourStep:
 
 
 def _gen_fraction(rng: Random) -> FourStep:
-    # a = b.numerator * k ensures x = a/b = k * b.denominator (integer, no LCD surprises).
+    # a = b.numerator * k ensures x = a/b = k * b.denominator
+    # (integer, no LCD surprises).
     d = rng.choice(_SMALL_DENOMS)
     p = rng.randint(1, d - 1)
     b = Fraction(p, d)
@@ -63,7 +64,8 @@ def _gen_symbol(rng: Random) -> FourStep:
 class XDenomGenerator(LinearGenerator):
     title = "a / x = b  —  Multiply Both Sides by x"
     caption = (
-        "In the previous sheet you multiplied both sides by p, r, m — x follows the same rule. "
+        "In the previous sheet you multiplied both sides by p, r, m — "
+        "x follows the same rule. "
         "Multiplying by x clears it from the denominator, leaving a = bx. "
         "You then solve that as before: divide both sides by b."
     )

@@ -6,7 +6,8 @@ Prerequisites: linear_balance.py (x±a=0), linear_xdenom.py (a/x=b).
 
 Usage:
     .venv/bin/python content/examples/linear_shift_xdenom.py
-    .venv/bin/python content/examples/linear_shift_xdenom.py --seed 42 --kinds integer fraction
+    .venv/bin/python content/examples/linear_shift_xdenom.py --seed 42
+        --kinds integer fraction
 """
 
 from __future__ import annotations

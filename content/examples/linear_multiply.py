@@ -4,7 +4,8 @@ Acquisition sheet: x/a = b (multiply both sides).
 
 Usage:
     .venv/bin/python content/examples/linear_multiply.py
-    .venv/bin/python content/examples/linear_multiply.py --seed 42 --kinds integer fraction
+    .venv/bin/python content/examples/linear_multiply.py --seed 42
+        --kinds integer fraction
 """
 
 from __future__ import annotations

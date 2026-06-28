@@ -6,7 +6,8 @@ Prerequisites: linear_shift_divide.py (ax±b=0).
 
 Usage:
     .venv/bin/python content/examples/linear_collect.py
-    .venv/bin/python content/examples/linear_collect.py --seed 42 --kinds integer fraction
+    .venv/bin/python content/examples/linear_collect.py --seed 42
+        --kinds integer fraction
 """
 
 from __future__ import annotations
