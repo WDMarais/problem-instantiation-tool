@@ -171,9 +171,6 @@ def main() -> None:
 
     # --- 6. Wrong-answer rejection: a wrong submission must NOT be rated correct ---
     # This catches verifiers that silently fall through to a wrong kind and
-    # always return is_correct because they compare canonical to itself.: a
-    # wrong submission must NOT be rated correct ---
-    # This catches verifiers that silently fall through to a wrong kind and
     # always return is_correct because they compare canonical to itself.
     def wrong_answer_rejected(pid: str) -> str:
         instance = engine.instantiate(pid, seed=42)
