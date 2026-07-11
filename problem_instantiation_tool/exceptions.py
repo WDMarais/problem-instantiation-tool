@@ -35,6 +35,30 @@ class AttemptValidationError(ProblemEngineError):
         self.reason = reason
 
 
+class ScopeViolationError(ProblemEngineError):
+    """A generated instance falls outside its declared in-scope predicate (F1): a
+    mathematically valid but *pedagogically wrong* draw — non-integer params, roots
+    out of the intended band, a discriminant that yields irrational/complex roots,
+    etc. The memo would be correct for a problem the tutee should never have seen.
+
+    Raised loudly so (a) a bad draw can never reach a tutee via the per-draw guard,
+    and (b) the sweep fails in CI. The fix is in the *content*: tighten the
+    generator's range or its predicate — never suppress it."""
+
+    def __init__(
+        self,
+        problem_id: str,
+        params: dict,
+        reasons: list[str],
+        seed: int | None = None,
+    ) -> None:
+        super().__init__(problem_id, reasons)
+        self.problem_id = problem_id
+        self.params = params
+        self.reasons = reasons
+        self.seed = seed
+
+
 class CanonicalResolutionError(ProblemEngineError):
     """A verifier step could not determine its canonical answer from the params:
     no ``param_key``, no conventional answer key (``answer``/``correct``), and the
