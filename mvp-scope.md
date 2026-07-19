@@ -8,6 +8,24 @@ substrate and is not re-scoped here.
 **Fenced OUT (do not let creep in):** paper assembly; Paper 2 entirely (Euclidean
 geometry, trig, analytic geometry, stats); the leaf-solver / operation-validity upgrade.
 
+## Why September — a deliberate forcing function (not an arbitrary date)
+
+September is chosen, not incidental. NSC finals run Oct/Nov, so the revision-panic demand
+curve for practice material is steepest in September — a randomised past-paper/worksheet
+generator has to land *then* to catch it. The date is used **as a forcing function**: a
+real external deadline that fences scope (everything above) and forces convergence to a
+shippable whole, precisely to counter the failure mode where the engine keeps getting
+re-built cleaner instead of finished.
+
+This also disambiguates the parallel `lang-pages` work: that repo advances the *same*
+underlying engine + content-graph model (while serving genuine personal CN/JP study on a
+WaniKani/Pandanese cadence), so it is legitimate engine-dogfooding — but it is **not** a
+substitute for finishing *this* vessel by the September date. The maths loop (e.g.
+dogfooding the same instantiate→memo→SRS loop through Siyavula content) is better served by
+shipping p-i-t on deadline than by further language work. lang-pages = engine proof +
+personal interest; p-i-t/September = the convergence commitment. (See also the
+`nsc_papers` cluster-map memory for the portfolio framing.)
+
 ---
 
 ## 1. Trustworthy memo — the property set + how each is tested
@@ -343,3 +361,126 @@ pressure and shipping a plausible-but-out-of-scope memo — which, in an educati
 fatal (strategy memory: "wrong memo = instant death"). §4c's bar — *no generator ships
 without predicate + sweep + round-trip + eyeball* — is the guardrail; treat it as the
 definition of done, not a nice-to-have.
+
+---
+
+## 6. Corpus-provenance layer — auditable NSC-fidelity over the strand generators (2026-07-19)
+
+Refinement from a design session. The strand-generator plan (§2, §4) stands as the **build
+unit**; this section adds the **credibility spine** it underweighted: variants that are
+*provably faithful to real NSC past-paper questions and their memos* — worth more to a paying
+parent than "generated practice." This layer adds a **credibility spine** (provenance map) over
+whatever generators exist. **CAVEAT (see 6j): the existing generators cover only ~10% of real
+exam marks** — they are foundational/Grade-10 algebra; the September build is dominated by
+*building the missing Grade-12 archetype families*, not by annotating what's there. Keep the
+generators (don't throw them away), but do not mistake them for coverage.
+
+**6a. Organize authoring by recurring ARCHETYPE, not by literal past-paper question.** A corpus
+audit (6 years, 2020–2025, P1+P2 — already on disk, see 6i) does NOT yield ~100 unique models — it yields ~15–20
+recurring *archetypes* (e.g. "double-angle→tan simplification", "compound-angle to a
+non-standard angle", "reduction-formulae → single ratio", "sqrt-domain sign analysis"), each
+recurring across years, and **most are already the existing strand generators** (§3b). The
+audit's output is a **provenance map** fanning ONE archetype-generator out to the MANY real
+questions it reproduces — not a pile of near-duplicate per-question models. (Worked example,
+Nov-2025 P2 Q5: one trig-manipulation archetype set covers all of 5.1–5.2; a variant on
+spine 40°/var p maps tick-for-tick onto the DBE memo, hitting even its alternate `sin(60°−θ)`
+branch.)
+
+**6b. The provenance-map artifact (emitted per variant).** Each variant carries metadata:
+`models: <DBE paper, year, Q#> [free memo url]`, total marks, and a per-item `skill →
+source-tick` map — so a teacher/parent opens the *free* DBE memo and checks correspondence
+item-by-item. Credibility = **verifiable correspondence to the authoritative free source**, not
+reproduction. Stronger than reworded past papers, and it sheds the copyright exposure (publish
+original variants that *reference*, never *repackage*, DBE works — see 6g).
+
+**6c. Skill tags come from a CONTROLLED VOCABULARY — this is the graph seed.** The `skill`
+labels are drawn from a fixed vocab, not free-typed per question. That makes the September
+corpus audit simultaneously the **first (node) layer of the eventual concept-graph**: the
+deferred composability/decomposition work later just adds *edges* (prerequisite / composes /
+interferes) over nodes authored here. Keeps September ON the shared-substrate horizontal
+(content-graph → projection → SRS), not parallel to it.
+
+**6d. What September RELAXES (deferred, not deleted):** graph edges, cross-concept
+composability, and adaptive "graph-schedules-you" sequencing. September ships flat
+archetype-nodes + variants + provenance; scheduler at its naive srs-tool floor or off. This is
+the deliberate MVP cut — defer exactly the unbuilt/hard layer, ship the mechanical/countable one.
+
+**6e. A third trust axis — fidelity (F3).** §1c's taxonomy (F1 scope, F2 render) gains **F3:
+correspondence-fidelity** — does the variant test the same skill and mark it the same way as the
+question it claims to model? Checked by: the skill-vocab tag matching the source question's
+assessed skill, and the variant memo's rubric mirroring the source memo's *mark allocation*
+(allocation = method = free to mirror; memo **prose** is re-authored in own words). Promotes the
+existing "exam-marker correspondence" mode (§1b) to the headline credibility mechanism for the
+paid tier.
+
+**6f. Not every question parameterizes — sort and declare the gap (no silent cap).** Audit sorts
+each question: (a) cleanly parameterizable [symbolic algebra/trig/calculus/analytic-geometry —
+the bulk; do these], (b) parameterizable-with-effort, (c) resistant [proofs, "interpret this
+graph", open modelling, "explain why"]. September ships (a), **explicitly lists** (b)/(c) as
+deferred; no 100%-coverage claim.
+
+**6g. IP posture (build-clean, then confirm).** Symbolic exercises are weak/commons copyright
+individually; protectable expression concentrates in (i) prose word-problem *scenarios*, (ii)
+memo *solution text*, (iii) a whole paper's *selection/arrangement*. So: re-author memo prose
+and any scenario wording; never repackage a full paper's question set; descriptive product name
+only ("… parameterized practice") + a visible *not affiliated with / endorsed by the DBE*
+disclaimer. A single attributed side-by-side (real Q vs variant) for comparison is defensible
+(fair dealing) — reproduction-as-product is not. Cheap SA-IP consult before charging.
+
+**6h. Win condition (falsifiable):** the cleanly-parameterizable questions of the available
+corpus (2020–2025, P1 & P2) are live as variant-generators, each with auto-memo + provenance
+map, and ≥K real students use it through the September revision window. Magnitude: six years ×
+(P1+P2) × ~10 questions ≈ order-of-100 source questions collapsing to ~15–20 archetype-generators
+— *finishable*, which is the whole point vs "a Siyavula pass."
+
+**6i. On-disk reality check (2026-07-19 receipts — grounds all of the above).** The design prose
+predates actually looking at what's on disk; the look sharpens it:
+- **Corpus is present and larger than assumed.** `nsc_papers/sources/maths/` — 33 DBE PDFs,
+  question+memo, **2020–2025 both P1 & P2** (six years, not three). `nsc_papers/transcriptions/
+  maths/` — **9 papers already transcribed** to a structured schema (`TEMPLATE.md`) that *already*
+  re-expresses memos as `step → result` + mark-notation `(1)/(CA)/(R)`, "only the national English
+  memo." So 6b/6e's re-authoring discipline is **baked into how the corpus was captured**, not a
+  later step. The `.tex` under `nsc_papers/resources/` is only the render skeleton (mustache
+  `{{PLACEHOLDER}}` shell + the NSC formula sheet) — F2, not a template stash.
+- **The engine is FORKED across two repos, over different substrates, modeling different
+  artifacts.** `p-i-t/content` = **11 generators + 32 example specs** (quadratic_roots,
+  trig_graph_properties, finance, statistics_grouped, probability_venn, monic_factorise,
+  zero_product_rule, exponent_laws, parallelogram/triangle_angles, the linear family…), own
+  `base.py`/`sheet.py`, **worksheet-shaped** (Sections A/B/C, FourStep/ThreeStep), **zero srs_tool
+  imports**. `nsc_papers/backend/competency` = 3 generators + verifiers, imports
+  `srs_tool.domain.AtomicConceptDef`, **SRS-atom-shaped**. So "the existing generators" (§6 opening)
+  is really the p-i-t set; the fuller engine and the corpus live in **different repos**.
+- **~~The real September gap is the BRIDGE, at 0%~~ — SUPERSEDED by 6j (the crosswalk was run).**
+  This bullet claimed archetype *coverage* was largely built (p-i-t ≈ the 15–20) and only the
+  corpus↔generator crosswalk was missing. **The crosswalk (`corpus-crosswalk.md`) falsified that:
+  existing archetypes cover only ~10% of real exam marks.** See 6j.
+- **Decision (made 2026-07-19): p-i-t / worksheet is the vessel.** SRS-atom (nsc_papers) is
+  deferred — SRS needs to start at latest at the start of the matric year for the glossary to
+  settle in students' heads; the window for this cohort is already gone, so SRS is prospective,
+  not September. Next: pull the corpus + 9 transcriptions into p-i-t; build the missing archetype
+  families there (see 6j). This is the concrete target of the memory's "collapse to ONE engine."
+
+**6j. Crosswalk result (2026-07-19 — `corpus-crosswalk.md`; corrects 6i's "coverage largely
+built").** Every question in the 8 transcribed papers was classified against the 32-archetype
+vocabulary. Result: **existing archetypes cover only 117/1200 marks ≈ 9.75% (class-a).** The 32
+archetypes are foundational/Grade-10 algebra; NSC Gr-12 finals are dominated by families with **no
+archetype**. Breakdown: **P1** — a 8.7% / b (buildable, unbuilt) 78% / c (resistant) 13.3%; **P2**
+— a 10.8% / b 57.8% / c **31.3%** (Euclidean-geometry proof wall). So the September gap is **build
+the missing Gr-12 families**, not annotate existing ones. But class-b is *parameterizable and
+sympy-verifiable* — buildable, just not built.
+- **Target P1, not whole papers.** P1 is 86.7% addressable (a+b); P2's 31% Euclidean-proof floor
+  can't be auto-generated/marked, so a variable-P2 product ships visibly broken.
+- **Ship topic-BUNDLES, compose to papers later.** A whole variable paper needs *every* family; a
+  bundle ("Calculus — variable practice + DBE-faithful memo") needs *one* and fans it across all
+  years — the §6a model, shippable incrementally.
+- **Build order (yield × engine-proximity):** Sequences & Series (extends `arithmetic_sequence`) →
+  Finance/Annuities (small, formula-driven) → Q1 algebra extensions (reuse quadratic verifiers) →
+  Calculus (zero existing, ~35 marks/P1, sympy-clean). Those four ≈ 61% of a P1 (per the
+  archetype-level re-estimate in `family-build-specs.md`; the crosswalk's coarser audit figures
+  put it at ~58%), mostly non-diagram.
+  Function-graphs + P2 families come after (renderer cost). Full GAP-family backlog in the artifact.
+  **Detailed build-spec for the four families** (archetype-by-archetype, verifiers, defer-lists,
+  velocity anchor) in `family-build-specs.md`: ~24 archetypes ≈ 92 marks/P1 (~70% of a P1 with
+  existing class-a) ≈ **~8 focused active-days** on the existing engine.
+- **Even the flagship Q5 example is only partially covered:** CAST/special-angle parts → `trig`
+  (a); double-angle/compound/reduction manipulation → unbuilt (b); prove/deduce → resistant (c).
