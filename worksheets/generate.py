@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import math
 import random
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,11 +29,32 @@ import sympy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from content.examples.arithmetic_sequence import (
+    find_missing as arith_find_missing,
+)
+from content.examples.arithmetic_sequence import (
+    find_n as arith_find_n,
+)
+from content.examples.arithmetic_sequence import (
+    find_term as arith_find_term,
+)
+from content.examples.arithmetic_sequence import (
+    next_terms as arith_next_terms,
+)
+from content.examples.arithmetic_sequence import (
+    nth_term_formula as arith_nth_term_formula,
+)
 from content.examples.factorise_skills import (
     factor_pairs_for_display,
     factorise_constraints,
     factorise_enumerate,
     factorise_sign_case,
+)
+from content.examples.geometric_sequence import (
+    find_term as geo_find_term,
+)
+from content.examples.geometric_sequence import (
+    nth_term_formula as geo_nth_term_formula,
 )
 from content.examples.monic_factorise import problem as monic_factorise_problem
 from content.examples.parallelogram_angles import (
@@ -45,6 +67,11 @@ from content.examples.rform_skills import (
     rform_find_R,
     rform_match_coefficients,
     rform_solve,
+)
+from content.examples.series import (
+    arithmetic_series_sum,
+    geometric_series_finite,
+    geometric_series_infinite,
 )
 from content.examples.triangle_angles import (
     triangle_angle_sum,
@@ -93,6 +120,7 @@ class ProblemCard:
         str
     ]  # LaTeX bodies for each solution step (without $ delimiters)
     graph_svg: str | None = None  # inline SVG string; None if no graph
+    marks: int | None = None  # total marks; set by _generate_cards from the spec
 
 
 # ── problem templates ─────────────────────────────────────────────────────────
@@ -732,7 +760,285 @@ def template_rform_solve(params: dict, **_) -> ProblemCard:
     )
 
 
+# ── sequences & series: display helpers ────────────────────────────────────────
+
+
+def _seq_display(terms: list) -> str:
+    """Semicolon-separated sequence terms with a trailing ellipsis (NSC style)."""
+    body = r";\ ".join(sympy.latex(sympy.sympify(t)) for t in terms)
+    return body + r";\ \dots"
+
+
+def _series_display(terms: list) -> str:
+    """Sign-aware '+'-joined series terms with a trailing ellipsis."""
+    parts = [sympy.latex(sympy.sympify(terms[0]))]
+    for t in terms[1:]:
+        s = sympy.latex(sympy.sympify(t))
+        if s.startswith("-"):
+            parts.append(" - " + s[1:].lstrip())
+        else:
+            parts.append(" + " + s)
+    return "".join(parts) + r" + \dots"
+
+
+# ── sequences & series: arithmetic templates ────────────────────────────────────
+
+
+def template_arith_nth_term_formula(params: dict, detail: str = "full") -> ProblemCard:
+    a, d = params["a"], params["d"]
+    ans = sympy.latex(params["answer"])
+    if detail == "full":
+        steps = [
+            rf"a = {a}, \quad d = {d}",
+            r"T_n = a + (n-1)d",
+            rf"T_n = {a} + (n-1)({d})",
+            rf"T_n = {ans}",
+        ]
+    else:
+        steps = [rf"a = {a}, \quad d = {d}", rf"T_n = {ans}"]
+    return ProblemCard(
+        instruction="Determine the general term $T_n$ of the arithmetic sequence:",
+        display_math=_seq_display([params["t1"], params["t2"], params["t3"]]),
+        worked_steps=steps,
+    )
+
+
+def template_arith_find_term(params: dict, detail: str = "full") -> ProblemCard:
+    a, d, nt, ans = params["a"], params["d"], params["n_target"], params["answer"]
+    t1, t2, t3 = a, a + d, a + 2 * d
+    if detail == "full":
+        steps = [
+            rf"a = {a}, \quad d = {d}",
+            r"T_n = a + (n-1)d",
+            rf"T_{{{nt}}} = {a} + ({nt}-1)({d})",
+            rf"T_{{{nt}}} = {ans}",
+        ]
+    else:
+        steps = [rf"T_{{{nt}}} = {a} + ({nt}-1)({d}) = {ans}"]
+    return ProblemCard(
+        instruction=(
+            rf"Calculate the ${nt}^{{\text{{th}}}}$ term, $T_{{{nt}}}$, "
+            "of the arithmetic sequence:"
+        ),
+        display_math=_seq_display([t1, t2, t3]),
+        worked_steps=steps,
+    )
+
+
+def template_arith_find_n(params: dict, detail: str = "full") -> ProblemCard:
+    a, d, target, ans = params["a"], params["d"], params["target"], params["answer"]
+    t1, t2, t3 = a, a + d, a + 2 * d
+    if detail == "full":
+        steps = [
+            rf"a = {a}, \quad d = {d}",
+            rf"T_n = {a} + (n-1)({d}) = {target}",
+            rf"n = {ans}",
+        ]
+    else:
+        steps = [rf"{a} + (n-1)({d}) = {target} \;\Rightarrow\; n = {ans}"]
+    return ProblemCard(
+        instruction=rf"Which term of the arithmetic sequence is equal to ${target}$?",
+        display_math=_seq_display([t1, t2, t3]),
+        worked_steps=steps,
+    )
+
+
+def template_arith_find_missing(params: dict, detail: str = "full") -> ProblemCard:
+    tb, ta, ans = params["t_before"], params["t_after"], params["answer"]
+    if detail == "full":
+        steps = [
+            r"x = \frac{T_{k-1} + T_{k+1}}{2} \quad (\text{arithmetic mean})",
+            rf"x = \frac{{{tb} + ({ta})}}{{2}}",
+            rf"x = {ans}",
+        ]
+    else:
+        steps = [rf"x = \frac{{{tb} + ({ta})}}{{2}} = {ans}"]
+    return ProblemCard(
+        instruction="Determine the missing term $x$ in the arithmetic sequence:",
+        display_math=rf"{tb};\ x;\ {ta}",
+        worked_steps=steps,
+    )
+
+
+def template_arith_next_terms(params: dict, detail: str = "full") -> ProblemCard:
+    d, shown = params["d"], params["terms_shown"]
+    n1, n2 = params["next_1"], params["next_2"]
+    last = shown[-1]
+    if detail == "full":
+        steps = [
+            rf"d = {shown[1]} - ({shown[0]}) = {d}",
+            rf"T_{{next}} = {last} + ({d}) = {n1}",
+            rf"{n1} + ({d}) = {n2}",
+        ]
+    else:
+        steps = [rf"d = {d}; \quad {n1},\ {n2}"]
+    return ProblemCard(
+        instruction="Write down the next two terms of the arithmetic sequence:",
+        display_math=_seq_display(shown),
+        worked_steps=steps,
+    )
+
+
+# ── sequences & series: geometric templates ─────────────────────────────────────
+
+
+def template_geo_nth_term_formula(params: dict, detail: str = "full") -> ProblemCard:
+    a, r = params["a"], params["r"]
+    ans = sympy.latex(params["answer"])
+    if detail == "full":
+        steps = [
+            rf"a = {a}, \quad r = {r}",
+            r"T_n = a \cdot r^{\,n-1}",
+            rf"T_n = ({a})({r})^{{\,n-1}}",
+            rf"T_n = {ans}",
+        ]
+    else:
+        steps = [rf"a = {a}, \quad r = {r}", rf"T_n = {ans}"]
+    return ProblemCard(
+        instruction="Determine the general term $T_n$ of the geometric sequence:",
+        display_math=_seq_display([params["t1"], params["t2"], params["t3"]]),
+        worked_steps=steps,
+    )
+
+
+def template_geo_find_term(params: dict, detail: str = "full") -> ProblemCard:
+    a, r, nt, ans = params["a"], params["r"], params["n_target"], params["answer"]
+    t1, t2, t3 = a, a * r, a * r * r
+    if detail == "full":
+        steps = [
+            rf"a = {a}, \quad r = {r}",
+            r"T_n = a \cdot r^{\,n-1}",
+            rf"T_{{{nt}}} = ({a})({r})^{{{nt}-1}}",
+            rf"T_{{{nt}}} = {ans}",
+        ]
+    else:
+        steps = [rf"T_{{{nt}}} = ({a})({r})^{{{nt}-1}} = {ans}"]
+    return ProblemCard(
+        instruction=(
+            rf"Calculate the ${nt}^{{\text{{th}}}}$ term, $T_{{{nt}}}$, "
+            "of the geometric sequence:"
+        ),
+        display_math=_seq_display([t1, t2, t3]),
+        worked_steps=steps,
+    )
+
+
+# ── sequences & series: series-sum templates ────────────────────────────────────
+
+
+def template_arith_series_sum(params: dict, detail: str = "full") -> ProblemCard:
+    a, d, n, ans = params["a"], params["d"], params["n"], params["answer"]
+    t1, t2, t3 = a, a + d, a + 2 * d
+    if detail == "full":
+        steps = [
+            rf"a = {a}, \quad d = {d}, \quad n = {n}",
+            r"S_n = \frac{n}{2}\left[\,2a + (n-1)d\,\right]",
+            rf"S_{{{n}}} = \frac{{{n}}}{{2}}\left[\,2({a}) + ({n}-1)({d})\,\right]",
+            rf"S_{{{n}}} = {ans}",
+        ]
+    else:
+        steps = [
+            r"S_n = \frac{n}{2}\left[\,2a + (n-1)d\,\right]",
+            rf"S_{{{n}}} = {ans}",
+        ]
+    return ProblemCard(
+        instruction=(
+            rf"Calculate the sum of the first ${n}$ terms of the arithmetic series:"
+        ),
+        display_math=_series_display([t1, t2, t3]),
+        worked_steps=steps,
+    )
+
+
+def template_geo_series_finite(params: dict, detail: str = "full") -> ProblemCard:
+    a, r, n, ans = params["a"], params["r"], params["n"], params["answer"]
+    t1, t2, t3 = a, a * r, a * r * r
+    if detail == "full":
+        steps = [
+            rf"a = {a}, \quad r = {r}, \quad n = {n}",
+            r"S_n = \frac{a\left(r^{\,n} - 1\right)}{r - 1}",
+            rf"S_{{{n}}} = \frac{{({a})\left({r}^{{{n}}} - 1\right)}}{{{r} - 1}}",
+            rf"S_{{{n}}} = {ans}",
+        ]
+    else:
+        steps = [
+            r"S_n = \frac{a\left(r^{\,n} - 1\right)}{r - 1}",
+            rf"S_{{{n}}} = {ans}",
+        ]
+    return ProblemCard(
+        instruction=(
+            rf"Calculate the sum of the first ${n}$ terms of the geometric series:"
+        ),
+        display_math=_series_display([t1, t2, t3]),
+        worked_steps=steps,
+    )
+
+
+def template_geo_series_infinite(params: dict, detail: str = "full") -> ProblemCard:
+    a, r, ans = params["a"], params["r"], params["answer"]
+    r_l, ans_l, abs_r_l = sympy.latex(r), sympy.latex(ans), sympy.latex(abs(r))
+    t1, t2, t3 = a, a * r, a * r * r
+    if detail == "full":
+        steps = [
+            rf"a = {a}, \quad r = {r_l}",
+            rf"|r| = {abs_r_l} < 1 \;\Rightarrow\; S_\infty \text{{ exists}}",
+            r"S_\infty = \frac{a}{1 - r}",
+            rf"S_\infty = \frac{{{a}}}{{1 - \left({r_l}\right)}}",
+            rf"S_\infty = {ans_l}",
+        ]
+    else:
+        steps = [
+            r"S_\infty = \frac{a}{1 - r}",
+            rf"S_\infty = \frac{{{a}}}{{1 - \left({r_l}\right)}} = {ans_l}",
+        ]
+    return ProblemCard(
+        instruction=r"Calculate $S_\infty$ of the convergent geometric series:",
+        display_math=_series_display([t1, t2, t3]),
+        worked_steps=steps,
+    )
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
+    arith_nth_term_formula.id: WorksheetEntry(
+        problem=arith_nth_term_formula,
+        template=template_arith_nth_term_formula,
+    ),
+    arith_find_term.id: WorksheetEntry(
+        problem=arith_find_term,
+        template=template_arith_find_term,
+    ),
+    arith_find_n.id: WorksheetEntry(
+        problem=arith_find_n,
+        template=template_arith_find_n,
+    ),
+    arith_find_missing.id: WorksheetEntry(
+        problem=arith_find_missing,
+        template=template_arith_find_missing,
+    ),
+    arith_next_terms.id: WorksheetEntry(
+        problem=arith_next_terms,
+        template=template_arith_next_terms,
+    ),
+    geo_nth_term_formula.id: WorksheetEntry(
+        problem=geo_nth_term_formula,
+        template=template_geo_nth_term_formula,
+    ),
+    geo_find_term.id: WorksheetEntry(
+        problem=geo_find_term,
+        template=template_geo_find_term,
+    ),
+    arithmetic_series_sum.id: WorksheetEntry(
+        problem=arithmetic_series_sum,
+        template=template_arith_series_sum,
+    ),
+    geometric_series_finite.id: WorksheetEntry(
+        problem=geometric_series_finite,
+        template=template_geo_series_finite,
+    ),
+    geometric_series_infinite.id: WorksheetEntry(
+        problem=geometric_series_infinite,
+        template=template_geo_series_infinite,
+    ),
     monic_factorise_problem.id: WorksheetEntry(
         problem=monic_factorise_problem,
         template=template_monic_factorise,
@@ -823,11 +1129,29 @@ PROBLEMS: dict[str, WorksheetEntry] = {
 REGISTRY = {id: e.problem for id, e in PROBLEMS.items()}
 TEMPLATES = {id: e.template for id, e in PROBLEMS.items()}
 
+# Curated multi-topic worksheets: name → [(problem_id, count), ...]. A bundle
+# produces one mixed paper spanning several archetypes, in listed order.
+BUNDLES: dict[str, list[tuple[str, int]]] = {
+    "sequences": [
+        ("arith_seq_nth_term_formula", 1),
+        ("arith_seq_find_term", 1),
+        ("arith_seq_find_n", 1),
+        ("geo_seq_nth_term_formula", 1),
+        ("geo_seq_find_term", 1),
+        ("arith_series_sum", 1),
+        ("geo_series_finite", 1),
+        ("geo_series_infinite", 1),
+    ],
+}
+
 
 # ── HTML / CSS ────────────────────────────────────────────────────────────────
 
 # $$ for display, $ for inline — works cleanly in controlled content with no
 # prose dollar signs.  List $$ first so auto-render greedily matches it before $.
+# NOTE: KaTeX is loaded from a CDN, so rendering (and --pdf) needs internet at
+# open/print time.  Self-hosting for a fully offline artifact is deferred to a
+# dedicated bundling commit.
 _KATEX = """\
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
@@ -870,23 +1194,25 @@ body {
 .page-header h1   { font-size: 12.5pt; font-weight: bold; }
 .page-header span { font-size: 9pt; color: #666; }
 
-/* problems flex-fills all remaining page height after the header */
+/* problems stack from the top of the page; leftover height is whitespace.
+   Boxes size to their content (no flex-stretch), so a box can never be
+   inflated past the page edge and clipped. */
 .problems {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 5mm;
+    gap: 6mm;
     min-height: 0;
 }
 
 .problem {
-    flex: 1;
     display: flex;
     flex-direction: column;
     border: 1px solid #bbb;
     border-radius: 2px;
-    padding: 4.5mm 5.5mm 3.5mm;
-    min-height: 0;
+    padding: 4.5mm 5.5mm 4mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
 }
 
 .problem-label {
@@ -897,6 +1223,16 @@ body {
     letter-spacing: 0.06em;
     margin-bottom: 2mm;
     flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+.problem-marks {
+    font-weight: normal;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #999;
+    font-style: italic;
 }
 
 .problem-instruction {
@@ -911,10 +1247,10 @@ body {
     flex-shrink: 0;
 }
 
-/* ruled working space: takes all remaining height inside the problem box */
+/* ruled working space: fixed height (~4 lines) so boxes stay compact and the
+   page never overflows. */
 .working-space {
-    flex: 1;
-    min-height: 55mm;
+    height: 36mm;
     background-image: repeating-linear-gradient(
         to bottom,
         transparent 0, transparent 8.5mm,
@@ -948,7 +1284,14 @@ body {
     font-size: 11pt;
 }
 .answer-num { font-weight: bold; color: #777; min-width: 7mm; padding-top: 0.15em; }
-.answer-steps { display: flex; flex-direction: column; gap: 1.5mm; }
+.answer-steps { display: flex; flex-direction: column; gap: 1.5mm; flex: 1; }
+.answer-marks {
+    font-weight: bold;
+    color: #444;
+    padding-top: 0.15em;
+    padding-left: 2mm;
+    white-space: nowrap;
+}
 
 /* graph + working-space side by side */
 .problem-body {
@@ -965,6 +1308,9 @@ body {
 .problem-body .working-space { min-height: 0; }
 
 @media print {
+    /* map each fixed 297mm .page onto exactly one physical sheet: no @page
+       margin (the .page padding is the margin), no browser-added splitting. */
+    @page       { size: A4; margin: 0; }
     body        { background: none; }
     .page       { margin: 0; }
     .answer-key { margin: 0; }
@@ -982,9 +1328,15 @@ def _problem_html(n: int, card: ProblemCard) -> str:
         )
     else:
         body = '<div class="working-space"></div>'
+    marks = (
+        f'<span class="problem-marks">({card.marks} '
+        f"{'mark' if card.marks == 1 else 'marks'})</span>"
+        if card.marks
+        else ""
+    )
     return (
         '<div class="problem">'
-        f'<div class="problem-label">Question {n}</div>'
+        f'<div class="problem-label">Question {n}{marks}</div>'
         f'<div class="problem-instruction">{card.instruction}</div>'
         f'<div class="problem-equation">$${card.display_math}$$</div>'
         f"{body}"
@@ -1015,10 +1367,16 @@ def _answer_key_html(cards: list[ProblemCard]) -> str:
     def _steps_html(steps: list[str]) -> str:
         return "".join(f"<div>${s}$</div>" for s in steps)
 
+    def _marks_html(card: ProblemCard) -> str:
+        if not card.marks:
+            return ""
+        return f'<span class="answer-marks">[{card.marks}]</span>'
+
     rows = "".join(
         f'<div class="answer-row">'
         f'<span class="answer-num">{i + 1}.</span>'
         f'<div class="answer-steps">{_steps_html(c.worked_steps)}</div>'
+        f"{_marks_html(c)}"
         f"</div>"
         for i, c in enumerate(cards)
     )
@@ -1030,7 +1388,20 @@ def _answer_key_html(cards: list[ProblemCard]) -> str:
     )
 
 
+# Each problem box is ~68mm tall (label + instruction + equation + 36mm ruled
+# space + padding + inter-box gap); a page has ~243mm of content height after the
+# margins and header.  Beyond 3 boxes the last one is clipped by overflow:hidden.
+_MAX_PER_PAGE = 3
+
+
 def build_html(title: str, cards: list[ProblemCard], per_page: int = 2) -> str:
+    if per_page > _MAX_PER_PAGE:
+        print(
+            f"warning: --per-page {per_page} exceeds the {_MAX_PER_PAGE}-box page "
+            f"capacity; boxes past #{_MAX_PER_PAGE} will be clipped. "
+            f"Use --per-page {_MAX_PER_PAGE} or fewer.",
+            file=sys.stderr,
+        )
     n_pages = math.ceil(len(cards) / per_page)
     pages = [
         _page_html(
@@ -1071,10 +1442,29 @@ def _generate_cards(
         params_list = entry.sequence_fn(rng, n)
     else:
         params_list = _generate_unique_retry(engine, entry.problem.id, rng, n)
-    return [
-        entry.template(params_list[i], detail="full" if i < long_count else "short")
-        for i in range(len(params_list))
-    ]
+    marks = _problem_marks(entry.problem)
+    cards = []
+    for i in range(len(params_list)):
+        card = entry.template(
+            params_list[i], detail="full" if i < long_count else "short"
+        )
+        if card.marks is None:
+            card.marks = marks
+        cards.append(card)
+    return cards
+
+
+def _problem_marks(problem: object) -> int | None:
+    """Total marks for a problem, summed across a multi-step verifier_spec.
+
+    verifier_spec is either a single dict or a list of per-step dicts; each
+    contributes ``marks_possible`` (default 1).  Returns None if absent.
+    """
+    spec = getattr(problem, "verifier_spec", None)
+    if spec is None:
+        return None
+    steps = spec if isinstance(spec, list) else [spec]
+    return sum(int(s.get("marks_possible", 1)) for s in steps)
 
 
 def _generate_unique_retry(
@@ -1103,12 +1493,78 @@ def _generate_unique_retry(
     return result
 
 
+# ── PDF export ────────────────────────────────────────────────────────────────
+
+
+def _find_chrome() -> str | None:
+    """Locate a Chrome/Chromium binary for headless PDF printing."""
+    import shutil
+
+    for name in (
+        "chromium",
+        "chromium-browser",
+        "google-chrome",
+        "google-chrome-stable",
+        "chrome",
+    ):
+        found = shutil.which(name)
+        if found:
+            return found
+    # Playwright-managed Chromium (installed in the user cache)
+    cache = Path.home() / ".cache" / "ms-playwright"
+    if cache.is_dir():
+        matches = sorted(cache.glob("chromium*/chrome-linux*/chrome"))
+        if matches:
+            return str(matches[-1])
+    return None
+
+
+def html_to_pdf(html_path: Path, pdf_path: Path) -> None:
+    """Render an HTML worksheet to PDF via headless Chrome.
+
+    The HTML is fully self-contained (KaTeX inlined), so no network is needed;
+    a virtual-time budget lets KaTeX finish typesetting before the print snapshot.
+    """
+    chrome = _find_chrome()
+    if chrome is None:
+        raise RuntimeError(
+            "no Chrome/Chromium found for --pdf; install chromium or run "
+            "'playwright install chromium'"
+        )
+    subprocess.run(
+        [
+            chrome,
+            "--headless",
+            "--disable-gpu",
+            "--no-sandbox",
+            "--no-pdf-header-footer",
+            "--virtual-time-budget=5000",
+            f"--print-to-pdf={pdf_path}",
+            html_path.resolve().as_uri(),
+        ],
+        check=True,
+        capture_output=True,
+    )
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Generate an HTML practice worksheet.")
-    ap.add_argument("n", type=int, help="Number of problems")
+    ap.add_argument(
+        "n",
+        type=int,
+        nargs="?",
+        default=None,
+        help="Number of problems (ignored when --bundle is given)",
+    )
+    ap.add_argument(
+        "--bundle",
+        default=None,
+        choices=list(BUNDLES),
+        help="Generate a curated multi-topic worksheet instead of N of one type",
+    )
     ap.add_argument(
         "--problem",
         default="monic_factorise",
@@ -1120,6 +1576,11 @@ def main() -> None:
     ap.add_argument("--title", default="Factorisation Practice")
     ap.add_argument("--per-page", type=int, default=2, dest="per_page")
     ap.add_argument("--output", default="worksheet.html")
+    ap.add_argument(
+        "--pdf",
+        action="store_true",
+        help="Also render a PDF next to the HTML (via headless Chrome)",
+    )
     ap.add_argument(
         "--long",
         type=int,
@@ -1133,16 +1594,31 @@ def main() -> None:
     )
     args = ap.parse_args()
 
-    entry = PROBLEMS[args.problem]
     engine = Engine(registry=InMemoryRegistry(REGISTRY))
     rng = random.Random(args.seed)
-    long_count = args.long_count if args.long_count is not None else args.n
 
-    cards = _generate_cards(engine, entry, rng, args.n, long_count)
+    if args.bundle is not None:
+        cards = []
+        for pid, count in BUNDLES[args.bundle]:
+            cards.extend(_generate_cards(engine, PROBLEMS[pid], rng, count, count))
+        label = f"bundle '{args.bundle}' ({len(cards)} problems)"
+    else:
+        if args.n is None:
+            ap.error("provide N (number of problems) or --bundle")
+        entry = PROBLEMS[args.problem]
+        long_count = args.long_count if args.long_count is not None else args.n
+        cards = _generate_cards(engine, entry, rng, args.n, long_count)
+        label = f"{args.n} problems ({args.problem})"
 
     html = build_html(args.title, cards, per_page=args.per_page)
-    Path(args.output).write_text(html, encoding="utf-8")
-    print(f"Wrote {args.n} problems ({args.problem}) → {args.output}")
+    html_path = Path(args.output)
+    html_path.write_text(html, encoding="utf-8")
+    print(f"Wrote {label} → {args.output}")
+
+    if args.pdf:
+        pdf_path = html_path.with_suffix(".pdf")
+        html_to_pdf(html_path, pdf_path)
+        print(f"Wrote PDF → {pdf_path}")
 
 
 if __name__ == "__main__":
