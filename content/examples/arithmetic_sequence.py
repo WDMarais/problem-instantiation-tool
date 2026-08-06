@@ -57,7 +57,7 @@ nth_term_formula = Problem(
     name="Write the general term Tₙ for an arithmetic sequence",
     artifact_type="practice",
     problem_spec=_gen_nth_term_formula,
-    verifier_spec={"kind": "symbolic_equality", "marks_possible": 1},
+    verifier_spec={"kind": "symbolic_equality", "marks_possible": 3},
 )
 
 
@@ -84,7 +84,7 @@ find_term = Problem(
     name="Calculate a specific term Tₙ of an arithmetic sequence",
     artifact_type="practice",
     problem_spec=_gen_find_term,
-    verifier_spec={"kind": "symbolic_equality", "marks_possible": 1},
+    verifier_spec={"kind": "symbolic_equality", "marks_possible": 2},
 )
 
 
@@ -111,7 +111,7 @@ find_n = Problem(
     name="Find which term of an arithmetic sequence equals a given value",
     artifact_type="practice",
     problem_spec=_gen_find_n,
-    verifier_spec={"kind": "symbolic_equality", "marks_possible": 1},
+    verifier_spec={"kind": "symbolic_equality", "marks_possible": 3},
 )
 
 
@@ -142,7 +142,7 @@ find_missing = Problem(
     name="Find the missing middle term in three consecutive arithmetic terms",
     artifact_type="practice",
     problem_spec=_gen_find_missing,
-    verifier_spec={"kind": "symbolic_equality", "marks_possible": 1},
+    verifier_spec={"kind": "symbolic_equality", "marks_possible": 2},
 )
 
 
