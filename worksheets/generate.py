@@ -40,6 +40,9 @@ from content.examples.arithmetic_sequence import (
     find_term as arith_find_term,
 )
 from content.examples.arithmetic_sequence import (
+    from_two_terms as arith_from_two_terms,
+)
+from content.examples.arithmetic_sequence import (
     next_terms as arith_next_terms,
 )
 from content.examples.arithmetic_sequence import (
@@ -52,7 +55,19 @@ from content.examples.factorise_skills import (
     factorise_sign_case,
 )
 from content.examples.geometric_sequence import (
+    find_missing as geo_find_missing,
+)
+from content.examples.geometric_sequence import (
+    find_n as geo_find_n,
+)
+from content.examples.geometric_sequence import (
     find_term as geo_find_term,
+)
+from content.examples.geometric_sequence import (
+    from_two_terms as geo_from_two_terms,
+)
+from content.examples.geometric_sequence import (
+    next_terms as geo_next_terms,
 )
 from content.examples.geometric_sequence import (
     nth_term_formula as geo_nth_term_formula,
@@ -76,6 +91,12 @@ from content.examples.series import (
     arithmetic_series_sum,
     geometric_series_finite,
     geometric_series_infinite,
+)
+from content.examples.series import (
+    find_n_from_sum as arith_series_find_n,
+)
+from content.examples.series import (
+    sigma_evaluate as arith_series_sigma,
 )
 from content.examples.triangle_angles import (
     triangle_angle_sum,
@@ -1088,6 +1109,152 @@ def template_geo_series_infinite(params: dict, detail: str = "full") -> ProblemC
     )
 
 
+# ── sequences & series: expansion batch ─────────────────────────────────────────
+
+
+def template_arith_from_two_terms(params: dict, detail: str = "full") -> ProblemCard:
+    a, d, p, q = params["a"], params["d"], params["p"], params["q"]
+    tp, tq = params["tp"], params["tq"]
+    if detail == "full":
+        steps = [
+            rf"T_{{{p}}} = a + {p - 1}d = {tp}",
+            rf"T_{{{q}}} = a + {q - 1}d = {tq}",
+            rf"({q} - {p})d = {tq} - ({tp}) \;\Rightarrow\; d = {d}",
+            rf"a = {tp} - {p - 1}({d}) = {a}",
+        ]
+    else:
+        steps = [rf"d = {d}, \quad a = {a}"]
+    return ProblemCard(
+        instruction=(
+            rf"In an arithmetic sequence $T_{{{p}}} = {tp}$ and $T_{{{q}}} = {tq}$. "
+            r"Determine $a$ and $d$."
+        ),
+        display_math=rf"T_{{{p}}} = {tp}, \quad T_{{{q}}} = {tq}",
+        worked_steps=steps,
+    )
+
+
+def template_geo_from_two_terms(params: dict, detail: str = "full") -> ProblemCard:
+    a, r, p, q = params["a"], params["r"], params["p"], params["q"]
+    tp, tq = params["tp"], params["tq"]
+    gap = q - p
+    ratio = sympy.Rational(tq, tp)
+    if detail == "full":
+        steps = [
+            rf"\frac{{T_{{{q}}}}}{{T_{{{p}}}}} = r^{{{q}-{p}}} "
+            rf"= \frac{{{tq}}}{{{tp}}} = {sympy.latex(ratio)}",
+            rf"r^{{{gap}}} = {sympy.latex(ratio)} \;\Rightarrow\; r = {r}",
+            rf"a = \frac{{T_{{{p}}}}}{{r^{{{p - 1}}}}} = {a}",
+        ]
+    else:
+        steps = [rf"r = {r}, \quad a = {a}"]
+    return ProblemCard(
+        instruction=(
+            rf"In a geometric sequence $T_{{{p}}} = {tp}$ and $T_{{{q}}} = {tq}$. "
+            r"Determine $a$ and $r$."
+        ),
+        display_math=rf"T_{{{p}}} = {tp}, \quad T_{{{q}}} = {tq}",
+        worked_steps=steps,
+    )
+
+
+def template_geo_find_missing(params: dict, detail: str = "full") -> ProblemCard:
+    tb, ta, ans = params["t_before"], params["t_after"], params["answer"]
+    if detail == "full":
+        steps = [
+            r"x^2 = T_{k-1} \cdot T_{k+1} \quad (\text{geometric mean})",
+            rf"x^2 = ({tb})({ta}) = {tb * ta}",
+            rf"x = \sqrt{{{tb * ta}}} = {ans}",
+        ]
+    else:
+        steps = [rf"x = \sqrt{{({tb})({ta})}} = {ans}"]
+    return ProblemCard(
+        instruction=(
+            "Determine the positive value of $x$ for which the following are three "
+            "consecutive terms of a geometric sequence:"
+        ),
+        display_math=rf"{tb};\ x;\ {ta}",
+        worked_steps=steps,
+    )
+
+
+def template_geo_find_n(params: dict, detail: str = "full") -> ProblemCard:
+    a, r, target, ans = params["a"], params["r"], params["target"], params["answer"]
+    t1, t2, t3 = a, a * r, a * r * r
+    if detail == "full":
+        steps = [
+            rf"a = {a}, \quad r = {r}",
+            rf"T_n = ({a})({r})^{{\,n-1}} = {target}",
+            rf"({r})^{{\,n-1}} = {target // a} \;\Rightarrow\; n = {ans}",
+        ]
+    else:
+        steps = [rf"({a})({r})^{{\,n-1}} = {target} \;\Rightarrow\; n = {ans}"]
+    return ProblemCard(
+        instruction=rf"Which term of the geometric sequence is equal to ${target}$?",
+        display_math=_seq_display([t1, t2, t3]),
+        worked_steps=steps,
+    )
+
+
+def template_geo_next_terms(params: dict, detail: str = "full") -> ProblemCard:
+    r, shown = params["r"], params["terms_shown"]
+    n1, n2 = params["next_1"], params["next_2"]
+    last = shown[-1]
+    if detail == "full":
+        steps = [
+            rf"r = \frac{{{shown[1]}}}{{{shown[0]}}} = {r}",
+            rf"T_{{next}} = ({last})({r}) = {n1}",
+            rf"({n1})({r}) = {n2}",
+        ]
+    else:
+        steps = [rf"r = {r}; \quad {n1},\ {n2}"]
+    return ProblemCard(
+        instruction="Write down the next two terms of the geometric sequence:",
+        display_math=_seq_display(shown),
+        worked_steps=steps,
+    )
+
+
+def template_arith_series_find_n(params: dict, detail: str = "full") -> ProblemCard:
+    a, d, sn, ans = params["a"], params["d"], params["sn"], params["answer"]
+    if detail == "full":
+        steps = [
+            rf"a = {a}, \quad d = {d}",
+            r"S_n = \frac{n}{2}\left[\,2a + (n-1)d\,\right]",
+            rf"{sn} = \frac{{n}}{{2}}\left[\,2({a}) + (n-1)({d})\,\right]",
+            rf"n = {ans} \quad (n > 0)",
+        ]
+    else:
+        steps = [rf"\tfrac{{n}}{{2}}[2({a}) + (n-1)({d})] = {sn} \Rightarrow n = {ans}"]
+    return ProblemCard(
+        instruction=(
+            rf"The sum of the first $n$ terms of an arithmetic series is ${sn}$. "
+            r"Determine the value of $n$."
+        ),
+        display_math=_series_display([a, a + d, a + 2 * d]),
+        worked_steps=steps,
+    )
+
+
+def template_arith_series_sigma(params: dict, detail: str = "full") -> ProblemCard:
+    p, q, n, ans = params["p"], params["q"], params["n"], params["answer"]
+    term = rf"{p}k {'+' if q >= 0 else '-'} {abs(q)}" if q else rf"{p}k"
+    sigma = rf"\sum_{{k=1}}^{{{n}}}\left({term}\right)"
+    if detail == "full":
+        steps = [
+            rf"{sigma} = {p}\sum_{{k=1}}^{{{n}}} k + \sum_{{k=1}}^{{{n}}} {q}",
+            rf"= {p}\cdot\frac{{{n}({n}+1)}}{{2}} + ({q})({n})",
+            rf"= {ans}",
+        ]
+    else:
+        steps = [rf"{sigma} = {ans}"]
+    return ProblemCard(
+        instruction="Evaluate:",
+        display_math=sigma,
+        worked_steps=steps,
+    )
+
+
 def _unlabeled_variant(problem, new_id: str):
     """A solving problem re-registered under a new id with its type word withheld
     from the prompt. Same generator, same verifier — only the instruction changes
@@ -1176,6 +1343,34 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     geometric_series_infinite.id: WorksheetEntry(
         problem=geometric_series_infinite,
         template=template_geo_series_infinite,
+    ),
+    arith_from_two_terms.id: WorksheetEntry(
+        problem=arith_from_two_terms,
+        template=template_arith_from_two_terms,
+    ),
+    geo_from_two_terms.id: WorksheetEntry(
+        problem=geo_from_two_terms,
+        template=template_geo_from_two_terms,
+    ),
+    geo_find_missing.id: WorksheetEntry(
+        problem=geo_find_missing,
+        template=template_geo_find_missing,
+    ),
+    geo_find_n.id: WorksheetEntry(
+        problem=geo_find_n,
+        template=template_geo_find_n,
+    ),
+    geo_next_terms.id: WorksheetEntry(
+        problem=geo_next_terms,
+        template=template_geo_next_terms,
+    ),
+    arith_series_find_n.id: WorksheetEntry(
+        problem=arith_series_find_n,
+        template=template_arith_series_find_n,
+    ),
+    arith_series_sigma.id: WorksheetEntry(
+        problem=arith_series_sigma,
+        template=template_arith_series_sigma,
     ),
     monic_factorise_problem.id: WorksheetEntry(
         problem=monic_factorise_problem,
@@ -1289,6 +1484,27 @@ BUNDLES: dict[str, list[tuple[str, int]]] = {
         ("geo_seq_nth_term_unlabeled", 1),
         ("geo_seq_find_term_unlabeled", 1),
         ("arith_seq_find_term_unlabeled", 1),
+    ],
+    # Full sequences & series revision across a few A4 pages: classification,
+    # both sequence types (incl. the two-terms and mean/next-term skills), and
+    # the series family (sums, sigma, find-n). ~18 problems.
+    "sequences_full": [
+        ("identify_sequence_type", 2),
+        ("arith_seq_nth_term_formula", 1),
+        ("arith_seq_find_term", 1),
+        ("arith_seq_find_missing", 1),
+        ("arith_seq_from_two_terms", 1),
+        ("geo_seq_nth_term_formula", 1),
+        ("geo_seq_find_term", 1),
+        ("geo_seq_find_missing", 1),
+        ("geo_seq_find_n", 1),
+        ("geo_seq_next_terms", 1),
+        ("geo_seq_from_two_terms", 1),
+        ("arith_series_sum", 1),
+        ("arith_series_find_n", 1),
+        ("arith_series_sigma", 1),
+        ("geo_series_finite", 1),
+        ("geo_series_infinite", 1),
     ],
 }
 

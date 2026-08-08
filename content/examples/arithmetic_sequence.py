@@ -179,6 +179,43 @@ next_terms = Problem(
 
 
 # ---------------------------------------------------------------------------
+# 6. from_two_terms — given two non-consecutive terms, find a and d
+# ---------------------------------------------------------------------------
+
+
+def _gen_from_two_terms(rng: random.Random) -> dict:
+    """Two terms Tₚ and T_q are given (not the first terms); the student sets up
+    two equations and solves for a and d. (q−p) always divides (T_q−Tₚ) since d is
+    an integer, so d and hence a come out integer."""
+    a = rng.randint(-15, 15)
+    d = rng.choice(_D_RANGE)
+    p = rng.randint(2, 5)
+    q = p + rng.randint(3, 7)
+    return {
+        "a": a,
+        "d": d,
+        "p": p,
+        "q": q,
+        "tp": a + (p - 1) * d,
+        "tq": a + (q - 1) * d,
+        "variant": f"arith2t:{a}:{d}:{p}:{q}",
+    }
+
+
+from_two_terms = Problem(
+    id="arith_seq_from_two_terms",
+    type_id="arithmetic_sequence",
+    name="Find a and d of an arithmetic sequence from two given terms",
+    artifact_type="practice",
+    problem_spec=_gen_from_two_terms,
+    verifier_spec=[
+        {"kind": "symbolic_equality", "marks_possible": 2, "param_key": "d"},
+        {"kind": "symbolic_equality", "marks_possible": 2, "param_key": "a"},
+    ],
+)
+
+
+# ---------------------------------------------------------------------------
 # Demo
 # ---------------------------------------------------------------------------
 

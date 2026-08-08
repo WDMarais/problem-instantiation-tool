@@ -85,6 +85,140 @@ find_term = Problem(
 
 
 # ---------------------------------------------------------------------------
+# 3. find_missing — the positive geometric mean between two terms
+# ---------------------------------------------------------------------------
+
+
+def _gen_find_missing(rng: random.Random) -> dict:
+    """Three consecutive terms with the middle unknown. Kept all-positive (a>0,
+    r>0) so the geometric mean x = √(t_before·t_after) is a single positive
+    integer with no ± ambiguity."""
+    a = rng.randint(1, 6)
+    r = rng.choice([2, 3])
+    pos = rng.randint(1, 4)  # index (0-based) of the term before the missing one
+    return {
+        "a": a,
+        "r": r,
+        "t_before": a * r**pos,
+        "t_after": a * r ** (pos + 2),
+        "answer": a * r ** (pos + 1),
+        "variant": f"geomiss:{a}:{r}:{pos}",
+    }
+
+
+find_missing = Problem(
+    id="geo_seq_find_missing",
+    type_id="geometric_sequence",
+    name="Find the positive geometric mean between two terms",
+    artifact_type="practice",
+    problem_spec=_gen_find_missing,
+    verifier_spec={"kind": "symbolic_equality", "marks_possible": 2},
+)
+
+
+# ---------------------------------------------------------------------------
+# 4. find_n — which term equals a given value
+# ---------------------------------------------------------------------------
+
+
+def _gen_find_n(rng: random.Random) -> dict:
+    a = rng.choice([1, 2, 3])
+    r = rng.choice([2, 3])
+    n_target = rng.randint(5, 8)
+    return {
+        "a": a,
+        "r": r,
+        "t1": a,
+        "t2": a * r,
+        "t3": a * r * r,
+        "target": a * r ** (n_target - 1),
+        "answer": n_target,
+        "variant": f"geofindn:{a}:{r}:{n_target}",
+    }
+
+
+find_n = Problem(
+    id="geo_seq_find_n",
+    type_id="geometric_sequence",
+    name="Find which term of a geometric sequence equals a given value",
+    artifact_type="practice",
+    problem_spec=_gen_find_n,
+    verifier_spec={"kind": "symbolic_equality", "marks_possible": 3},
+)
+
+
+# ---------------------------------------------------------------------------
+# 5. next_terms — give the next two terms after a shown subsequence
+# ---------------------------------------------------------------------------
+
+
+def _gen_next_terms(rng: random.Random) -> dict:
+    a = rng.choice(_A_RANGE)
+    r = rng.choice(_R_RANGE)
+    show_count = rng.randint(3, 4)
+    terms_shown = [a * r**i for i in range(show_count)]
+    return {
+        "a": a,
+        "r": r,
+        "terms_shown": terms_shown,
+        "next_1": a * r**show_count,
+        "next_2": a * r ** (show_count + 1),
+        "variant": f"geonext:{a}:{r}:{show_count}",
+    }
+
+
+next_terms = Problem(
+    id="geo_seq_next_terms",
+    type_id="geometric_sequence",
+    name="Give the next two terms of a geometric sequence",
+    artifact_type="practice",
+    problem_spec=_gen_next_terms,
+    verifier_spec=[
+        {"kind": "symbolic_equality", "marks_possible": 1, "param_key": "next_1"},
+        {"kind": "symbolic_equality", "marks_possible": 1, "param_key": "next_2"},
+    ],
+)
+
+
+# ---------------------------------------------------------------------------
+# 6. from_two_terms — find a and r from two given terms
+# ---------------------------------------------------------------------------
+
+
+def _gen_from_two_terms(rng: random.Random) -> dict:
+    """Two terms Tₚ and T_q are given. r^(q−p) = T_q/Tₚ, so the student takes a
+    (q−p)-th root. Gap is odd whenever r may be negative, so the sign of r is
+    recoverable (an even power would hide it)."""
+    a = rng.choice([x for x in range(-4, 5) if x != 0])
+    r = rng.choice([2, 3, -2, -3])
+    p = rng.choice([1, 2, 3])
+    gap = rng.choice([1, 3]) if r < 0 else rng.choice([1, 2, 3])
+    q = p + gap
+    return {
+        "a": a,
+        "r": r,
+        "p": p,
+        "q": q,
+        "tp": a * r ** (p - 1),
+        "tq": a * r ** (q - 1),
+        "variant": f"geo2t:{a}:{r}:{p}:{q}",
+    }
+
+
+from_two_terms = Problem(
+    id="geo_seq_from_two_terms",
+    type_id="geometric_sequence",
+    name="Find a and r of a geometric sequence from two given terms",
+    artifact_type="practice",
+    problem_spec=_gen_from_two_terms,
+    verifier_spec=[
+        {"kind": "symbolic_equality", "marks_possible": 2, "param_key": "r"},
+        {"kind": "symbolic_equality", "marks_possible": 2, "param_key": "a"},
+    ],
+)
+
+
+# ---------------------------------------------------------------------------
 # Demo
 # ---------------------------------------------------------------------------
 

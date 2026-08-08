@@ -117,6 +117,72 @@ geometric_series_infinite = Problem(
 
 
 # ---------------------------------------------------------------------------
+# 4. find_n_from_sum — given Sₙ, find how many terms (arithmetic)
+# ---------------------------------------------------------------------------
+
+
+def _gen_find_n_from_sum(rng: random.Random) -> dict:
+    """Given the sum of the first n terms, find n — i.e. solve the quadratic
+    Sₙ = n/2[2a+(n-1)d] for n. Kept a>0, d>0 so the partial sums are strictly
+    increasing and n is the unique positive root (no spurious second solution)."""
+    a = rng.randint(1, 10)
+    d = rng.randint(1, 6)
+    n = rng.randint(5, 12)
+    total = sum(a + i * d for i in range(n))
+    return {
+        "a": a,
+        "d": d,
+        "t1": a,
+        "t2": a + d,
+        "t3": a + 2 * d,
+        "sn": total,
+        "answer": sympy.Integer(n),
+        "variant": f"find_n:{a}:{d}:{n}",
+    }
+
+
+find_n_from_sum = Problem(
+    id="arith_series_find_n",
+    type_id="arithmetic_series",
+    name="Find the number of terms of an arithmetic series from its sum",
+    artifact_type="practice",
+    problem_spec=_gen_find_n_from_sum,
+    verifier_spec={"kind": "symbolic_equality", "marks_possible": 4},
+)
+
+
+# ---------------------------------------------------------------------------
+# 5. sigma_evaluate — evaluate a linear sum written in sigma notation
+# ---------------------------------------------------------------------------
+
+
+def _gen_sigma_evaluate(rng: random.Random) -> dict:
+    """Evaluate Σₖ₌₁ⁿ (p·k + q). It is an arithmetic series (first term p+q,
+    difference p), so the value is p·n(n+1)/2 + q·n — always an integer."""
+    p = rng.randint(1, 4)
+    q = rng.randint(-5, 5)
+    n = rng.randint(4, 8)
+    total = sum(p * k + q for k in range(1, n + 1))
+    return {
+        "p": p,
+        "q": q,
+        "n": n,
+        "answer": sympy.Integer(total),
+        "variant": f"sigma:{p}:{q}:{n}",
+    }
+
+
+sigma_evaluate = Problem(
+    id="arith_series_sigma",
+    type_id="arithmetic_series",
+    name="Evaluate a linear series given in sigma notation",
+    artifact_type="practice",
+    problem_spec=_gen_sigma_evaluate,
+    verifier_spec={"kind": "symbolic_equality", "marks_possible": 3},
+)
+
+
+# ---------------------------------------------------------------------------
 # Demo
 # ---------------------------------------------------------------------------
 
