@@ -614,6 +614,103 @@ def test_self_graded_non_bool_raises_attempt_validation_error(self_graded_instan
     assert exc_info.value.step_index == 0
 
 
+# ---------------------------------------------------------------------------
+# Numeric verifier — absolute + relative tolerance
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def numeric_abs_only_instance():
+    """numeric_equality with absolute tolerance only (rel_tol defaults to 0).
+    Canonical at R900k loan scale: 900000.0. Models the pre-finance engine."""
+    problem = Problem(
+        id="loan_balance_abs",
+        type_id="finance",
+        name="Outstanding loan balance",
+        artifact_type="practice",
+        problem_spec={"kind": "fixed_answer", "answer": 900000.0},
+        verifier_spec={
+            "kind": "numeric_equality",
+            "tolerance": 0.01,
+            "marks_possible": 1,
+        },
+    )
+    registry = InMemoryRegistry({"loan_balance_abs": problem})
+    engine = Engine(registry=registry)
+    return engine.instantiate("loan_balance_abs", params={"answer": 900000.0})
+
+
+@pytest.fixture
+def numeric_rel_tol_instance():
+    """numeric_equality with abs 0.01 AND rel_tol 1e-4. Canonical 900000.0, so
+    the relative band is 1e-4 * 900000 = R90 — wide enough to absorb a student's
+    period-rate rounding on a large principal."""
+    problem = Problem(
+        id="loan_balance_rel",
+        type_id="finance",
+        name="Outstanding loan balance (relative tolerance)",
+        artifact_type="practice",
+        problem_spec={"kind": "fixed_answer", "answer": 900000.0},
+        verifier_spec={
+            "kind": "numeric_equality",
+            "tolerance": 0.01,
+            "rel_tol": 1e-4,
+            "marks_possible": 1,
+        },
+    )
+    registry = InMemoryRegistry({"loan_balance_rel": problem})
+    engine = Engine(registry=registry)
+    return engine.instantiate("loan_balance_rel", params={"answer": 900000.0})
+
+
+@pytest.mark.rate
+def test_numeric_abs_tolerance_accepts_within_band(numeric_abs_only_instance):
+    """Within the absolute band (R0.01): still correct."""
+    attempt = SolutionAttempt(steps=[SubmittedStep(900000.008)])
+    rating = numeric_abs_only_instance.verifier.rate(attempt)
+    assert rating.steps[0].mistake_type == "correct"
+    assert rating.steps[0].verifier_type == "numeric_equality"
+
+
+@pytest.mark.rate
+def test_numeric_abs_only_rejects_large_scale_rounding(numeric_abs_only_instance):
+    """Backward-compat guard: with no rel_tol, a R45 gap on a R900k principal is
+    still a computation_error — the old absolute-only behaviour is untouched."""
+    attempt = SolutionAttempt(steps=[SubmittedStep(900045.0)])
+    rating = numeric_abs_only_instance.verifier.rate(attempt)
+    assert rating.steps[0].mistake_type == "computation_error"
+    assert rating.steps[0].marks_awarded == 0
+
+
+@pytest.mark.rate
+def test_numeric_rel_tolerance_accepts_large_scale_rounding(numeric_rel_tol_instance):
+    """The fix: R45 off R900k is within rel_tol 1e-4 (band R90) → correct, even
+    though it blows past the R0.01 absolute band."""
+    attempt = SolutionAttempt(steps=[SubmittedStep(900045.0)])
+    rating = numeric_rel_tol_instance.verifier.rate(attempt)
+    assert rating.steps[0].mistake_type == "correct"
+    assert rating.steps[0].marks_awarded == 1
+
+
+@pytest.mark.rate
+def test_numeric_rel_tolerance_still_rejects_gross_error(numeric_rel_tol_instance):
+    """rel_tol widens the band, it does not remove it: R2000 off R900k exceeds
+    both the abs band and the R90 relative band → computation_error."""
+    attempt = SolutionAttempt(steps=[SubmittedStep(902000.0)])
+    rating = numeric_rel_tol_instance.verifier.rate(attempt)
+    assert rating.steps[0].mistake_type == "computation_error"
+    assert rating.steps[0].marks_awarded == 0
+
+
+@pytest.mark.rate
+def test_numeric_rel_tolerance_keeps_absolute_band(numeric_rel_tol_instance):
+    """OR semantics, not AND: a tiny absolute gap is still accepted via abs_tol
+    even when rel_tol is set (matters when the canonical is near zero)."""
+    attempt = SolutionAttempt(steps=[SubmittedStep(900000.005)])
+    rating = numeric_rel_tol_instance.verifier.rate(attempt)
+    assert rating.steps[0].mistake_type == "correct"
+
+
 @pytest.fixture
 def multi_step_independent_instance():
     """3-step problem with independent answers selected by param_key.

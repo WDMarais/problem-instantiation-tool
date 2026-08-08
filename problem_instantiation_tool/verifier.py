@@ -174,6 +174,7 @@ class _StepSpec:
         )
         self.normalize: list[str] = spec_dict.get("normalize", [])
         self.tolerance: float = spec_dict.get("tolerance", 0.0)
+        self.rel_tol: float = spec_dict.get("rel_tol", 0.0)
         self.partial_credit: bool = spec_dict.get("partial_credit", True)
 
 
@@ -220,9 +221,10 @@ def _rate_submitted_step(
         return MistakeType.computation_error, 0
 
     if kind == "numeric_equality":
-        tolerance = spec.tolerance
         try:
-            if abs(float(student_value) - float(spec.canonical)) <= tolerance:
+            diff = abs(float(student_value) - float(spec.canonical))
+            rel_band = spec.rel_tol * abs(float(spec.canonical))
+            if diff <= spec.tolerance or diff <= rel_band:
                 return MistakeType.correct, spec.marks_possible
         except (TypeError, ValueError):
             pass
