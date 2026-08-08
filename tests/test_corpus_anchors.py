@@ -22,6 +22,10 @@ from content.examples.compound_periodic import (
     compound_amount,
     compound_rate,
 )
+from content.examples.future_value_annuity import (
+    fv_annuity_amount,
+    fv_annuity_deposit,
+)
 from content.examples.nominal_effective import nominal_to_effective
 
 # Every anchored problem type in the family. New anchored types get appended
@@ -31,6 +35,8 @@ ANCHORED = [
     compound_rate,
     appreciation,
     nominal_to_effective,
+    fv_annuity_amount,
+    fv_annuity_deposit,
 ]
 
 
