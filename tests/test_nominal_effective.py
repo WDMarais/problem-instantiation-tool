@@ -81,9 +81,5 @@ def test_rejects_wrong_by_a_tenth_of_a_percent():
         assert not _rate(inst, inst.params["answer"] + 0.1).is_correct, prob.id
 
 
-def test_corpus_anchor_2023_q612_nine_point_zero_six():
-    """2023 Nov Q6.1.2: a nominal rate compounded monthly → effective 9.06%.
-    Confirms the formula produces the memo figure for a known corpus case."""
-    i_nom, m = 8.7, 12
-    i_eff = ((1 + (i_nom / 100) / m) ** m - 1) * 100
-    assert round(i_eff, 2) == 9.06
+# The 2023 Q6.1.2 → 9.06% memo check now lives in the corpus-anchor sweep
+# (tests/test_corpus_anchors.py), driven by nominal_to_effective's corpus_anchor.

@@ -80,6 +80,26 @@ class Verifier(Protocol):
     ) -> SolutionRating: ...
 
 
+class CorpusAnchor(BaseModel):
+    """Factual provenance: the real past-paper item a problem type is calibrated
+    against, plus that item's published memo figure.
+
+    Facts and a citation only — deliberately has nowhere to store the question's
+    wording or structure. Past-paper items are a *sanity check* on our
+    independent generate-and-grade mechanism, never a source we copy from
+    (project corpus-provenance rule). ``memo_value`` (with ``inputs``) lets a
+    test reproduce the real answer from the exam's given numbers and fail if our
+    engine ever drifts off it. ``marks`` is the paper's part-mark, cross-checked
+    against the verifier's own marks so the two can't silently diverge.
+    """
+
+    paper: str  # citation, e.g. "2023 Nov P1"
+    question: str  # citation, e.g. "6.1.2"
+    marks: int | None = None
+    memo_value: float | None = None  # published answer, for the anchor test
+    inputs: dict[str, float] | None = None  # exam's given numbers → memo_value
+
+
 class Problem(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -95,6 +115,7 @@ class Problem(BaseModel):
     source_id: str | None = None
     blank_steps: list[int] | None = None
     param_names: frozenset[str] | None = None
+    corpus_anchor: CorpusAnchor | None = None
 
     @model_validator(mode="after")
     def _validate_artifact_constraints(self) -> Problem:

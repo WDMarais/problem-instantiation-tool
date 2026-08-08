@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import random
 
-from problem_instantiation_tool.schemas import Problem
+from problem_instantiation_tool.schemas import CorpusAnchor, Problem
 
 # Corpus-grounded parameter menus.
 _PRINCIPALS = [5000, 12000, 25000, 48000, 85000, 150000, 320000, 750000, 1600000]
@@ -88,6 +88,7 @@ compound_amount = Problem(
     artifact_type="practice",
     problem_spec=_gen_compound_amount,
     verifier_spec={**_MONEY_VERIFIER, "marks_possible": 2},
+    corpus_anchor=CorpusAnchor(paper="2024 Nov P1", question="7.1", marks=2),
 )
 
 
@@ -159,6 +160,7 @@ compound_rate = Problem(
     artifact_type="practice",
     problem_spec=_gen_compound_rate,
     verifier_spec={**_MONEY_VERIFIER, "marks_possible": 3},
+    corpus_anchor=CorpusAnchor(paper="2023 Nov P1", question="6.1", marks=3),
 )
 
 
@@ -190,6 +192,7 @@ appreciation = Problem(
     artifact_type="practice",
     problem_spec=_gen_appreciation,
     verifier_spec={**_MONEY_VERIFIER, "marks_possible": 2},
+    corpus_anchor=CorpusAnchor(paper="2025 Nov P1", question="7.1", marks=2),
 )
 
 

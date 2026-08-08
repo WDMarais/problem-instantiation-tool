@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import random
 
-from problem_instantiation_tool.schemas import Problem
+from problem_instantiation_tool.schemas import CorpusAnchor, Problem
 
 _NOMINAL_RATES = [6, 6.8, 7.8, 8.7, 9.5, 11.2, 12, 13.5, 15]
 _M = [4, 12]  # quarterly, monthly — m = 1 makes the two rates equal (degenerate)
@@ -61,6 +61,13 @@ nominal_to_effective = Problem(
     artifact_type="practice",
     problem_spec=_gen_nominal_to_effective,
     verifier_spec=dict(_RATE_VERIFIER),
+    corpus_anchor=CorpusAnchor(
+        paper="2023 Nov P1",
+        question="6.1.2",
+        marks=2,
+        memo_value=9.06,
+        inputs={"nominal_rate": 8.7, "compounding": 12},
+    ),
 )
 
 
