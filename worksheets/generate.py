@@ -438,23 +438,29 @@ def template_trig_graph_solve(params: dict, **_) -> ProblemCard:
     )
 
 
-def _parallelogram_pts(angle_a_deg: float, base: float, side: float) -> dict:
-    """Parallelogram ABCD (A bottom-left, going A→B→C→D anticlockwise) with the
-    interior angle at A equal to angle_a_deg. Layout coords, y-up. Pose (rotation,
-    scale, reflection) is applied later by the renderer."""
+def _parallelogram_pts(
+    angle_a_deg: float, base: float, side: float, labels: dict
+) -> dict:
+    """Parallelogram with roles A→B→C→D (A bottom-left, anticlockwise) and the
+    interior angle at role A equal to angle_a_deg. Layout coords, y-up. Pose
+    (rotation, scale, reflection) is applied later by the renderer. Point *names*
+    stay the role keys (referenced by Angle/Segment); `labels` is the letter each
+    role shows the student, so the naming can vary without touching the geometry."""
     th = math.radians(angle_a_deg)
     dx, dy = side * math.cos(th), side * math.sin(th)
     return {
-        "A": Point("A", 0.0, 0.0),
-        "B": Point("B", base, 0.0),
-        "C": Point("C", base + dx, dy),
-        "D": Point("D", dx, dy),
+        "A": Point("A", 0.0, 0.0, label=labels["A"]),
+        "B": Point("B", base, 0.0, label=labels["B"]),
+        "C": Point("C", base + dx, dy, label=labels["C"]),
+        "D": Point("D", dx, dy, label=labels["D"]),
     }
 
 
 def _pgram_geometry(params: dict) -> dict:
     """Shared figure inputs from params: posed points + sides + Pose."""
-    pts = _parallelogram_pts(params["angle_a_deg"], params["base"], params["side"])
+    pts = _parallelogram_pts(
+        params["angle_a_deg"], params["base"], params["side"], params["labels"]
+    )
     return {
         "pts": pts,
         "sides": _parallelogram_sides(),
@@ -475,6 +481,8 @@ def _parallelogram_sides() -> list[Segment]:
 def template_parallelogram_cointerior(params: dict, **_) -> ProblemCard:
     given = params["given_deg"]
     ans = int(params["answer"])
+    lab = params["labels"]
+    a, b, c, d = lab["A"], lab["B"], lab["C"], lab["D"]
     g = _pgram_geometry(params)
     fig = GeometryFigure(
         points=list(g["pts"].values()),
@@ -487,16 +495,16 @@ def template_parallelogram_cointerior(params: dict, **_) -> ProblemCard:
     )
     return ProblemCard(
         instruction=(
-            r"$ABCD$ is a parallelogram. Determine the size of $\hat{B}$, "
-            r"giving a reason."
+            rf"${a}{b}{c}{d}$ is a parallelogram. Determine the size of "
+            rf"$\hat{{{b}}}$, giving a reason."
         ),
-        display_math=rf"\hat{{A}} = {given}^\circ",
+        display_math=rf"\hat{{{a}}} = {given}^\circ",
         worked_steps=[
             (
-                r"\hat{A} + \hat{B} = 180^\circ \quad "
-                r"(\text{co-interior } \angle\text{s};\ AD \parallel BC)"
+                rf"\hat{{{a}}} + \hat{{{b}}} = 180^\circ \quad "
+                rf"(\text{{co-interior }} \angle\text{{s}};\ {a}{d} \parallel {b}{c})"
             ),
-            rf"\hat{{B}} = 180^\circ - {given}^\circ = {ans}^\circ",
+            rf"\hat{{{b}}} = 180^\circ - {given}^\circ = {ans}^\circ",
         ],
         graph_svg=render_figure(fig),
     )
@@ -505,6 +513,8 @@ def template_parallelogram_cointerior(params: dict, **_) -> ProblemCard:
 def template_parallelogram_opposite(params: dict, **_) -> ProblemCard:
     given = params["given_deg"]
     ans = int(params["answer"])
+    lab = params["labels"]
+    a, b, c, d = lab["A"], lab["B"], lab["C"], lab["D"]
     g = _pgram_geometry(params)
     fig = GeometryFigure(
         points=list(g["pts"].values()),
@@ -517,16 +527,16 @@ def template_parallelogram_opposite(params: dict, **_) -> ProblemCard:
     )
     return ProblemCard(
         instruction=(
-            r"$ABCD$ is a parallelogram. Determine the size of $\hat{C}$, "
-            r"giving a reason."
+            rf"${a}{b}{c}{d}$ is a parallelogram. Determine the size of "
+            rf"$\hat{{{c}}}$, giving a reason."
         ),
-        display_math=rf"\hat{{A}} = {given}^\circ",
+        display_math=rf"\hat{{{a}}} = {given}^\circ",
         worked_steps=[
             (
-                r"\hat{C} = \hat{A} \quad "
-                r"(\text{opposite } \angle\text{s of a } \parallel^{\text{m}})"
+                rf"\hat{{{c}}} = \hat{{{a}}} \quad "
+                rf"(\text{{opposite }} \angle\text{{s of a }} \parallel^{{\text{{m}}}})"
             ),
-            rf"\hat{{C}} = {ans}^\circ",
+            rf"\hat{{{c}}} = {ans}^\circ",
         ],
         graph_svg=render_figure(fig),
     )
@@ -535,6 +545,8 @@ def template_parallelogram_opposite(params: dict, **_) -> ProblemCard:
 def template_parallelogram_alternate(params: dict, **_) -> ProblemCard:
     given = params["given_deg"]
     ans = int(params["answer"])
+    lab = params["labels"]
+    a, b, c, d = lab["A"], lab["B"], lab["C"], lab["D"]
     g = _pgram_geometry(params)
     fig = GeometryFigure(
         points=list(g["pts"].values()),
@@ -547,16 +559,16 @@ def template_parallelogram_alternate(params: dict, **_) -> ProblemCard:
     )
     return ProblemCard(
         instruction=(
-            r"$ABCD$ is a parallelogram with diagonal $AC$. "
-            r"Determine $B\hat{A}C$, giving a reason."
+            rf"${a}{b}{c}{d}$ is a parallelogram with diagonal ${a}{c}$. "
+            rf"Determine ${b}\hat{{{a}}}{c}$, giving a reason."
         ),
-        display_math=rf"D\hat{{C}}A = {given}^\circ",
+        display_math=rf"{d}\hat{{{c}}}{a} = {given}^\circ",
         worked_steps=[
             (
-                r"B\hat{A}C = D\hat{C}A \quad "
-                r"(\text{alternate } \angle\text{s};\ AB \parallel DC)"
+                rf"{b}\hat{{{a}}}{c} = {d}\hat{{{c}}}{a} \quad "
+                rf"(\text{{alternate }} \angle\text{{s}};\ {a}{b} \parallel {d}{c})"
             ),
-            rf"B\hat{{A}}C = {ans}^\circ",
+            rf"{b}\hat{{{a}}}{c} = {ans}^\circ",
         ],
         graph_svg=render_figure(fig),
     )

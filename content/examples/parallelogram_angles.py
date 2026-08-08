@@ -39,6 +39,30 @@ def _given_adjacent(rng: random.Random) -> int:
     return rng.randint(102, 148)
 
 
+# Vertex namings for the figure/prose. The geometry is fixed by the *roles*
+# A→B→C→D (anticlockwise); these are only the letters shown to the student, so a
+# fixed "ABCD" can't become a notational crutch. Each entry lists four distinct
+# letters in role order (role A first — the given-angle vertex). Kept to
+# consecutive, exam-plausible runs; O/I excluded (read as 0/1).
+_VERTEX_NAMINGS: tuple[tuple[str, str, str, str], ...] = (
+    ("A", "B", "C", "D"),
+    ("P", "Q", "R", "S"),
+    ("K", "L", "M", "N"),
+    ("D", "E", "F", "G"),
+    ("W", "X", "Y", "Z"),
+    ("Q", "R", "S", "T"),
+    ("E", "F", "G", "H"),
+    ("T", "U", "V", "W"),
+)
+
+
+def _vertex_labels(rng: random.Random) -> dict[str, str]:
+    """A role→letter naming for one parallelogram, chosen from the exam-plausible
+    pool. Pure display: rotation/reflection of the *letters*, never the shape."""
+    a, b, c, d = rng.choice(_VERTEX_NAMINGS)
+    return {"A": a, "B": b, "C": c, "D": d}
+
+
 def _random_pose(rng: random.Random) -> dict:
     """A similarity transform (plain data; the template builds the Pose). Pure
     visual variety — rotation/scale/reflection preserve angles, so the answer and
@@ -65,6 +89,7 @@ def _gen_cointerior(rng: random.Random) -> dict:
         "angle_a_deg": given,  # given is the angle at A; kept to-scale
         "pose": _random_pose(rng),
         **_shape(rng),
+        "labels": _vertex_labels(rng),
         "answer": sympy.Integer(180 - given),
     }
 
@@ -76,6 +101,7 @@ def _gen_opposite(rng: random.Random) -> dict:
         "angle_a_deg": given,
         "pose": _random_pose(rng),
         **_shape(rng),
+        "labels": _vertex_labels(rng),
         "answer": sympy.Integer(given),
     }
 
@@ -98,6 +124,7 @@ def _gen_alternate(rng: random.Random) -> dict:
         "base": round(base, 2),
         "side": round(side, 2),
         "pose": _random_pose(rng),
+        "labels": _vertex_labels(rng),
         "answer": sympy.Integer(given),
     }
 
