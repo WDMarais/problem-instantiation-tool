@@ -22,6 +22,7 @@ import random
 import subprocess
 import sys
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from typing import Callable
 
@@ -68,6 +69,9 @@ from content.examples.rform_skills import (
     rform_match_coefficients,
     rform_solve,
 )
+from content.examples.sequence_classification import (
+    identify_sequence_type,
+)
 from content.examples.series import (
     arithmetic_series_sum,
     geometric_series_finite,
@@ -92,6 +96,7 @@ from content.examples.zero_product_rule import (
 )
 from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.registry import InMemoryRegistry
+from problem_instantiation_tool.schemas import Problem
 from render.geometry import (
     Angle,
     GeometryFigure,
@@ -781,6 +786,12 @@ def _seq_display(terms: list) -> str:
     return body + r";\ \dots"
 
 
+def _seq_noun(word: str, labeled: bool) -> str:
+    """ "the arithmetic sequence" when labelled, else "the sequence" — so an
+    unlabelled variant forces the student to classify before choosing a method."""
+    return f"the {word} sequence" if labeled else "the sequence"
+
+
 def _series_display(terms: list) -> str:
     """Sign-aware '+'-joined series terms with a trailing ellipsis."""
     parts = [sympy.latex(sympy.sympify(terms[0]))]
@@ -796,7 +807,9 @@ def _series_display(terms: list) -> str:
 # ── sequences & series: arithmetic templates ────────────────────────────────────
 
 
-def template_arith_nth_term_formula(params: dict, detail: str = "full") -> ProblemCard:
+def template_arith_nth_term_formula(
+    params: dict, detail: str = "full", labeled: bool = True
+) -> ProblemCard:
     a, d = params["a"], params["d"]
     ans = sympy.latex(params["answer"])
     if detail == "full":
@@ -809,13 +822,17 @@ def template_arith_nth_term_formula(params: dict, detail: str = "full") -> Probl
     else:
         steps = [rf"a = {a}, \quad d = {d}", rf"T_n = {ans}"]
     return ProblemCard(
-        instruction="Determine the general term $T_n$ of the arithmetic sequence:",
+        instruction=(
+            f"Determine the general term $T_n$ of {_seq_noun('arithmetic', labeled)}:"
+        ),
         display_math=_seq_display([params["t1"], params["t2"], params["t3"]]),
         worked_steps=steps,
     )
 
 
-def template_arith_find_term(params: dict, detail: str = "full") -> ProblemCard:
+def template_arith_find_term(
+    params: dict, detail: str = "full", labeled: bool = True
+) -> ProblemCard:
     a, d, nt, ans = params["a"], params["d"], params["n_target"], params["answer"]
     t1, t2, t3 = a, a + d, a + 2 * d
     if detail == "full":
@@ -830,7 +847,7 @@ def template_arith_find_term(params: dict, detail: str = "full") -> ProblemCard:
     return ProblemCard(
         instruction=(
             rf"Calculate the ${nt}^{{\text{{th}}}}$ term, $T_{{{nt}}}$, "
-            "of the arithmetic sequence:"
+            f"of {_seq_noun('arithmetic', labeled)}:"
         ),
         display_math=_seq_display([t1, t2, t3]),
         worked_steps=steps,
@@ -894,7 +911,9 @@ def template_arith_next_terms(params: dict, detail: str = "full") -> ProblemCard
 # ── sequences & series: geometric templates ─────────────────────────────────────
 
 
-def template_geo_nth_term_formula(params: dict, detail: str = "full") -> ProblemCard:
+def template_geo_nth_term_formula(
+    params: dict, detail: str = "full", labeled: bool = True
+) -> ProblemCard:
     a, r = params["a"], params["r"]
     ans = sympy.latex(params["answer"])
     if detail == "full":
@@ -907,13 +926,17 @@ def template_geo_nth_term_formula(params: dict, detail: str = "full") -> Problem
     else:
         steps = [rf"a = {a}, \quad r = {r}", rf"T_n = {ans}"]
     return ProblemCard(
-        instruction="Determine the general term $T_n$ of the geometric sequence:",
+        instruction=(
+            f"Determine the general term $T_n$ of {_seq_noun('geometric', labeled)}:"
+        ),
         display_math=_seq_display([params["t1"], params["t2"], params["t3"]]),
         worked_steps=steps,
     )
 
 
-def template_geo_find_term(params: dict, detail: str = "full") -> ProblemCard:
+def template_geo_find_term(
+    params: dict, detail: str = "full", labeled: bool = True
+) -> ProblemCard:
     a, r, nt, ans = params["a"], params["r"], params["n_target"], params["answer"]
     t1, t2, t3 = a, a * r, a * r * r
     if detail == "full":
@@ -928,9 +951,64 @@ def template_geo_find_term(params: dict, detail: str = "full") -> ProblemCard:
     return ProblemCard(
         instruction=(
             rf"Calculate the ${nt}^{{\text{{th}}}}$ term, $T_{{{nt}}}$, "
-            "of the geometric sequence:"
+            f"of {_seq_noun('geometric', labeled)}:"
         ),
         display_math=_seq_display([t1, t2, t3]),
+        worked_steps=steps,
+    )
+
+
+# ── sequences & series: classification atom ─────────────────────────────────────
+
+
+def _classify_reason(terms: list[int], answer: str) -> list[str]:
+    """Worked reason for the classification: the actual difference/ratio tests a
+    student would run, concluding with the type in bold."""
+    d = [terms[i + 1] - terms[i] for i in range(3)]
+    diff_line = rf"T_2 - T_1 = {d[0]},\quad T_3 - T_2 = {d[1]},\quad T_4 - T_3 = {d[2]}"
+    if answer == "arithmetic":
+        return [
+            diff_line,
+            rf"\text{{constant difference }} d = {d[0]}"
+            r" \;\Rightarrow\; \textbf{arithmetic}",
+        ]
+    if answer == "geometric":
+        ratios = [sympy.Rational(terms[i + 1], terms[i]) for i in range(3)]
+        ratio_line = (
+            rf"\tfrac{{T_2}}{{T_1}} = {sympy.latex(ratios[0])},\quad "
+            rf"\tfrac{{T_3}}{{T_2}} = {sympy.latex(ratios[1])},\quad "
+            rf"\tfrac{{T_4}}{{T_3}} = {sympy.latex(ratios[2])}"
+        )
+        return [
+            ratio_line,
+            rf"\text{{constant ratio }} r = {sympy.latex(ratios[0])}"
+            r" \;\Rightarrow\; \textbf{geometric}",
+        ]
+    # neither: first differences are enough to rule out arithmetic; note the ratio
+    # is not constant either (shown only when every term is non-zero).
+    lines = [diff_line]
+    if all(x != 0 for x in terms[:3]):
+        ratios = [sympy.Rational(terms[i + 1], terms[i]) for i in range(3)]
+        lines.append(
+            rf"\tfrac{{T_2}}{{T_1}} = {sympy.latex(ratios[0])},\quad "
+            rf"\tfrac{{T_3}}{{T_2}} = {sympy.latex(ratios[1])}"
+        )
+    lines.append(
+        r"\text{no constant difference or ratio} \;\Rightarrow\; \textbf{neither}"
+    )
+    return lines
+
+
+def template_identify_sequence_type(params: dict, detail: str = "full") -> ProblemCard:
+    terms = [params["t1"], params["t2"], params["t3"], params["t4"]]
+    reason = _classify_reason(terms, params["answer"])
+    steps = reason if detail == "full" else [reason[-1]]
+    return ProblemCard(
+        instruction=(
+            "State, giving a reason, whether the following sequence is "
+            "arithmetic, geometric or neither:"
+        ),
+        display_math=_seq_display(terms),
         worked_steps=steps,
     )
 
@@ -1010,7 +1088,55 @@ def template_geo_series_infinite(params: dict, detail: str = "full") -> ProblemC
     )
 
 
+def _unlabeled_variant(problem, new_id: str):
+    """A solving problem re-registered under a new id with its type word withheld
+    from the prompt. Same generator, same verifier — only the instruction changes
+    (via a labeled=False template), so the student must classify before solving."""
+    return Problem(
+        id=new_id,
+        type_id=problem.type_id,
+        name=f"{problem.name} (type unlabelled)",
+        artifact_type=problem.artifact_type,
+        problem_spec=problem.problem_spec,
+        verifier_spec=problem.verifier_spec,
+    )
+
+
+arith_nth_unlabeled = _unlabeled_variant(
+    arith_nth_term_formula, "arith_seq_nth_term_unlabeled"
+)
+geo_nth_unlabeled = _unlabeled_variant(
+    geo_nth_term_formula, "geo_seq_nth_term_unlabeled"
+)
+arith_find_term_unlabeled = _unlabeled_variant(
+    arith_find_term, "arith_seq_find_term_unlabeled"
+)
+geo_find_term_unlabeled = _unlabeled_variant(
+    geo_find_term, "geo_seq_find_term_unlabeled"
+)
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
+    identify_sequence_type.id: WorksheetEntry(
+        problem=identify_sequence_type,
+        template=template_identify_sequence_type,
+    ),
+    arith_nth_unlabeled.id: WorksheetEntry(
+        problem=arith_nth_unlabeled,
+        template=partial(template_arith_nth_term_formula, labeled=False),
+    ),
+    geo_nth_unlabeled.id: WorksheetEntry(
+        problem=geo_nth_unlabeled,
+        template=partial(template_geo_nth_term_formula, labeled=False),
+    ),
+    arith_find_term_unlabeled.id: WorksheetEntry(
+        problem=arith_find_term_unlabeled,
+        template=partial(template_arith_find_term, labeled=False),
+    ),
+    geo_find_term_unlabeled.id: WorksheetEntry(
+        problem=geo_find_term_unlabeled,
+        template=partial(template_geo_find_term, labeled=False),
+    ),
     arith_nth_term_formula.id: WorksheetEntry(
         problem=arith_nth_term_formula,
         template=template_arith_nth_term_formula,
@@ -1153,6 +1279,16 @@ BUNDLES: dict[str, list[tuple[str, int]]] = {
         ("arith_series_sum", 1),
         ("geo_series_finite", 1),
         ("geo_series_infinite", 1),
+    ],
+    # Classification-first: two isolated "which type?" drills, then unlabelled
+    # solves that interleave arithmetic and geometric so the student must
+    # classify (the withheld first half) before applying a method.
+    "sequences_mixed": [
+        ("identify_sequence_type", 2),
+        ("arith_seq_nth_term_unlabeled", 1),
+        ("geo_seq_nth_term_unlabeled", 1),
+        ("geo_seq_find_term_unlabeled", 1),
+        ("arith_seq_find_term_unlabeled", 1),
     ],
 }
 
