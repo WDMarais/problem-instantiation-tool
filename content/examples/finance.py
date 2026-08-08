@@ -20,7 +20,16 @@ Design decisions demonstrated:
   A. When A is a round number (R5000, R10 000), the answer P is an exact float.
   If the student rounds A to 2dp before working back, propagated error stays
   below 0.01 for r ≤ 12% and n ≤ 5.
-- Annual compounding only (Gr10 scope). Monthly/daily compounding is Gr12.
+- Compounding frequency (Gr10 → Gr11 bridge). ``compound_growth`` /
+  ``compound_reverse`` now carry a ``compounding`` (m) param and use the general
+  form A = P(1 + i/m)^(m·n), i = r/100, with m ∈ {1, 4, 12} (annual is the m=1
+  case). ``simple_interest`` stays annual Gr10 filler. The corpus-scale,
+  large-principal work (solve-rate, appreciation) lives in
+  ``compound_periodic.py``; these two share only the frequency change.
+- rel_tol 1e-4 on the compound specs: at larger principals a student who rounds
+  i = r/(100m) over many periods drifts past the ±cent absolute band, so the
+  compound specs accept an absolute OR a 0.01% relative miss. simple_interest
+  is exact and keeps the absolute-only band.
 """
 
 from __future__ import annotations
@@ -33,6 +42,7 @@ _PRINCIPALS = [500, 1000, 1500, 2000, 2500, 3000, 5000]
 _TARGETS = [5000, 8000, 10000, 15000, 20000]
 _RATES = [5, 6, 7, 8, 9, 10, 11, 12]
 _YEARS = [2, 3, 4, 5]
+_COMPOUNDING = [1, 4, 12]  # annual (Gr10), quarterly, monthly
 
 
 # ---------------------------------------------------------------------------
@@ -71,23 +81,28 @@ def _gen_compound_growth(rng: random.Random) -> dict:
     P = rng.choice(_PRINCIPALS)
     r = rng.choice(_RATES)
     n = rng.choice(_YEARS)
+    m = rng.choice(_COMPOUNDING)
     return {
         "principal": P,
         "rate": r,
         "years": n,
-        "answer": P * (1 + r / 100) ** n,
+        "compounding": m,
+        "answer": P * (1 + r / (100 * m)) ** (m * n),
     }
 
 
 compound_growth = Problem(
     id="finance_compound_growth",
     type_id="financial_maths",
-    name=(
-        "Calculate accumulated amount with annual compound interest  A = P(1 + r/100)ⁿ"
-    ),
+    name="Calculate accumulated amount with compound interest  A = P(1 + i/m)^(m·n)",
     artifact_type="practice",
     problem_spec=_gen_compound_growth,
-    verifier_spec={"kind": "numeric_equality", "marks_possible": 1, "tolerance": 0.01},
+    verifier_spec={
+        "kind": "numeric_equality",
+        "marks_possible": 2,
+        "tolerance": 0.01,
+        "rel_tol": 1e-4,
+    },
 )
 
 
@@ -100,21 +115,28 @@ def _gen_compound_reverse(rng: random.Random) -> dict:
     A = rng.choice(_TARGETS)
     r = rng.choice(_RATES)
     n = rng.choice(_YEARS)
+    m = rng.choice(_COMPOUNDING)
     return {
         "target_amount": A,
         "rate": r,
         "years": n,
-        "answer": A / (1 + r / 100) ** n,
+        "compounding": m,
+        "answer": A / (1 + r / (100 * m)) ** (m * n),
     }
 
 
 compound_reverse = Problem(
     id="finance_compound_reverse",
     type_id="financial_maths",
-    name="Find original principal given accumulated amount  P = A / (1 + r/100)ⁿ",
+    name="Find original principal given accumulated amount  P = A / (1 + i/m)^(m·n)",
     artifact_type="practice",
     problem_spec=_gen_compound_reverse,
-    verifier_spec={"kind": "numeric_equality", "marks_possible": 1, "tolerance": 0.01},
+    verifier_spec={
+        "kind": "numeric_equality",
+        "marks_possible": 2,
+        "tolerance": 0.01,
+        "rel_tol": 1e-4,
+    },
 )
 
 
@@ -158,11 +180,19 @@ if __name__ == "__main__":
     p = inst.params
     exact = p["answer"]
     print(
-        f"  P={p['principal']}, r={p['rate']}%, n={p['years']} yr  →  A = {exact:.4f}"
+        f"  P={p['principal']}, r={p['rate']}%, m={p['compounding']}, "
+        f"n={p['years']} yr  →  A = {exact:.4f}"
     )
     show(inst, "Exact float                    ", exact)
     show(inst, "Rounded to 2dp                 ", round(exact, 2))
     show(inst, "Off by 0.02 (outside tolerance)", round(exact, 2) + 0.02)
+
+    print()
+    print("=== compound_growth (forced monthly, m=12) ===")
+    # A worked monthly case: same generator, compounded 12×/yr.
+    P, r, m, n = 5000, 12, 12, 5
+    exact_monthly = P * (1 + r / (100 * m)) ** (m * n)
+    print(f"  P={P}, r={r}%, m={m}, n={n} yr  →  A = {exact_monthly:.4f}")
 
     print()
     print("=== compound_reverse ===")
