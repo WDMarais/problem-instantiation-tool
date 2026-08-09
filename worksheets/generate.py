@@ -1285,14 +1285,38 @@ def template_arith_series_sigma(params: dict, detail: str = "full") -> ProblemCa
 
 
 def _zar(x: float, dp: int = 2) -> str:
-    """Rand amount as LaTeX: R with thin-space thousands and dp decimals."""
-    s = f"{x:,.{dp}f}".replace(",", r"\,")
-    return rf"\text{{R}}\,{s}"
+    """Rand amount as LaTeX in SA/DBE convention: space-grouped thousands and a
+    decimal comma, e.g. ``R1 500,00``. The thousands separator is a math thin
+    space; the decimal comma is braced (``{,}``) so KaTeX doesn't add the
+    punctuation space that would read as ``1 500, 00``."""
+    body = f"{x:,.{dp}f}".replace(",", r"\,").replace(".", "{,}")
+    return rf"\text{{R}}\,{body}"
+
+
+def _rand(x: float, dp: int = 2) -> str:
+    """Plain-text Rand amount in SA/DBE convention (space-grouped thousands,
+    decimal comma) for prose instructions, e.g. ``R1 500,00``."""
+    body = f"{x:,.{dp}f}".replace(",", " ").replace(".", ",")
+    return f"R{body}"
 
 
 def _dec(x: float) -> str:
-    """A decimal to at most 6 places, trailing zeros trimmed (for rates i = r/100m)."""
-    return f"{x:.6f}".rstrip("0").rstrip(".")
+    """A decimal to at most 6 places, trailing zeros trimmed (for rates i = r/100m),
+    in SA convention: decimal comma, braced (``{,}``) so KaTeX omits the
+    punctuation space (``0{,}03375``)."""
+    return f"{x:.6f}".rstrip("0").rstrip(".").replace(".", "{,}")
+
+
+def _num(x) -> str:
+    """Plain-text number in SA convention (decimal comma) for prose, e.g. a rate
+    ``13.5`` → ``13,5``. Integers are unchanged."""
+    return f"{x}".replace(".", ",")
+
+
+def _numtex(x) -> str:
+    """A number for LaTeX math in SA convention: decimal comma braced (``{,}``) so
+    KaTeX omits the punctuation space, e.g. ``13.5`` → ``13{,}5``."""
+    return f"{x}".replace(".", "{,}")
 
 
 _COMP_WORD = {1: "annually", 4: "quarterly", 12: "monthly"}
@@ -1315,17 +1339,18 @@ def template_compound_amount(params: dict, detail: str = "full") -> ProblemCard:
     ans = params["answer"]
     sub = rf"A = {_zar(p, 0)}(1 + {_dec(i)})^{{{periods}}}"
     full = [
-        rf"i = \frac{{{r}\%}}{{{m}}} = {_dec(i)}, \quad N = {m}\times{n} = {periods}",
+        rf"i = \frac{{{_numtex(r)}\%}}{{{m}}} = {_dec(i)}, "
+        rf"\quad N = {m}\times{n} = {periods}",
         r"A = P(1 + i)^{N}",
         sub,
         rf"A = {_zar(ans)}",
     ]
     return ProblemCard(
         instruction=(
-            f"R{p:,} is invested at {r}% p.a. compounded {_COMP_WORD[m]} for "
-            f"{n} years. Determine the accumulated amount."
+            f"{_rand(p, 0)} is invested at {_num(r)}% p.a. compounded {_COMP_WORD[m]} "
+            f"for {n} years. Determine the accumulated amount."
         ),
-        display_math=r"A = P(1 + i)^{N}",
+        display_math="",
         worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
     )
 
@@ -1336,17 +1361,17 @@ def template_compound_principal(params: dict, detail: str = "full") -> ProblemCa
     ans = params["answer"]
     sub = rf"P = \frac{{{_zar(a, 0)}}}{{(1 + {_dec(i)})^{{{periods}}}}}"
     full = [
-        rf"i = \frac{{{r}\%}}{{{m}}} = {_dec(i)}, \quad N = {periods}",
+        rf"i = \frac{{{_numtex(r)}\%}}{{{m}}} = {_dec(i)}, \quad N = {periods}",
         r"P = \frac{A}{(1 + i)^{N}}",
         sub,
         rf"P = {_zar(ans)}",
     ]
     return ProblemCard(
         instruction=(
-            f"What amount, invested now at {r}% p.a. compounded {_COMP_WORD[m]}, "
-            f"grows to R{a:,} in {n} years?"
+            f"What amount, invested now at {_num(r)}% p.a. compounded {_COMP_WORD[m]}, "
+            f"grows to {_rand(a, 0)} in {n} years?"
         ),
-        display_math=r"P = \dfrac{A}{(1 + i)^{N}}",
+        display_math="",
         worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
     )
 
@@ -1360,15 +1385,15 @@ def template_compound_rate(params: dict, detail: str = "full") -> ProblemCard:
         r"A = P(1 + i)^{N}",
         rf"(1 + i)^{{{periods}}} = \frac{{A}}{{P}} = {_dec(ratio)}",
         rf"i = {_dec(ratio)}^{{1/{periods}}} - 1 = {_dec(i)}",
-        rf"r = i \times {m} \times 100 = {ans}\%",
+        rf"r = i \times {m} \times 100 = {_numtex(ans)}\%",
     ]
     return ProblemCard(
         instruction=(
-            f"R{p:,} grows to R{a:,.2f} in {n} years with interest compounded "
-            f"{_COMP_WORD[m]}. Determine the nominal annual interest rate."
+            f"{_rand(p, 0)} grows to {_rand(a)} in {n} years with interest "
+            f"compounded {_COMP_WORD[m]}. Determine the nominal annual interest rate."
         ),
-        display_math=r"A = P(1 + i)^{N}",
-        worked_steps=full if detail == "full" else [full[1], rf"r = {ans}\%"],
+        display_math="",
+        worked_steps=full if detail == "full" else [full[1], rf"r = {_numtex(ans)}\%"],
     )
 
 
@@ -1383,10 +1408,10 @@ def template_appreciation(params: dict, detail: str = "full") -> ProblemCard:
     full = [r"A = P(1 + i)^{n}", sub, rf"A = {_zar(ans)}"]
     return ProblemCard(
         instruction=(
-            f"An item costing R{price:,} rises in price by {r}% per year. "
+            f"An item costing {_rand(price, 0)} rises in price by {_num(r)}% per year. "
             f"What will it cost in {n} years?"
         ),
-        display_math=r"A = P(1 + i)^{n}",
+        display_math="",
         worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
     )
 
@@ -1398,16 +1423,19 @@ def template_nominal_to_effective(params: dict, detail: str = "full") -> Problem
     i_nom, m, ans = params["nominal_rate"], params["compounding"], params["answer"]
     full = [
         r"1 + i_{\text{eff}} = \left(1 + \frac{i^{(m)}}{m}\right)^{m}",
-        rf"1 + i_{{\text{{eff}}}} = \left(1 + \frac{{{i_nom}\%}}{{{m}}}\right)^{{{m}}}",
-        rf"i_{{\text{{eff}}}} = {ans}\%",
+        rf"1 + i_{{\text{{eff}}}} = "
+        rf"\left(1 + \frac{{{_numtex(i_nom)}\%}}{{{m}}}\right)^{{{m}}}",
+        rf"i_{{\text{{eff}}}} = {_numtex(ans)}\%",
     ]
     return ProblemCard(
         instruction=(
-            f"Convert a nominal rate of {i_nom}% p.a. compounded {_COMP_WORD[m]} "
+            f"Convert a nominal rate of {_num(i_nom)}% p.a. compounded {_COMP_WORD[m]} "
             f"to an effective annual rate."
         ),
-        display_math=r"1 + i_{\text{eff}} = \left(1 + \frac{i^{(m)}}{m}\right)^{m}",
-        worked_steps=full if detail == "full" else [rf"i_{{\text{{eff}}}} = {ans}\%"],
+        display_math="",
+        worked_steps=full
+        if detail == "full"
+        else [rf"i_{{\text{{eff}}}} = {_numtex(ans)}\%"],
     )
 
 
@@ -1415,16 +1443,16 @@ def template_effective_to_nominal(params: dict, detail: str = "full") -> Problem
     i_eff, m, ans = params["effective_rate"], params["compounding"], params["answer"]
     full = [
         r"1 + i_{\text{eff}} = \left(1 + \frac{i^{(m)}}{m}\right)^{m}",
-        rf"i^{{(m)}} = {m}\left[(1 + {i_eff / 100})^{{1/{m}}} - 1\right]",
-        rf"i^{{(m)}} = {ans}\%",
+        rf"i^{{(m)}} = {m}\left[(1 + {_numtex(i_eff / 100)})^{{1/{m}}} - 1\right]",
+        rf"i^{{(m)}} = {_numtex(ans)}\%",
     ]
     return ProblemCard(
         instruction=(
-            f"Convert an effective annual rate of {i_eff}% to a nominal rate "
+            f"Convert an effective annual rate of {_num(i_eff)}% to a nominal rate "
             f"compounded {_COMP_WORD[m]}."
         ),
-        display_math=r"1 + i_{\text{eff}} = \left(1 + \frac{i^{(m)}}{m}\right)^{m}",
-        worked_steps=full if detail == "full" else [rf"i^{{(m)}} = {ans}\%"],
+        display_math="",
+        worked_steps=full if detail == "full" else [rf"i^{{(m)}} = {_numtex(ans)}\%"],
     )
 
 
@@ -1441,17 +1469,17 @@ def template_fv_annuity_amount(params: dict, detail: str = "full") -> ProblemCar
         rf"{{{_dec(i)}}}{due}"
     )
     full = [
-        rf"i = \frac{{{r}\%}}{{{m}}} = {_dec(i)}, \quad N = {periods}",
+        rf"i = \frac{{{_numtex(r)}\%}}{{{m}}} = {_dec(i)}, \quad N = {periods}",
         rf"F = x\cdot\frac{{(1 + i)^{{N}} - 1}}{{i}}{due}",
         sub,
         rf"F = {_zar(ans)}",
     ]
     return ProblemCard(
         instruction=(
-            f"R{x:,.2f} is deposited {_timing_phrase(timing, m)} at {r}% p.a. "
+            f"{_rand(x)} is deposited {_timing_phrase(timing, m)} at {_num(r)}% p.a. "
             f"compounded {_COMP_WORD[m]} for {n} years. Determine the future value."
         ),
-        display_math=r"F = x\cdot\dfrac{(1 + i)^{N} - 1}{i}",
+        display_math="",
         worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
     )
 
@@ -1466,7 +1494,7 @@ def template_fv_annuity_deposit(params: dict, detail: str = "full") -> ProblemCa
         rf"{{(1 + {_dec(i)})^{{{periods}}} - 1}}{due}"
     )
     full = [
-        rf"i = \frac{{{r}\%}}{{{m}}} = {_dec(i)}, \quad N = {periods}",
+        rf"i = \frac{{{_numtex(r)}\%}}{{{m}}} = {_dec(i)}, \quad N = {periods}",
         rf"x = \frac{{F\cdot i}}{{(1 + i)^{{N}} - 1}}{due}",
         sub,
         rf"x = {_zar(ans)}",
@@ -1474,9 +1502,10 @@ def template_fv_annuity_deposit(params: dict, detail: str = "full") -> ProblemCa
     return ProblemCard(
         instruction=(
             f"What regular deposit, made {_timing_phrase(timing, m)}, accumulates "
-            f"to R{a:,} in {n} years at {r}% p.a. compounded {_COMP_WORD[m]}?"
+            f"to {_rand(a, 0)} in {n} years at {_num(r)}% p.a. compounded "
+            f"{_COMP_WORD[m]}?"
         ),
-        display_math=r"x = \dfrac{F\cdot i}{(1 + i)^{N} - 1}",
+        display_math="",
         worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
     )
 
@@ -1488,15 +1517,15 @@ def template_fv_annuity_n(params: dict, detail: str = "full") -> ProblemCard:
     full = [
         rf"F = x\cdot\frac{{(1 + i)^{{n}} - 1}}{{i}}, \quad i = {_dec(i)}",
         r"n = \frac{\ln\left(1 + \frac{F\,i}{x}\right)}{\ln(1 + i)}",
-        rf"n \approx {solved:.2f} \;\Rightarrow\; "
+        rf"n \approx {_numtex(f'{solved:.2f}')} \;\Rightarrow\; "
         rf"n = {ans}\ \text{{deposits (round up)}}",
     ]
     return ProblemCard(
         instruction=(
-            f"How many deposits of R{x:,.2f} reach at least R{a:,.2f} at {r}% "
-            f"p.a. compounded {_COMP_WORD[m]}?"
+            f"How many deposits of {_rand(x)} reach at least {_rand(a)} at "
+            f"{_num(r)}% p.a. compounded {_COMP_WORD[m]}?"
         ),
-        display_math=r"F = x\cdot\dfrac{(1 + i)^{n} - 1}{i}",
+        display_math="",
         worked_steps=full if detail == "full" else [full[-1]],
     )
 
@@ -1514,18 +1543,18 @@ def template_pv_annuity_amount(params: dict, detail: str = "full") -> ProblemCar
         rf"{{{_dec(i)}}}{due}"
     )
     full = [
-        rf"i = \frac{{{r}\%}}{{{m}}} = {_dec(i)}, \quad N = {periods}",
+        rf"i = \frac{{{_numtex(r)}\%}}{{{m}}} = {_dec(i)}, \quad N = {periods}",
         rf"P = x\cdot\frac{{1 - (1 + i)^{{-N}}}}{{i}}{due}",
         sub,
         rf"P = {_zar(ans)}",
     ]
     return ProblemCard(
         instruction=(
-            f"A loan is repaid by payments of R{x:,.2f} {_timing_phrase(timing, m)} "
-            f"at {r}% p.a. compounded {_COMP_WORD[m]} over {n} years. Determine the "
-            f"loan amount (present value)."
+            f"A loan is repaid by payments of {_rand(x)} {_timing_phrase(timing, m)} "
+            f"at {_num(r)}% p.a. compounded {_COMP_WORD[m]} over {n} years. Determine "
+            f"the loan amount (present value)."
         ),
-        display_math=r"P = x\cdot\dfrac{1 - (1 + i)^{-N}}{i}",
+        display_math="",
         worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
     )
 
@@ -1540,18 +1569,18 @@ def template_pv_annuity_payment(params: dict, detail: str = "full") -> ProblemCa
         rf"{{1 - (1 + {_dec(i)})^{{-{periods}}}}}{due}"
     )
     full = [
-        rf"i = \frac{{{r}\%}}{{{m}}} = {_dec(i)}, \quad N = {periods}",
+        rf"i = \frac{{{_numtex(r)}\%}}{{{m}}} = {_dec(i)}, \quad N = {periods}",
         rf"x = \frac{{P\cdot i}}{{1 - (1 + i)^{{-N}}}}{due}",
         sub,
         rf"x = {_zar(ans)}",
     ]
     return ProblemCard(
         instruction=(
-            f"A loan of R{p:,} is repaid by equal payments {_timing_phrase(timing, m)} "
-            f"over {n} years at {r}% p.a. compounded {_COMP_WORD[m]}. Determine the "
-            f"payment."
+            f"A loan of {_rand(p, 0)} is repaid by equal payments "
+            f"{_timing_phrase(timing, m)} over {n} years at {_num(r)}% p.a. compounded "
+            f"{_COMP_WORD[m]}. Determine the payment."
         ),
-        display_math=r"x = \dfrac{P\cdot i}{1 - (1 + i)^{-N}}",
+        display_math="",
         worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
     )
 
@@ -1565,22 +1594,24 @@ def template_pv_annuity_n(params: dict, detail: str = "full") -> ProblemCard:
     full = [
         rf"P = x\cdot\frac{{1 - (1 + i)^{{-n}}}}{{i}}, \quad i = {_dec(i)}",
         r"n = \frac{-\ln\left(1 - \frac{P\,i}{x}\right)}{\ln(1 + i)}",
-        rf"n \approx {solved:.2f} \;\Rightarrow\; "
+        rf"n \approx {_numtex(f'{solved:.2f}')} \;\Rightarrow\; "
         rf"n = {ans}\ \text{{payments ({rounding})}}",
     ]
     if mode == "loan":
         instruction = (
-            f"A loan of R{pv:,.2f} is repaid by payments of R{x:,.2f} at {r}% p.a. "
-            f"compounded {_COMP_WORD[m]}. How many payments clear the loan?"
+            f"A loan of {_rand(pv)} is repaid by payments of {_rand(x)} at "
+            f"{_num(r)}% p.a. compounded {_COMP_WORD[m]}. How many payments clear "
+            f"the loan?"
         )
     else:
         instruction = (
-            f"A fund of R{pv:,.2f} allows withdrawals of R{x:,.2f} at {r}% p.a. "
-            f"compounded {_COMP_WORD[m]}. How many full withdrawals are possible?"
+            f"A fund of {_rand(pv)} allows withdrawals of {_rand(x)} at "
+            f"{_num(r)}% p.a. compounded {_COMP_WORD[m]}. How many full "
+            f"withdrawals are possible?"
         )
     return ProblemCard(
         instruction=instruction,
-        display_math=r"P = x\cdot\dfrac{1 - (1 + i)^{-n}}{i}",
+        display_math="",
         worked_steps=full if detail == "full" else [full[-1]],
     )
 
@@ -1598,11 +1629,11 @@ def template_pv_annuity_total_interest(
     ]
     return ProblemCard(
         instruction=(
-            f"A loan of R{p:,} is repaid by {periods} payments of R{x:,.2f} "
-            f"(at {r}% p.a. compounded {_COMP_WORD[m]} over {n} years). Determine "
-            f"the total interest paid."
+            f"A loan of {_rand(p, 0)} is repaid by {periods} payments of {_rand(x)} "
+            f"(at {_num(r)}% p.a. compounded {_COMP_WORD[m]} over {n} years). "
+            f"Determine the total interest paid."
         ),
-        display_math=r"\text{Total interest} = xN - P",
+        display_math="",
         worked_steps=full if detail == "full" else [full[0], rf"= {_zar(ans)}"],
     )
 
@@ -1624,10 +1655,10 @@ def template_depreciation_amount(params: dict, detail: str = "full") -> ProblemC
     full = [formula, sub, rf"A = {_zar(ans)}"]
     return ProblemCard(
         instruction=(
-            f"A R{p:,} asset depreciates at {r}% p.a. on a {word} basis. "
+            f"A {_rand(p, 0)} asset depreciates at {_num(r)}% p.a. on a {word} basis. "
             f"Determine its book value after {n} years."
         ),
-        display_math=formula,
+        display_math="",
         worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
     )
 
@@ -1642,15 +1673,15 @@ def template_depreciation_rate(params: dict, detail: str = "full") -> ProblemCar
     full = [
         r"A = P(1 - i\cdot n)",
         rf"{_zar(a)} = {_zar(p, 0)}(1 - i\times {n})",
-        rf"i = \frac{{1 - A/P}}{{{n}}} \;\Rightarrow\; r = {ans}\%",
+        rf"i = \frac{{1 - A/P}}{{{n}}} \;\Rightarrow\; r = {_numtex(ans)}\%",
     ]
     return ProblemCard(
         instruction=(
-            f"A R{p:,} asset depreciates on a straight-line basis to R{a:,.2f} "
-            f"after {n} years. Determine the annual depreciation rate."
+            f"A {_rand(p, 0)} asset depreciates on a straight-line basis to "
+            f"{_rand(a)} after {n} years. Determine the annual depreciation rate."
         ),
-        display_math=r"A = P(1 - i\cdot n)",
-        worked_steps=full if detail == "full" else [rf"r = {ans}\%"],
+        display_math="",
+        worked_steps=full if detail == "full" else [rf"r = {_numtex(ans)}\%"],
     )
 
 
@@ -1658,15 +1689,15 @@ def template_depreciation_to_zero(params: dict, detail: str = "full") -> Problem
     p, r, ans = params["book_price"], params["rate"], params["answer"]
     full = [
         r"A = P(1 - i\cdot n) = 0",
-        rf"n = \frac{{1}}{{i}} = \frac{{100}}{{{r}}} = {_dec(100 / r)}",
+        rf"n = \frac{{1}}{{i}} = \frac{{100}}{{{_numtex(r)}}} = {_dec(100 / r)}",
         rf"n = {ans}\ \text{{years (round up)}}",
     ]
     return ProblemCard(
         instruction=(
-            f"A R{p:,} asset depreciates at {r}% p.a. on a straight-line basis. "
-            f"After how many years is its book value zero?"
+            f"A {_rand(p, 0)} asset depreciates at {_num(r)}% p.a. on a straight-line "
+            f"basis. After how many years is its book value zero?"
         ),
-        display_math=r"A = P(1 - i\cdot n) = 0",
+        display_math="",
         worked_steps=full if detail == "full" else [full[-1]],
     )
 
@@ -2003,6 +2034,40 @@ BUNDLES: dict[str, list[tuple[str, int]]] = {
 }
 
 
+# The finance/annuities section of the official DBE Paper-1 formula sheet, which
+# is stable year-to-year and supplied to every candidate. Rendered ONCE at the
+# front of a finance worksheet so the formula is available but not printed on any
+# single problem — mirroring the exam, where choosing the right formula off this
+# sheet is itself part of the skill.
+_DBE_FINANCE_FORMULAE: list[tuple[str, str]] = [
+    (r"A = P(1 + ni)", "Simple growth (straight-line)"),
+    (r"A = P(1 - ni)", "Simple decay / straight-line depreciation"),
+    (r"A = P(1 + i)^{n}", "Compound growth"),
+    (r"A = P(1 - i)^{n}", "Compound decay (reducing-balance)"),
+    (
+        r"1 + i_{\text{eff}} = \left(1 + \dfrac{i^{(m)}}{m}\right)^{m}",
+        "Nominal $\\leftrightarrow$ effective rate",
+    ),
+    (
+        r"F = \dfrac{x\left[(1 + i)^{n} - 1\right]}{i}",
+        "Future value of an annuity",
+    ),
+    (
+        r"P = \dfrac{x\left[1 - (1 + i)^{-n}\right]}{i}",
+        "Present value of an annuity",
+    ),
+]
+
+
+def _formula_sheet_for(problem_ids: list[str]) -> list[tuple[str, str]] | None:
+    """The formula sheet to print for a worksheet, chosen from the problems it
+    contains. Any finance problem pulls in the DBE finance sheet; other content
+    carries its givens on the card and needs no sheet (returns None)."""
+    if any(pid.startswith("finance_") for pid in problem_ids):
+        return _DBE_FINANCE_FORMULAE
+    return None
+
+
 # ── HTML / CSS ────────────────────────────────────────────────────────────────
 
 # $$ for display, $ for inline — works cleanly in controlled content with no
@@ -2151,6 +2216,38 @@ body {
     white-space: nowrap;
 }
 
+/* ── formula sheet: a leading reference page, own A4 sheet ── */
+.formula-sheet {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 8mm auto;
+    padding: 22mm 24mm 18mm;
+    background: #fff;
+    page-break-after: always;
+    break-after: page;
+}
+.formula-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4mm;
+    margin-top: 4mm;
+}
+.formula-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6mm;
+    padding-bottom: 3mm;
+    border-bottom: 1px solid #eee;
+}
+.formula-tex { flex: 0 0 62mm; font-size: 1.15em; }
+.formula-desc { font-size: 10.5pt; color: #555; }
+.formula-note {
+    margin-top: 9mm;
+    font-size: 9.5pt;
+    font-style: italic;
+    color: #777;
+}
+
 /* graph + working-space side by side */
 .problem-body {
     flex: 1;
@@ -2170,8 +2267,9 @@ body {
        margin (the .page padding is the margin), no browser-added splitting. */
     @page       { size: A4; margin: 0; }
     body        { background: none; }
-    .page       { margin: 0; }
-    .answer-key { margin: 0; }
+    .page          { margin: 0; }
+    .answer-key    { margin: 0; }
+    .formula-sheet { margin: 0; }
 }
 """
 
@@ -2204,11 +2302,19 @@ def _problem_html(n: int, card: ProblemCard) -> str:
         if card.marks
         else ""
     )
+    # display_math is the problem's givens for sequences/algebra/geometry, but is
+    # blank for finance (the stem is self-contained; the formula lives on the
+    # front sheet), so the equation row is omitted when there's nothing to show.
+    equation = (
+        f'<div class="problem-equation">$${card.display_math}$$</div>'
+        if card.display_math
+        else ""
+    )
     return (
         '<div class="problem">'
         f'<div class="problem-label">Question {n}{marks}</div>'
         f'<div class="problem-instruction">{card.instruction}</div>'
-        f'<div class="problem-equation">$${card.display_math}$$</div>'
+        f"{equation}"
         f"{body}"
         "</div>"
     )
@@ -2229,6 +2335,27 @@ def _page_html(
         f"<span>Page {page_n} of {total_pages}</span>"
         "</div>"
         f'<div class="problems">{problems}</div>'
+        "</section>\n"
+    )
+
+
+def _formula_sheet_html(title: str, rows: list[tuple[str, str]]) -> str:
+    items = "".join(
+        f'<div class="formula-row">'
+        f'<div class="formula-tex">$${tex}$$</div>'
+        f'<div class="formula-desc">{desc}</div>'
+        f"</div>"
+        for tex, desc in rows
+    )
+    return (
+        '<section class="formula-sheet">'
+        '<div class="page-header">'
+        f"<h1>{title} — Formula Sheet</h1>"
+        "<span>Provided</span>"
+        "</div>"
+        f'<div class="formula-list">{items}</div>'
+        '<p class="formula-note">These formulae are provided. Part of the skill '
+        "is choosing the right one — none are printed alongside the questions.</p>"
         "</section>\n"
     )
 
@@ -2264,7 +2391,12 @@ def _answer_key_html(cards: list[ProblemCard]) -> str:
 _MAX_PER_PAGE = 3
 
 
-def build_html(title: str, cards: list[ProblemCard], per_page: int = 2) -> str:
+def build_html(
+    title: str,
+    cards: list[ProblemCard],
+    per_page: int = 2,
+    formula_sheet: list[tuple[str, str]] | None = None,
+) -> str:
     if per_page > _MAX_PER_PAGE:
         print(
             f"warning: --per-page {per_page} exceeds the {_MAX_PER_PAGE}-box page "
@@ -2283,6 +2415,7 @@ def build_html(title: str, cards: list[ProblemCard], per_page: int = 2) -> str:
         )
         for p in range(n_pages)
     ]
+    sheet = _formula_sheet_html(title, formula_sheet) if formula_sheet else ""
     return (
         "<!DOCTYPE html>\n"
         '<html lang="en">\n'
@@ -2292,6 +2425,7 @@ def build_html(title: str, cards: list[ProblemCard], per_page: int = 2) -> str:
         f"{_KATEX}\n"
         f"<style>{_CSS}</style>\n"
         "</head>\n<body>\n"
+        + sheet
         + "".join(pages)
         + _answer_key_html(cards)
         + "</body>\n</html>\n"
@@ -2472,6 +2606,7 @@ def main() -> None:
         for pid, count in BUNDLES[args.bundle]:
             cards.extend(_generate_cards(engine, PROBLEMS[pid], rng, count, count))
         label = f"bundle '{args.bundle}' ({len(cards)} problems)"
+        problem_ids = [pid for pid, _ in BUNDLES[args.bundle]]
     else:
         if args.n is None:
             ap.error("provide N (number of problems) or --bundle")
@@ -2479,8 +2614,14 @@ def main() -> None:
         long_count = args.long_count if args.long_count is not None else args.n
         cards = _generate_cards(engine, entry, rng, args.n, long_count)
         label = f"{args.n} problems ({args.problem})"
+        problem_ids = [args.problem]
 
-    html = build_html(args.title, cards, per_page=args.per_page)
+    html = build_html(
+        args.title,
+        cards,
+        per_page=args.per_page,
+        formula_sheet=_formula_sheet_for(problem_ids),
+    )
     html_path = Path(args.output)
     html_path.write_text(html, encoding="utf-8")
     print(f"Wrote {label} → {args.output}")
