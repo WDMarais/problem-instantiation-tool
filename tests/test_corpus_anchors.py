@@ -27,6 +27,10 @@ from content.examples.future_value_annuity import (
     fv_annuity_deposit,
 )
 from content.examples.nominal_effective import nominal_to_effective
+from content.examples.present_value_annuity import (
+    pv_annuity_n,
+    pv_annuity_total_interest,
+)
 
 # Every anchored problem type in the family. New anchored types get appended
 # here; the sweep then covers them automatically.
@@ -37,6 +41,8 @@ ANCHORED = [
     nominal_to_effective,
     fv_annuity_amount,
     fv_annuity_deposit,
+    pv_annuity_n,
+    pv_annuity_total_interest,
 ]
 
 
