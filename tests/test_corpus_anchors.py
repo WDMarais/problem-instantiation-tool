@@ -22,6 +22,10 @@ from content.examples.compound_periodic import (
     compound_amount,
     compound_rate,
 )
+from content.examples.depreciation import (
+    depreciation_rate,
+    depreciation_to_zero,
+)
 from content.examples.future_value_annuity import (
     fv_annuity_amount,
     fv_annuity_deposit,
@@ -43,6 +47,8 @@ ANCHORED = [
     fv_annuity_deposit,
     pv_annuity_n,
     pv_annuity_total_interest,
+    depreciation_rate,
+    depreciation_to_zero,
 ]
 
 
