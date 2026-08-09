@@ -1305,10 +1305,6 @@ def _timing_phrase(timing: str, m: int) -> str:
     return f"at the {edge} of each {_PERIOD_WORD.get(m, 'period')}"
 
 
-def _due_note(timing: str) -> str:
-    return " (annuity due)" if timing == "due" else ""
-
-
 # ── finance / annuities: compound-interest templates ────────────────────────────
 
 
@@ -1329,10 +1325,7 @@ def template_compound_amount(params: dict, detail: str = "full") -> ProblemCard:
             f"R{p:,} is invested at {r}% p.a. compounded {_COMP_WORD[m]} for "
             f"{n} years. Determine the accumulated amount."
         ),
-        display_math=(
-            rf"P = {_zar(p, 0)},\quad {r}\%\ \text{{p.a.}},\ "
-            rf"\text{{comp. {_COMP_WORD[m]}}},\quad n = {n}\ \text{{yr}}"
-        ),
+        display_math=r"A = P(1 + i)^{N}",
         worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
     )
 
@@ -1353,10 +1346,7 @@ def template_compound_principal(params: dict, detail: str = "full") -> ProblemCa
             f"What amount, invested now at {r}% p.a. compounded {_COMP_WORD[m]}, "
             f"grows to R{a:,} in {n} years?"
         ),
-        display_math=(
-            rf"A = {_zar(a, 0)},\quad {r}\%\ \text{{p.a.}},\ "
-            rf"\text{{comp. {_COMP_WORD[m]}}},\quad n = {n}\ \text{{yr}}"
-        ),
+        display_math=r"P = \dfrac{A}{(1 + i)^{N}}",
         worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
     )
 
@@ -1377,10 +1367,7 @@ def template_compound_rate(params: dict, detail: str = "full") -> ProblemCard:
             f"R{p:,} grows to R{a:,.2f} in {n} years with interest compounded "
             f"{_COMP_WORD[m]}. Determine the nominal annual interest rate."
         ),
-        display_math=(
-            rf"P = {_zar(p, 0)},\quad A = {_zar(a)},\quad "
-            rf"\text{{comp. {_COMP_WORD[m]}}},\quad n = {n}\ \text{{yr}}"
-        ),
+        display_math=r"A = P(1 + i)^{N}",
         worked_steps=full if detail == "full" else [full[1], rf"r = {ans}\%"],
     )
 
@@ -1399,10 +1386,7 @@ def template_appreciation(params: dict, detail: str = "full") -> ProblemCard:
             f"An item costing R{price:,} rises in price by {r}% per year. "
             f"What will it cost in {n} years?"
         ),
-        display_math=(
-            rf"P = {_zar(price, 0)},\quad {r}\%\ \text{{p.a.}},\quad "
-            rf"n = {n}\ \text{{yr}}"
-        ),
+        display_math=r"A = P(1 + i)^{n}",
         worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
     )
 
@@ -1422,10 +1406,7 @@ def template_nominal_to_effective(params: dict, detail: str = "full") -> Problem
             f"Convert a nominal rate of {i_nom}% p.a. compounded {_COMP_WORD[m]} "
             f"to an effective annual rate."
         ),
-        display_math=(
-            rf"i^{{(m)}} = {i_nom}\%\ \text{{p.a.}},\quad "
-            rf"\text{{comp. {_COMP_WORD[m]}}}"
-        ),
+        display_math=r"1 + i_{\text{eff}} = \left(1 + \frac{i^{(m)}}{m}\right)^{m}",
         worked_steps=full if detail == "full" else [rf"i_{{\text{{eff}}}} = {ans}\%"],
     )
 
@@ -1442,7 +1423,7 @@ def template_effective_to_nominal(params: dict, detail: str = "full") -> Problem
             f"Convert an effective annual rate of {i_eff}% to a nominal rate "
             f"compounded {_COMP_WORD[m]}."
         ),
-        display_math=rf"i_{{\text{{eff}}}} = {i_eff}\%\ \text{{p.a. (effective)}}",
+        display_math=r"1 + i_{\text{eff}} = \left(1 + \frac{i^{(m)}}{m}\right)^{m}",
         worked_steps=full if detail == "full" else [rf"i^{{(m)}} = {ans}\%"],
     )
 
@@ -1470,10 +1451,7 @@ def template_fv_annuity_amount(params: dict, detail: str = "full") -> ProblemCar
             f"R{x:,.2f} is deposited {_timing_phrase(timing, m)} at {r}% p.a. "
             f"compounded {_COMP_WORD[m]} for {n} years. Determine the future value."
         ),
-        display_math=(
-            rf"x = {_zar(x)},\quad {r}\%\ \text{{p.a. {_COMP_WORD[m]}}},\quad "
-            rf"n = {n}\ \text{{yr}}{_due_note(timing)}"
-        ),
+        display_math=r"F = x\cdot\dfrac{(1 + i)^{N} - 1}{i}",
         worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
     )
 
@@ -1498,10 +1476,7 @@ def template_fv_annuity_deposit(params: dict, detail: str = "full") -> ProblemCa
             f"What regular deposit, made {_timing_phrase(timing, m)}, accumulates "
             f"to R{a:,} in {n} years at {r}% p.a. compounded {_COMP_WORD[m]}?"
         ),
-        display_math=(
-            rf"F = {_zar(a, 0)},\quad {r}\%\ \text{{p.a. {_COMP_WORD[m]}}},\quad "
-            rf"n = {n}\ \text{{yr}}{_due_note(timing)}"
-        ),
+        display_math=r"x = \dfrac{F\cdot i}{(1 + i)^{N} - 1}",
         worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
     )
 
@@ -1521,10 +1496,7 @@ def template_fv_annuity_n(params: dict, detail: str = "full") -> ProblemCard:
             f"How many deposits of R{x:,.2f} reach at least R{a:,.2f} at {r}% "
             f"p.a. compounded {_COMP_WORD[m]}?"
         ),
-        display_math=(
-            rf"x = {_zar(x)},\quad F = {_zar(a)},\quad "
-            rf"{r}\%\ \text{{p.a. {_COMP_WORD[m]}}}"
-        ),
+        display_math=r"F = x\cdot\dfrac{(1 + i)^{n} - 1}{i}",
         worked_steps=full if detail == "full" else [full[-1]],
     )
 
@@ -1553,10 +1525,7 @@ def template_pv_annuity_amount(params: dict, detail: str = "full") -> ProblemCar
             f"at {r}% p.a. compounded {_COMP_WORD[m]} over {n} years. Determine the "
             f"loan amount (present value)."
         ),
-        display_math=(
-            rf"x = {_zar(x)},\quad {r}\%\ \text{{p.a. {_COMP_WORD[m]}}},\quad "
-            rf"n = {n}\ \text{{yr}}{_due_note(timing)}"
-        ),
+        display_math=r"P = x\cdot\dfrac{1 - (1 + i)^{-N}}{i}",
         worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
     )
 
@@ -1582,10 +1551,7 @@ def template_pv_annuity_payment(params: dict, detail: str = "full") -> ProblemCa
             f"over {n} years at {r}% p.a. compounded {_COMP_WORD[m]}. Determine the "
             f"payment."
         ),
-        display_math=(
-            rf"P = {_zar(p, 0)},\quad {r}\%\ \text{{p.a. {_COMP_WORD[m]}}},\quad "
-            rf"n = {n}\ \text{{yr}}{_due_note(timing)}"
-        ),
+        display_math=r"x = \dfrac{P\cdot i}{1 - (1 + i)^{-N}}",
         worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
     )
 
@@ -1614,10 +1580,7 @@ def template_pv_annuity_n(params: dict, detail: str = "full") -> ProblemCard:
         )
     return ProblemCard(
         instruction=instruction,
-        display_math=(
-            rf"P = {_zar(pv)},\quad x = {_zar(x)},\quad "
-            rf"{r}\%\ \text{{p.a. {_COMP_WORD[m]}}}"
-        ),
+        display_math=r"P = x\cdot\dfrac{1 - (1 + i)^{-n}}{i}",
         worked_steps=full if detail == "full" else [full[-1]],
     )
 
@@ -1639,7 +1602,7 @@ def template_pv_annuity_total_interest(
             f"(at {r}% p.a. compounded {_COMP_WORD[m]} over {n} years). Determine "
             f"the total interest paid."
         ),
-        display_math=(rf"P = {_zar(p, 0)},\quad x = {_zar(x)},\quad N = {periods}"),
+        display_math=r"\text{Total interest} = xN - P",
         worked_steps=full if detail == "full" else [full[0], rf"= {_zar(ans)}"],
     )
 
@@ -1664,10 +1627,7 @@ def template_depreciation_amount(params: dict, detail: str = "full") -> ProblemC
             f"A R{p:,} asset depreciates at {r}% p.a. on a {word} basis. "
             f"Determine its book value after {n} years."
         ),
-        display_math=(
-            rf"P = {_zar(p, 0)},\quad {r}\%\ \text{{p.a. ({word})}},\quad "
-            rf"n = {n}\ \text{{yr}}"
-        ),
+        display_math=formula,
         worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
     )
 
@@ -1689,10 +1649,7 @@ def template_depreciation_rate(params: dict, detail: str = "full") -> ProblemCar
             f"A R{p:,} asset depreciates on a straight-line basis to R{a:,.2f} "
             f"after {n} years. Determine the annual depreciation rate."
         ),
-        display_math=(
-            rf"P = {_zar(p, 0)},\quad A = {_zar(a)},\quad "
-            rf"n = {n}\ \text{{yr}}"
-        ),
+        display_math=r"A = P(1 - i\cdot n)",
         worked_steps=full if detail == "full" else [rf"r = {ans}\%"],
     )
 
@@ -1709,7 +1666,7 @@ def template_depreciation_to_zero(params: dict, detail: str = "full") -> Problem
             f"A R{p:,} asset depreciates at {r}% p.a. on a straight-line basis. "
             f"After how many years is its book value zero?"
         ),
-        display_math=rf"P = {_zar(p, 0)},\quad {r}\%\ \text{{p.a. (straight-line)}}",
+        display_math=r"A = P(1 - i\cdot n) = 0",
         worked_steps=full if detail == "full" else [full[-1]],
     )
 
@@ -2219,6 +2176,17 @@ body {
 """
 
 
+def _working_height_mm(marks: int | None) -> int:
+    """Ruled working height scaled to the mark load (~9mm per line): 2-mark (or
+    unmarked) → 4 lines; 3 → 6; 4+ → 8. Keeps low-mark boxes compact while giving
+    multi-step questions room to actually work in."""
+    if not marks or marks <= 2:
+        return 36
+    if marks == 3:
+        return 54
+    return 72
+
+
 def _problem_html(n: int, card: ProblemCard) -> str:
     if card.graph_svg:
         body = (
@@ -2228,7 +2196,8 @@ def _problem_html(n: int, card: ProblemCard) -> str:
             "</div>"
         )
     else:
-        body = '<div class="working-space"></div>'
+        h = _working_height_mm(card.marks)
+        body = f'<div class="working-space" style="height:{h}mm"></div>'
     marks = (
         f'<span class="problem-marks">({card.marks} '
         f"{'mark' if card.marks == 1 else 'marks'})</span>"
