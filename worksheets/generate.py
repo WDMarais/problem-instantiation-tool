@@ -104,6 +104,18 @@ from content.examples.present_value_annuity import (
     pv_annuity_payment,
     pv_annuity_total_interest,
 )
+from content.examples.quadratic_sequence import (
+    find_n as quad_find_n,
+)
+from content.examples.quadratic_sequence import (
+    find_term as quad_find_term,
+)
+from content.examples.quadratic_sequence import (
+    next_terms as quad_next_terms,
+)
+from content.examples.quadratic_sequence import (
+    nth_term_formula as quad_nth_term_formula,
+)
 from content.examples.rform_skills import (
     rform_find_phi,
     rform_find_R,
@@ -1005,6 +1017,115 @@ def template_geo_find_term(
     )
 
 
+# ── sequences & series: quadratic templates ─────────────────────────────────────
+
+
+def _quad_formula_latex(a: int, b: int, c: int) -> str:
+    """LaTeX for Tₙ = an² + bn + c with signs tidied by SymPy."""
+    n = sympy.Symbol("n")
+    return sympy.latex(
+        sympy.Integer(a) * n**2 + sympy.Integer(b) * n + sympy.Integer(c)
+    )
+
+
+def template_quad_nth_term_formula(
+    params: dict, detail: str = "full", labeled: bool = True
+) -> ProblemCard:
+    a, b, c = params["a"], params["b"], params["c"]
+    t1, t2, t3, t4 = params["t1"], params["t2"], params["t3"], params["t4"]
+    d1, d2, d3 = t2 - t1, t3 - t2, t4 - t3
+    ans = sympy.latex(params["answer"])
+    if detail == "full":
+        steps = [
+            rf"\Delta:\ {d1},\ {d2},\ {d3}\qquad \Delta^2:\ {d2 - d1},\ {d3 - d2}",
+            rf"2a = {2 * a} \;\Rightarrow\; a = {a}",
+            rf"3a + b = {d1} \;\Rightarrow\; b = {b}",
+            rf"a + b + c = {t1} \;\Rightarrow\; c = {c}",
+            rf"T_n = {ans}",
+        ]
+    else:
+        steps = [rf"a = {a},\ b = {b},\ c = {c}", rf"T_n = {ans}"]
+    return ProblemCard(
+        instruction=(
+            f"Determine the general term $T_n$ of {_seq_noun('quadratic', labeled)}:"
+        ),
+        display_math=_seq_display([t1, t2, t3, t4]),
+        worked_steps=steps,
+    )
+
+
+def template_quad_find_term(
+    params: dict, detail: str = "full", labeled: bool = True
+) -> ProblemCard:
+    a, b, c = params["a"], params["b"], params["c"]
+    t1, t2, t3 = params["t1"], params["t2"], params["t3"]
+    nt, ans = params["n_target"], params["answer"]
+    d1, d2 = t2 - t1, t3 - t2
+    f_l = _quad_formula_latex(a, b, c)
+    if detail == "full":
+        steps = [
+            rf"\Delta:\ {d1},\ {d2}\qquad \Delta^2 = {d2 - d1} \;\Rightarrow\; a = {a}",
+            rf"3a + b = {d1},\ \ a + b + c = {t1} \;\Rightarrow\; b = {b},\ c = {c}",
+            rf"T_n = {f_l}",
+            rf"T_{{{nt}}} = {ans}",
+        ]
+    else:
+        steps = [rf"T_n = {f_l}", rf"T_{{{nt}}} = {ans}"]
+    return ProblemCard(
+        instruction=(
+            rf"Calculate the ${nt}^{{\text{{th}}}}$ term, $T_{{{nt}}}$, "
+            f"of {_seq_noun('quadratic', labeled)}:"
+        ),
+        display_math=_seq_display([t1, t2, t3]),
+        worked_steps=steps,
+    )
+
+
+def template_quad_next_terms(params: dict, detail: str = "full") -> ProblemCard:
+    shown = params["terms_shown"]
+    n1, n2 = params["next_1"], params["next_2"]
+    d1 = [shown[i + 1] - shown[i] for i in range(3)]
+    sd = d1[1] - d1[0]  # constant second difference = 2a
+    step_a, step_b = d1[2] + sd, d1[2] + 2 * sd
+    if detail == "full":
+        steps = [
+            rf"\Delta:\ {d1[0]},\ {d1[1]},\ {d1[2]}\qquad \Delta^2 = {sd}",
+            rf"T_5 = {shown[-1]} + ({d1[2]} + {sd}) = {n1}",
+            rf"T_6 = {n1} + ({step_a} + {sd}) = {n2}",
+        ]
+    else:
+        steps = [rf"\Delta^2 = {sd};\quad {n1},\ {n2}"]
+    _ = step_b  # second next-difference, shown inline above
+    return ProblemCard(
+        instruction="Write down the next two terms of the quadratic sequence:",
+        display_math=_seq_display(shown),
+        worked_steps=steps,
+    )
+
+
+def template_quad_find_n(params: dict, detail: str = "full") -> ProblemCard:
+    a, b, c = params["a"], params["b"], params["c"]
+    t1, t2, t3 = params["t1"], params["t2"], params["t3"]
+    target, ans = params["target"], params["answer"]
+    or_l = sympy.latex(params["other_root"])
+    f_l = _quad_formula_latex(a, b, c)
+    quad_l = _quad_formula_latex(a, b, c - target)
+    if detail == "full":
+        steps = [
+            rf"T_n = {f_l}",
+            rf"{f_l} = {target} \;\Rightarrow\; {quad_l} = 0",
+            rf"n = {ans} \quad\text{{or}}\quad n = {or_l}\ (\text{{reject}},\ n>0)",
+            rf"n = {ans}",
+        ]
+    else:
+        steps = [rf"{f_l} = {target} \;\Rightarrow\; n = {ans}"]
+    return ProblemCard(
+        instruction=rf"Which term of the quadratic sequence is equal to ${target}$?",
+        display_math=_seq_display([t1, t2, t3]),
+        worked_steps=steps,
+    )
+
+
 # ── sequences & series: classification atom ─────────────────────────────────────
 
 
@@ -1031,6 +1152,20 @@ def _classify_reason(terms: list[int], answer: str) -> list[str]:
             rf"\text{{constant ratio }} r = {sympy.latex(ratios[0])}"
             r" \;\Rightarrow\; \textbf{geometric}",
         ]
+    if answer == "quadratic":
+        # first differences are not constant, but the second differences are:
+        # a constant, non-zero second difference is the quadratic signature.
+        d2 = [d[1] - d[0], d[2] - d[1]]
+        second_line = (
+            rf"\Delta^2: {d[1]} - ({d[0]}) = {d2[0]},\quad "
+            rf"{d[2]} - ({d[1]}) = {d2[1]}"
+        )
+        return [
+            diff_line,
+            second_line,
+            rf"\text{{constant 2nd difference }} = {d2[0]}"
+            r" \;\Rightarrow\; \textbf{quadratic}",
+        ]
     # neither: first differences are enough to rule out arithmetic; note the ratio
     # is not constant either (shown only when every term is non-zero).
     lines = [diff_line]
@@ -1053,7 +1188,7 @@ def template_identify_sequence_type(params: dict, detail: str = "full") -> Probl
     return ProblemCard(
         instruction=(
             "State, giving a reason, whether the following sequence is "
-            "arithmetic, geometric or neither:"
+            "arithmetic, geometric, quadratic or neither:"
         ),
         display_math=_seq_display(terms),
         worked_steps=steps,
@@ -1728,6 +1863,9 @@ arith_find_term_unlabeled = _unlabeled_variant(
 geo_find_term_unlabeled = _unlabeled_variant(
     geo_find_term, "geo_seq_find_term_unlabeled"
 )
+quad_nth_unlabeled = _unlabeled_variant(
+    quad_nth_term_formula, "quad_seq_nth_term_unlabeled"
+)
 
 
 PROBLEMS: dict[str, WorksheetEntry] = {
@@ -1750,6 +1888,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     geo_find_term_unlabeled.id: WorksheetEntry(
         problem=geo_find_term_unlabeled,
         template=partial(template_geo_find_term, labeled=False),
+    ),
+    quad_nth_unlabeled.id: WorksheetEntry(
+        problem=quad_nth_unlabeled,
+        template=partial(template_quad_nth_term_formula, labeled=False),
     ),
     arith_nth_term_formula.id: WorksheetEntry(
         problem=arith_nth_term_formula,
@@ -1810,6 +1952,22 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     geo_next_terms.id: WorksheetEntry(
         problem=geo_next_terms,
         template=template_geo_next_terms,
+    ),
+    quad_next_terms.id: WorksheetEntry(
+        problem=quad_next_terms,
+        template=template_quad_next_terms,
+    ),
+    quad_nth_term_formula.id: WorksheetEntry(
+        problem=quad_nth_term_formula,
+        template=template_quad_nth_term_formula,
+    ),
+    quad_find_term.id: WorksheetEntry(
+        problem=quad_find_term,
+        template=template_quad_find_term,
+    ),
+    quad_find_n.id: WorksheetEntry(
+        problem=quad_find_n,
+        template=template_quad_find_n,
     ),
     arith_series_find_n.id: WorksheetEntry(
         problem=arith_series_find_n,
@@ -1993,6 +2151,7 @@ BUNDLES: dict[str, list[tuple[str, int]]] = {
         ("identify_sequence_type", 2),
         ("arith_seq_nth_term_unlabeled", 1),
         ("geo_seq_nth_term_unlabeled", 1),
+        ("quad_seq_nth_term_unlabeled", 1),
         ("geo_seq_find_term_unlabeled", 1),
         ("arith_seq_find_term_unlabeled", 1),
     ],
@@ -2011,11 +2170,25 @@ BUNDLES: dict[str, list[tuple[str, int]]] = {
         ("geo_seq_find_n", 1),
         ("geo_seq_next_terms", 1),
         ("geo_seq_from_two_terms", 1),
+        ("quad_seq_next_terms", 1),
+        ("quad_seq_nth_term_formula", 1),
+        ("quad_seq_find_term", 1),
+        ("quad_seq_find_n", 1),
         ("arith_series_sum", 1),
         ("arith_series_find_n", 1),
         ("arith_series_sigma", 1),
         ("geo_series_finite", 1),
         ("geo_series_infinite", 1),
+    ],
+    # Quadratic sequences (Tₙ = an² + bn + c) in method order: extend the pattern
+    # via the constant second difference, recover the general term, evaluate a far
+    # term, then solve "which term = V" (a quadratic in n).
+    "quadratic_sequences": [
+        ("identify_sequence_type", 1),
+        ("quad_seq_next_terms", 1),
+        ("quad_seq_nth_term_formula", 2),
+        ("quad_seq_find_term", 1),
+        ("quad_seq_find_n", 1),
     ],
     # Gr12 finance & annuities revision spanning all five archetypes: compound
     # growth (+ solve-rate), nominal→effective, future- and present-value

@@ -45,24 +45,30 @@ def test_generated_label_matches_the_terms(seed):
     p = inst.params
     ans = p["answer"]
     t = _terms(p)
-    assert ans in {"arithmetic", "geometric", "neither"}
+    assert ans in {"arithmetic", "geometric", "quadratic", "neither"}
     if ans == "arithmetic":
         assert is_arithmetic(t) and not is_geometric(t)
     elif ans == "geometric":
         assert is_geometric(t) and not is_arithmetic(t)
+    elif ans == "quadratic":
+        # genuine quadratic: constant non-zero 2nd difference, and NOT also a
+        # simpler named type (arithmetic ⇒ 2nd diff 0, so these are exclusive).
+        assert is_quadratic(t)
+        assert not is_arithmetic(t)
+        assert not is_geometric(t)
     else:
         assert not is_arithmetic(t)
         assert not is_geometric(t)
-        assert not is_quadratic(t)  # future-proof once quadratic patterns land
+        assert not is_quadratic(t)
 
 
-def test_all_three_types_appear_across_seeds():
+def test_all_four_types_appear_across_seeds():
     eng = _eng()
     seen = {
         eng.instantiate(identify_sequence_type.id, seed=s).params["answer"]
-        for s in range(60)
+        for s in range(80)
     }
-    assert seen == {"arithmetic", "geometric", "neither"}
+    assert seen == {"arithmetic", "geometric", "quadratic", "neither"}
 
 
 def test_correct_word_scores_full():
@@ -93,7 +99,7 @@ def test_case_insensitive_match():
 def test_identify_template_does_not_pre_reveal_the_type():
     inst = _eng().instantiate(identify_sequence_type.id, seed=3)
     card = template_identify_sequence_type(inst.params)
-    assert "arithmetic, geometric or neither" in card.instruction
+    assert "arithmetic, geometric, quadratic or neither" in card.instruction
     # the worked reason concludes with the actual answer word
     assert inst.params["answer"] in " ".join(card.worked_steps)
 

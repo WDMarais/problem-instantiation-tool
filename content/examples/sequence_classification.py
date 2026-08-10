@@ -7,13 +7,13 @@ student the classification for free. But solving a sequence problem is really
 know whether to reach for ``a, d`` or ``a, r``. This problem drills the first
 half in isolation — present four terms, ask which kind of sequence it is.
 
-Answer space is arithmetic / geometric / neither. ``neither`` is sampled as a
-*near-miss* — an arithmetic run with one term nudged off — so the discriminator
-actually has to be applied to every gap, not eyeballed from the first two. It is
-rejection-checked to be none of the *named* types: not arithmetic (constant
-first difference), not geometric (constant ratio), and not a quadratic sequence
-(constant second difference), so it stays correct when quadratic patterns are
-later added to the family.
+Answer space is arithmetic / geometric / quadratic / neither. ``quadratic`` is a
+constant, non-zero *second* difference — the discriminator you reach for once first
+differences turn out not to be constant. ``neither`` is sampled as a *near-miss* —
+an arithmetic run with one term nudged off — so the discriminator actually has to
+be applied to every gap, not eyeballed from the first two. It is rejection-checked
+to be none of the *named* types: not arithmetic (constant first difference), not
+geometric (constant ratio), and not quadratic (constant second difference).
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from fractions import Fraction
 
 from problem_instantiation_tool.schemas import Problem
 
-TYPES = ("arithmetic", "geometric", "neither")
+TYPES = ("arithmetic", "geometric", "quadratic", "neither")
 
 
 def first_differences(terms: list[int]) -> list[int]:
@@ -53,6 +53,7 @@ _D_CHOICES = [d for d in range(-9, 10) if d != 0]
 _A_GEO = [a for a in range(-6, 7) if a != 0]
 _R_CHOICES = (-3, -2, 2, 3)
 _PERTURB = (-3, -2, 2, 3)
+_QUAD_A = (-2, -1, 1, 2, 3)  # a ≠ 0 ⇒ genuine quadratic (non-constant 1st diff)
 
 
 def _arithmetic_terms(rng: random.Random) -> list[int]:
@@ -65,6 +66,25 @@ def _geometric_terms(rng: random.Random) -> list[int]:
     a = rng.choice(_A_GEO)
     r = rng.choice(_R_CHOICES)
     return [a * r**i for i in range(4)]
+
+
+def _quadratic_terms(rng: random.Random) -> list[int]:
+    """Tₙ = an² + bn + c with a ≠ 0 — constant, non-zero second difference (2a).
+    Rejection-checked so the draw isn't also geometric (a term of 0 or a coincident
+    ratio) and shows at least three distinct terms."""
+    for _ in range(200):
+        a = rng.choice(_QUAD_A)
+        b = rng.randint(-6, 6)
+        c = rng.randint(-6, 6)
+        terms = [a * n * n + b * n + c for n in range(1, 5)]
+        if is_geometric(terms):
+            continue
+        if len(set(terms)) < 3:
+            continue
+        return terms
+    raise RuntimeError(  # pragma: no cover - sampler practically never exhausts
+        "could not sample a 'quadratic' sequence in 200 tries"
+    )
 
 
 def _neither_terms(rng: random.Random) -> list[int]:
@@ -89,6 +109,7 @@ def _neither_terms(rng: random.Random) -> list[int]:
 _BUILDERS = {
     "arithmetic": _arithmetic_terms,
     "geometric": _geometric_terms,
+    "quadratic": _quadratic_terms,
     "neither": _neither_terms,
 }
 
