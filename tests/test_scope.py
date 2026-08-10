@@ -14,7 +14,12 @@ import types
 
 import pytest
 
-from content.scope_predicates import PREDICATES, PROBLEMS, monic_factorise_in_scope
+from content.scope_predicates import (
+    PREDICATES,
+    PROBLEMS,
+    monic_factorise_in_scope,
+    quad_seq_find_n_in_scope,
+)
 from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.exceptions import ScopeViolationError
 from problem_instantiation_tool.registry import InMemoryRegistry
@@ -69,6 +74,26 @@ def test_predicate_flags_irrational_and_complex_roots() -> None:
     # x² + x - 1: disc = 1 + 4 = 5, not a perfect square → irrational roots.
     irrational = types.SimpleNamespace(params={"b": 1, "c": -1})
     assert any("irrational" in r for r in monic_factorise_in_scope(irrational))
+
+
+@pytest.mark.scope
+def test_quad_seq_find_n_predicate_flags_ambiguous_and_non_quadratic() -> None:
+    """The non-tautological core for the sequence solve: 'which term equals V' must
+    have exactly one positive-integer answer reachable by rational methods. The two
+    draws a naive generator would leak are (a) a downward parabola where a second
+    positive term also equals the target, and (b) terms that aren't quadratic at all.
+    The predicate reads them off the presented terms + target alone."""
+    # terms 5, 8, 9 ⇒ a=-1, b=6, c=0 (downward): T_2 = T_4 = 8, so "which term = 8?"
+    # has two positive-integer answers — ambiguous.
+    ambiguous = types.SimpleNamespace(params={"t1": 5, "t2": 8, "t3": 9, "target": 8})
+    reasons = quad_seq_find_n_in_scope(ambiguous)
+    assert any("ambiguous" in r for r in reasons), reasons
+
+    # arithmetic run (constant first difference ⇒ second difference 0): not quadratic.
+    not_quadratic = types.SimpleNamespace(
+        params={"t1": 2, "t2": 4, "t3": 6, "target": 10}
+    )
+    assert any("not quadratic" in r for r in quad_seq_find_n_in_scope(not_quadratic))
 
 
 @pytest.mark.scope

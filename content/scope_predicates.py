@@ -20,6 +20,7 @@ import math
 from content.examples.arithmetic_sequence import nth_term_formula
 from content.examples.monic_factorise import problem as monic_factorise
 from content.examples.quadratic_roots import problem as quadratic_factor
+from content.examples.quadratic_sequence import find_n as quad_seq_find_n
 from problem_instantiation_tool.schemas import ProblemInstance
 
 # Bounds mirror each generator's declared draw ranges. Kept here (not imported from the
@@ -30,6 +31,10 @@ _ARITH_A_BOUND = 20  # arithmetic_sequence draws a in [-20, 20]
 _ARITH_D_BOUND = 10  # ... and d in [-10, 10] \ {0}
 _QUAD_ROOT_BOUND = 10  # quadratic_factor draws roots in [-10, 10]
 _QUAD_COEFF_RANGE = (1, 3)  # ... leading_coeff in [1, 3]
+_QUAD_SEQ_A_RANGE = (1, 2)  # quad_seq_find_n draws a in {1, 2} (a > 0: increasing)
+_QUAD_SEQ_B_RANGE = (0, 6)  # ... b in [0, 6]  (b ≥ 0 keeps the vertex at n ≤ 0)
+_QUAD_SEQ_C_RANGE = (-4, 6)  # ... c in [-4, 6]
+_QUAD_SEQ_N_RANGE = (4, 9)  # ... the answer term index n in [4, 9]
 
 
 def monic_factorise_in_scope(instance: ProblemInstance) -> list[str]:
@@ -110,11 +115,83 @@ def arith_nth_term_in_scope(instance: ProblemInstance) -> list[str]:
     return reasons
 
 
+def quad_seq_find_n_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented problem: three terms t1, t2, t3 of a quadratic sequence and a target
+    value; the tutee is asked *which term* equals the target.
+
+    The load-bearing property is that "which term" has ONE unambiguous answer that the
+    tutee can reach by rational methods: the induced quadratic ``a n² + b n + c =
+    target`` must have a perfect-square discriminant (rational roots, no surds) and
+    exactly one positive-integer root (no ± ambiguity, no second valid term index).
+    We recover a, b, c from the presented terms — NOT from the generator's stored
+    coefficients — so a construction regression that leaks an ambiguous or irrational
+    solve is caught here.
+    """
+    p = instance.params
+    t1, t2, t3, target = p["t1"], p["t2"], p["t3"], p["target"]
+    reasons: list[str] = []
+
+    d1 = t2 - t1  # first first-difference = 3a + b
+    second_diff = (t3 - t2) - d1  # = 2a for a genuine quadratic sequence
+    if second_diff == 0:
+        reasons.append(f"second difference 0: terms {t1}, {t2}, {t3} are not quadratic")
+        return reasons
+    if second_diff % 2 != 0:
+        reasons.append(f"second difference {second_diff} is odd: a is non-integer")
+        return reasons
+
+    a = second_diff // 2
+    b = d1 - 3 * a
+    c = t1 - a - b
+
+    a_lo, a_hi = _QUAD_SEQ_A_RANGE
+    if not (a_lo <= a <= a_hi):
+        reasons.append(f"a={a} outside [{a_lo}, {a_hi}] (needs a>0 for a unique term)")
+    b_lo, b_hi = _QUAD_SEQ_B_RANGE
+    if not (b_lo <= b <= b_hi):
+        reasons.append(f"b={b} outside [{b_lo}, {b_hi}]")
+    c_lo, c_hi = _QUAD_SEQ_C_RANGE
+    if not (c_lo <= c <= c_hi):
+        reasons.append(f"c={c} outside [{c_lo}, {c_hi}]")
+
+    # Induced equation: a n² + b n + (c − target) = 0.
+    disc = b * b - 4 * a * (c - target)
+    if disc < 0:
+        reasons.append(f"discriminant {disc} < 0: no real term solves T_n = {target}")
+        return reasons
+    root_disc = math.isqrt(disc)
+    if root_disc * root_disc != disc:
+        reasons.append(f"discriminant {disc} is not a perfect square: irrational n")
+        return reasons
+
+    positive_int_roots = []
+    for sign in (root_disc, -root_disc):
+        num = -b + sign
+        if num % (2 * a) == 0:
+            n = num // (2 * a)
+            if n >= 1:
+                positive_int_roots.append(n)
+    positive_int_roots = sorted(set(positive_int_roots))
+    if len(positive_int_roots) != 1:
+        reasons.append(
+            f"T_n = {target} has {len(positive_int_roots)} positive-integer "
+            f"solutions {positive_int_roots}: 'which term' is ambiguous"
+        )
+        return reasons
+
+    n_lo, n_hi = _QUAD_SEQ_N_RANGE
+    n = positive_int_roots[0]
+    if not (n_lo <= n <= n_hi):
+        reasons.append(f"answer term n={n} outside [{n_lo}, {n_hi}]")
+    return reasons
+
+
 # problem_id → its Problem object (drives the sweep registry)
 PROBLEMS = {
     monic_factorise.id: monic_factorise,
     quadratic_factor.id: quadratic_factor,
     nth_term_formula.id: nth_term_formula,
+    quad_seq_find_n.id: quad_seq_find_n,
 }
 
 # problem_id → its in-scope predicate
@@ -122,4 +199,5 @@ PREDICATES = {
     monic_factorise.id: monic_factorise_in_scope,
     quadratic_factor.id: quadratic_factor_in_scope,
     nth_term_formula.id: arith_nth_term_in_scope,
+    quad_seq_find_n.id: quad_seq_find_n_in_scope,
 }
