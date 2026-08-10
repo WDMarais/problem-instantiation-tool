@@ -88,8 +88,15 @@ fv_annuity_amount = Problem(
     name="Future value of a regular annuity  F = x[(1+i)^N − 1]/i  (ordinary/due)",
     artifact_type="practice",
     problem_spec=_gen_fv_amount,
-    verifier_spec={**_MONEY_VERIFIER, "marks_possible": 3},
-    corpus_anchor=CorpusAnchor(paper="2025 Nov P1", question="7.2", marks=3),
+    verifier_spec={**_MONEY_VERIFIER, "marks_possible": 4},
+    corpus_anchor=CorpusAnchor(
+        paper="2025 Nov P1",
+        question="7.2",
+        marks=4,  # due annuity: the extra ×(1+i) step earns the 4th mark
+        memo_value=66411.60,
+        # R2 300 quarterly at 5,8% for 6 yr, payments at the START (due)
+        inputs={"deposit": 2300, "rate": 5.8, "compounding": 4, "years": 6},
+    ),
 )
 
 
@@ -131,7 +138,19 @@ fv_annuity_deposit = Problem(
     artifact_type="practice",
     problem_spec=_gen_fv_deposit,
     verifier_spec={**_MONEY_VERIFIER, "marks_possible": 4},
-    corpus_anchor=CorpusAnchor(paper="2023 Nov P1", question="6.2.2", marks=4),
+    corpus_anchor=CorpusAnchor(
+        paper="2023 Nov P1",
+        question="6.2.2",
+        marks=4,
+        memo_value=267.26,  # official DBE memo (a third-party memo rounds up to 267,27)
+        # reach F=R20 000 with 60 monthly deposits at 8,7% (ordinary)
+        inputs={
+            "target_amount": 20000,
+            "rate": 8.7,
+            "compounding": 12,
+            "periods": 60,
+        },
+    ),
 )
 
 

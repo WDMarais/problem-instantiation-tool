@@ -123,7 +123,14 @@ depreciation_rate = Problem(
     artifact_type="practice",
     problem_spec=_gen_depr_rate,
     verifier_spec={"kind": "numeric_equality", "marks_possible": 2, "tolerance": 0.01},
-    corpus_anchor=CorpusAnchor(paper="2024 Nov P1", question="7.2", marks=2),
+    corpus_anchor=CorpusAnchor(
+        paper="2024 Nov P1",
+        question="7.2",
+        marks=2,
+        memo_value=12.5,
+        # exam gives A = ½P after 4 yr (no absolute P); (2, 1) encodes that ratio
+        inputs={"book_price": 2, "book_value": 1, "years": 4},
+    ),
 )
 
 
@@ -154,7 +161,13 @@ depreciation_to_zero = Problem(
     artifact_type="practice",
     problem_spec=_gen_depr_to_zero,
     verifier_spec={"kind": "numeric_equality", "marks_possible": 2, "tolerance": 0.01},
-    corpus_anchor=CorpusAnchor(paper="2023 Nov P1", question="6.2.1", marks=2),
+    corpus_anchor=CorpusAnchor(
+        paper="2023 Nov P1",
+        question="6.2.1",
+        marks=2,
+        memo_value=5,  # n = 1/0,2 = 5 years
+        inputs={"rate": 20},
+    ),
 )
 
 

@@ -78,7 +78,7 @@ def test_solve_n_is_the_ceil_of_the_exact_solve(seed):
 def test_all_modes_score_full_on_exact_answer():
     eng = _eng()
     for prob, marks in [
-        (fv_annuity_amount, 3),
+        (fv_annuity_amount, 4),
         (fv_annuity_deposit, 4),
         (fv_annuity_n, 4),
     ]:

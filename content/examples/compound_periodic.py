@@ -87,8 +87,14 @@ compound_amount = Problem(
     name="Accumulated amount with non-annual compounding  A = P(1 + i/m)^(m·n)",
     artifact_type="practice",
     problem_spec=_gen_compound_amount,
-    verifier_spec={**_MONEY_VERIFIER, "marks_possible": 2},
-    corpus_anchor=CorpusAnchor(paper="2024 Nov P1", question="7.1", marks=2),
+    verifier_spec={**_MONEY_VERIFIER, "marks_possible": 3},
+    corpus_anchor=CorpusAnchor(
+        paper="2024 Nov P1",
+        question="7.1",
+        marks=3,  # official memo: i&n / substitution / answer
+        memo_value=14706.56,
+        inputs={"principal": 5000, "rate": 6.8, "compounding": 4, "years": 16},
+    ),
 )
 
 
@@ -160,7 +166,19 @@ compound_rate = Problem(
     artifact_type="practice",
     problem_spec=_gen_compound_rate,
     verifier_spec={**_MONEY_VERIFIER, "marks_possible": 3},
-    corpus_anchor=CorpusAnchor(paper="2023 Nov P1", question="6.1", marks=3),
+    corpus_anchor=CorpusAnchor(
+        paper="2023 Nov P1",
+        question="6.1",
+        marks=3,
+        memo_value=8.70,
+        # R18 500 → R19 319,48 over 6 months compounded monthly
+        inputs={
+            "principal": 18500,
+            "amount": 19319.48,
+            "compounding": 12,
+            "periods": 6,
+        },
+    ),
 )
 
 
@@ -192,7 +210,13 @@ appreciation = Problem(
     artifact_type="practice",
     problem_spec=_gen_appreciation,
     verifier_spec={**_MONEY_VERIFIER, "marks_possible": 2},
-    corpus_anchor=CorpusAnchor(paper="2025 Nov P1", question="7.1", marks=2),
+    corpus_anchor=CorpusAnchor(
+        paper="2025 Nov P1",
+        question="7.1",
+        marks=2,
+        memo_value=58230.94,
+        inputs={"price": 40000, "rate": 7.8, "years": 5},
+    ),
 )
 
 

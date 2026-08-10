@@ -87,7 +87,7 @@ def test_appreciation_is_annual_compound_growth(seed):
 def test_all_modes_score_full_on_the_exact_answer():
     eng = _eng()
     for prob, marks in [
-        (compound_amount, 2),
+        (compound_amount, 3),
         (compound_principal, 2),
         (compound_rate, 3),
         (appreciation, 2),

@@ -183,7 +183,14 @@ pv_annuity_n = Problem(
     artifact_type="practice",
     problem_spec=_gen_pv_n,
     verifier_spec={"kind": "numeric_equality", "marks_possible": 5, "tolerance": 0.01},
-    corpus_anchor=CorpusAnchor(paper="2025 M/J P1", question="7.2", marks=5),
+    corpus_anchor=CorpusAnchor(
+        paper="2025 M/J P1",
+        question="7.2",
+        marks=5,
+        memo_value=73,  # n = 73,788… → 73 whole withdrawals (floor)
+        # R500 000 fund, R11 250 quarterly withdrawals at 6%
+        inputs={"present_value": 500000, "payment": 11250, "rate": 6, "compounding": 4},
+    ),
 )
 
 
@@ -221,7 +228,13 @@ pv_annuity_total_interest = Problem(
     artifact_type="practice",
     problem_spec=_gen_pv_total_interest,
     verifier_spec={**_MONEY_VERIFIER, "marks_possible": 2},
-    corpus_anchor=CorpusAnchor(paper="2024 Nov P1", question="7.3.1", marks=2),
+    corpus_anchor=CorpusAnchor(
+        paper="2024 Nov P1",
+        question="7.3.1",
+        marks=2,
+        memo_value=38058.80,  # 2 300,98 × 60 − 100 000
+        inputs={"loan_amount": 100000, "instalment": 2300.98, "periods": 60},
+    ),
 )
 
 
