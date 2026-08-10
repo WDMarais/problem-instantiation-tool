@@ -123,7 +123,11 @@ from content.examples.rform_skills import (
     rform_solve,
 )
 from content.examples.sequence_classification import (
+    admissible_types,
     identify_sequence_type,
+    is_arithmetic,
+    is_geometric,
+    possible_sequence_types,
 )
 from content.examples.series import (
     arithmetic_series_sum,
@@ -1195,6 +1199,61 @@ def template_identify_sequence_type(params: dict, detail: str = "full") -> Probl
     )
 
 
+def _possible_reason(terms: list[int]) -> list[str]:
+    """Run each discriminator as a *consistency* test on the three shown terms, then
+    conclude with the set of types that survive. Each line shows the actual check a
+    student would perform (differences / ratios / second difference)."""
+    d = [terms[i + 1] - terms[i] for i in range(2)]
+    lines: list[str] = []
+
+    arith = is_arithmetic(terms)
+    arith_verdict = "constant" if arith else "not constant"
+    arith_tail = "could be arithmetic" if arith else "not arithmetic"
+    lines.append(
+        rf"\Delta:\ {d[0]},\ {d[1]}\ (\text{{{arith_verdict}}})"
+        rf" \;\Rightarrow\; \text{{{arith_tail}}}"
+    )
+
+    if all(x != 0 for x in terms):
+        ratios = [sympy.Rational(terms[i + 1], terms[i]) for i in range(2)]
+        geo = is_geometric(terms)
+        geo_tail = "could be geometric" if geo else "not geometric"
+        lines.append(
+            rf"\tfrac{{T_2}}{{T_1}} = {sympy.latex(ratios[0])},\ "
+            rf"\tfrac{{T_3}}{{T_2}} = {sympy.latex(ratios[1])}"
+            rf" \;\Rightarrow\; \text{{{geo_tail}}}"
+        )
+    else:
+        lines.append(r"\text{a term is } 0 \;\Rightarrow\; \text{not geometric}")
+
+    sd = d[1] - d[0]
+    quad_tail = (
+        "could be quadratic" if sd != 0 else "second difference 0: not quadratic"
+    )
+    lines.append(rf"\Delta^2 = {sd} \;\Rightarrow\; \text{{{quad_tail}}}")
+
+    order = ["arithmetic", "geometric", "quadratic"]
+    admissible = [t for t in order if t in admissible_types(terms)]
+    body = r",\ ".join(rf"\text{{{name}}}" for name in admissible)
+    lines.append(rf"\therefore\ \{{\,{body}\,\}}")
+    return lines
+
+
+def template_possible_sequence_types(params: dict, detail: str = "full") -> ProblemCard:
+    terms = [params["t1"], params["t2"], params["t3"]]
+    reason = _possible_reason(terms)
+    steps = reason if detail == "full" else [reason[-1]]
+    return ProblemCard(
+        instruction=(
+            "These are the first three terms of a sequence. State which of "
+            "arithmetic, geometric or quadratic the sequence could be — "
+            "list every type it is still consistent with:"
+        ),
+        display_math=_seq_display(terms),
+        worked_steps=steps,
+    )
+
+
 # ── sequences & series: series-sum templates ────────────────────────────────────
 
 
@@ -1873,6 +1932,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
         problem=identify_sequence_type,
         template=template_identify_sequence_type,
     ),
+    possible_sequence_types.id: WorksheetEntry(
+        problem=possible_sequence_types,
+        template=template_possible_sequence_types,
+    ),
     arith_nth_unlabeled.id: WorksheetEntry(
         problem=arith_nth_unlabeled,
         template=partial(template_arith_nth_term_formula, labeled=False),
@@ -2149,6 +2212,7 @@ BUNDLES: dict[str, list[tuple[str, int]]] = {
     # classify (the withheld first half) before applying a method.
     "sequences_mixed": [
         ("identify_sequence_type", 2),
+        ("possible_sequence_types", 1),
         ("arith_seq_nth_term_unlabeled", 1),
         ("geo_seq_nth_term_unlabeled", 1),
         ("quad_seq_nth_term_unlabeled", 1),
@@ -2160,6 +2224,7 @@ BUNDLES: dict[str, list[tuple[str, int]]] = {
     # the series family (sums, sigma, find-n). ~18 problems.
     "sequences_full": [
         ("identify_sequence_type", 2),
+        ("possible_sequence_types", 1),
         ("arith_seq_nth_term_formula", 1),
         ("arith_seq_find_term", 1),
         ("arith_seq_find_missing", 1),

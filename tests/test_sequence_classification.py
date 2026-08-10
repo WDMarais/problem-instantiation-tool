@@ -11,10 +11,12 @@ import pytest
 
 from content.examples.arithmetic_sequence import nth_term_formula as arith_nth
 from content.examples.sequence_classification import (
+    admissible_types,
     identify_sequence_type,
     is_arithmetic,
     is_geometric,
     is_quadratic,
+    possible_sequence_types,
 )
 from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.registry import InMemoryRegistry
@@ -24,6 +26,7 @@ from worksheets.generate import (
     PROBLEMS,
     template_arith_nth_term_formula,
     template_identify_sequence_type,
+    template_possible_sequence_types,
 )
 
 
@@ -121,3 +124,98 @@ def test_mixed_bundle_registered_and_wires_real_problems():
     assert any(pid.endswith("unlabeled") for pid in ids)
     for pid in ids:
         assert pid in PROBLEMS
+
+
+# ── possible_sequence_types: "which types could it still be?" ───────────────────
+
+
+def _poss_eng():
+    return Engine(
+        registry=InMemoryRegistry({possible_sequence_types.id: possible_sequence_types})
+    )
+
+
+def _poss(params):
+    return [params["t1"], params["t2"], params["t3"]]
+
+
+@pytest.mark.parametrize("seed", range(40))
+def test_possible_answer_set_is_read_off_the_three_terms(seed):
+    """The answer set is exactly the discriminators applied to the shown terms —
+    re-derived here independently of the generator's construction."""
+    p = _poss_eng().instantiate(possible_sequence_types.id, seed=seed).params
+    t = _poss(p)
+    assert p["answer_set"] == admissible_types(t)
+    # answer is a non-empty subset of the three named types (never "neither")
+    assert p["answer_set"]
+    assert p["answer_set"] <= {"arithmetic", "geometric", "quadratic"}
+    # arithmetic and quadratic are mutually exclusive on three terms
+    assert not {"arithmetic", "quadratic"} <= p["answer_set"]
+
+
+def test_three_terms_never_pin_geometric_alone():
+    """A geometric start (2, 4, 8, …) is equally a quadratic until a 4th term — so a
+    set containing 'geometric' must also contain 'quadratic'. This is the whole point
+    of the type; assert the ambiguity actually occurs and is never resolved wrongly."""
+    eng = _poss_eng()
+    saw_geo_quad = False
+    for s in range(80):
+        ans = eng.instantiate(possible_sequence_types.id, seed=s).params["answer_set"]
+        if "geometric" in ans:
+            assert "quadratic" in ans
+            saw_geo_quad = ans == {"geometric", "quadratic"} or saw_geo_quad
+    assert saw_geo_quad, "expected some {geometric, quadratic} ambiguous draws"
+
+
+def test_all_reachable_answer_sets_appear():
+    eng = _poss_eng()
+    seen = {
+        frozenset(
+            eng.instantiate(possible_sequence_types.id, seed=s).params["answer_set"]
+        )
+        for s in range(80)
+    }
+    assert seen == {
+        frozenset({"arithmetic"}),
+        frozenset({"quadratic"}),
+        frozenset({"geometric", "quadratic"}),
+    }
+
+
+def test_exact_set_scores_full_and_subset_scores_partial():
+    eng = _poss_eng()
+    # find a two-element answer so partial credit is observable
+    inst = None
+    for s in range(80):
+        cand = eng.instantiate(possible_sequence_types.id, seed=s)
+        if cand.params["answer_set"] == {"geometric", "quadratic"}:
+            inst = cand
+            break
+    assert inst is not None
+    full = inst.verifier.rate(
+        SolutionAttempt(steps=[SubmittedStep(frozenset({"geometric", "quadratic"}))])
+    )
+    assert full.is_correct and full.marks_awarded == 2
+    partial = inst.verifier.rate(
+        SolutionAttempt(steps=[SubmittedStep(frozenset({"quadratic"}))])
+    )
+    assert not partial.is_correct and partial.marks_awarded == 1
+    wrong = inst.verifier.rate(
+        SolutionAttempt(steps=[SubmittedStep(frozenset({"arithmetic"}))])
+    )
+    assert wrong.marks_awarded == 0
+
+
+def test_possible_template_concludes_with_the_admissible_set():
+    inst = _poss_eng().instantiate(possible_sequence_types.id, seed=3)
+    card = template_possible_sequence_types(inst.params, detail="full")
+    conclusion = card.worked_steps[-1]
+    for name in inst.params["answer_set"]:
+        assert name in conclusion
+    assert "could be" in " ".join(card.worked_steps)
+
+
+def test_possible_types_in_classification_bundles():
+    for bundle in ("sequences_mixed", "sequences_full"):
+        ids = {pid for pid, _ in BUNDLES[bundle]}
+        assert "possible_sequence_types" in ids

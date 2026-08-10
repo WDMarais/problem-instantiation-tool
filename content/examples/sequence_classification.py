@@ -136,6 +136,93 @@ identify_sequence_type = Problem(
 )
 
 
+# ---------------------------------------------------------------------------
+# possible_sequence_types — "which types could this STILL be?" (set answer)
+# ---------------------------------------------------------------------------
+#
+# Only three terms are shown. Three terms under-determine the pattern: any three
+# non-collinear points start infinitely many genuine quadratics, and a geometric
+# start like 2, 4, 8 is *equally* the start of a quadratic until a fourth term
+# splits them. So instead of one label, the answer is the SET of named types the
+# sequence could still be — each type checked as a *consistency* test on the shown
+# terms, not a classification. With three terms the reachable answers are exactly
+# {arithmetic}, {quadratic}, or {geometric, quadratic}: arithmetic and quadratic are
+# mutually exclusive (second difference zero vs. non-zero), and a genuine geometric
+# start always also fits a quadratic. "neither" is not offered — three terms can
+# never establish it (a fourth term is needed to break a second difference).
+
+_POSSIBLE_SHAPES = ("arithmetic", "geometric", "quadratic")
+
+
+def _possible_shape_terms(rng: random.Random, shape: str) -> list[int]:
+    """Three terms whose admissible-type set is the intended one. arithmetic ⇒
+    {arithmetic}; geometric ⇒ {geometric, quadratic}; quadratic ⇒ {quadratic}
+    (rejection-checked to not also read as geometric)."""
+    if shape == "arithmetic":
+        a = rng.randint(-10, 10)
+        d = rng.choice(_D_CHOICES)
+        return [a + i * d for i in range(3)]
+    if shape == "geometric":
+        a = rng.choice(_A_GEO)
+        r = rng.choice(_R_CHOICES)
+        return [a * r**i for i in range(3)]
+    for _ in range(200):
+        a = rng.choice(_QUAD_A)
+        b = rng.randint(-6, 6)
+        c = rng.randint(-6, 6)
+        terms = [a * n * n + b * n + c for n in range(1, 4)]
+        if is_geometric(terms):
+            continue
+        if len(set(terms)) < 3:
+            continue
+        return terms
+    raise RuntimeError(  # pragma: no cover - sampler practically never exhausts
+        "could not sample a quadratic-only triple in 200 tries"
+    )
+
+
+def admissible_types(terms: list[int]) -> frozenset[str]:
+    """The named types (a subset of arithmetic/geometric/quadratic) the shown terms
+    are consistent with — read straight off the discriminators, so this IS the
+    definition the verifier is checked against, not a restatement of construction."""
+    names = []
+    if is_arithmetic(terms):
+        names.append("arithmetic")
+    if is_geometric(terms):
+        names.append("geometric")
+    if is_quadratic(terms):
+        names.append("quadratic")
+    return frozenset(names)
+
+
+def _gen_possible_types(rng: random.Random) -> dict:
+    shape = rng.choice(_POSSIBLE_SHAPES)
+    terms = _possible_shape_terms(rng, shape)
+    return {
+        "t1": terms[0],
+        "t2": terms[1],
+        "t3": terms[2],
+        "answer_set": admissible_types(terms),
+    }
+
+
+possible_sequence_types = Problem(
+    id="possible_sequence_types",
+    type_id="sequence_classification",
+    name="From three terms, state which sequence types the sequence could still be",
+    artifact_type="practice",
+    problem_spec=_gen_possible_types,
+    # marks_possible=2 (the largest admissible set) with partial credit: each correct
+    # type in the set earns a mark. Per set_equality, a spuriously-included type isn't
+    # separately penalised — it just fails to match, capping the marks.
+    verifier_spec={
+        "kind": "set_equality",
+        "marks_possible": 2,
+        "param_key": "answer_set",
+    },
+)
+
+
 if __name__ == "__main__":
     from problem_instantiation_tool.engine import Engine
     from problem_instantiation_tool.registry import InMemoryRegistry
