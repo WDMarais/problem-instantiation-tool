@@ -38,6 +38,7 @@ from content.examples.present_value_annuity import (
     pv_annuity_total_interest,
 )
 from content.examples.quadratic_inequality import quadratic_inequality
+from content.examples.surd_equation import surd_equation
 
 # Every anchored problem type in the family. New anchored types get appended
 # here; the sweep then covers them automatically.
@@ -53,6 +54,7 @@ ANCHORED = [
     depreciation_rate,
     depreciation_to_zero,
     quadratic_inequality,
+    surd_equation,
 ]
 
 
