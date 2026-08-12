@@ -28,6 +28,7 @@ from content.examples.depreciation import (
     depreciation_rate,
     depreciation_to_zero,
 )
+from content.examples.exponential_equation import exponential_equation
 from content.examples.future_value_annuity import (
     fv_annuity_amount,
     fv_annuity_deposit,
@@ -55,6 +56,7 @@ ANCHORED = [
     depreciation_to_zero,
     quadratic_inequality,
     surd_equation,
+    exponential_equation,
 ]
 
 
