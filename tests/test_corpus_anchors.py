@@ -34,6 +34,7 @@ from content.examples.future_value_annuity import (
     fv_annuity_deposit,
 )
 from content.examples.nominal_effective import nominal_to_effective
+from content.examples.nonlinear_simultaneous import nonlinear_simultaneous
 from content.examples.present_value_annuity import (
     pv_annuity_n,
     pv_annuity_total_interest,
@@ -57,6 +58,7 @@ ANCHORED = [
     quadratic_inequality,
     surd_equation,
     exponential_equation,
+    nonlinear_simultaneous,
 ]
 
 
