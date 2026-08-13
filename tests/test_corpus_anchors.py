@@ -24,6 +24,7 @@ from content.examples.compound_periodic import (
     compound_amount,
     compound_rate,
 )
+from content.examples.cubic_stationary_points import cubic_stationary_points
 from content.examples.depreciation import (
     depreciation_rate,
     depreciation_to_zero,
@@ -67,6 +68,7 @@ ANCHORED = [
     derivative_first_principles,
     derivative_rules,
     tangent_line,
+    cubic_stationary_points,
 ]
 
 
