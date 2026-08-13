@@ -28,6 +28,7 @@ from content.examples.depreciation import (
     depreciation_rate,
     depreciation_to_zero,
 )
+from content.examples.discriminant_nature import discriminant_nature
 from content.examples.exponential_equation import exponential_equation
 from content.examples.future_value_annuity import (
     fv_annuity_amount,
@@ -59,6 +60,7 @@ ANCHORED = [
     surd_equation,
     exponential_equation,
     nonlinear_simultaneous,
+    discriminant_nature,
 ]
 
 
