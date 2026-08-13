@@ -29,6 +29,7 @@ from content.examples.depreciation import (
     depreciation_to_zero,
 )
 from content.examples.derivative_first_principles import derivative_first_principles
+from content.examples.derivative_rules import derivative_rules
 from content.examples.discriminant_nature import discriminant_nature
 from content.examples.exponential_equation import exponential_equation
 from content.examples.future_value_annuity import (
@@ -63,6 +64,7 @@ ANCHORED = [
     nonlinear_simultaneous,
     discriminant_nature,
     derivative_first_principles,
+    derivative_rules,
 ]
 
 
