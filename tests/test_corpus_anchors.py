@@ -24,6 +24,7 @@ from content.examples.compound_periodic import (
     compound_amount,
     compound_rate,
 )
+from content.examples.concavity_inflection import concavity_inflection
 from content.examples.cubic_stationary_points import cubic_stationary_points
 from content.examples.depreciation import (
     depreciation_rate,
@@ -73,6 +74,7 @@ ANCHORED = [
     cubic_stationary_points,
     optimisation_solve,
     motion_calculus,
+    concavity_inflection,
 ]
 
 
