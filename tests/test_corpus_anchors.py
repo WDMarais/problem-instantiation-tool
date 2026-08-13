@@ -39,6 +39,7 @@ from content.examples.future_value_annuity import (
 )
 from content.examples.nominal_effective import nominal_to_effective
 from content.examples.nonlinear_simultaneous import nonlinear_simultaneous
+from content.examples.optimisation_solve import optimisation_solve
 from content.examples.present_value_annuity import (
     pv_annuity_n,
     pv_annuity_total_interest,
@@ -69,6 +70,7 @@ ANCHORED = [
     derivative_rules,
     tangent_line,
     cubic_stationary_points,
+    optimisation_solve,
 ]
 
 
