@@ -44,6 +44,7 @@ from content.examples.present_value_annuity import (
 )
 from content.examples.quadratic_inequality import quadratic_inequality
 from content.examples.surd_equation import surd_equation
+from content.examples.tangent_line import tangent_line
 
 # Every anchored problem type in the family. New anchored types get appended
 # here; the sweep then covers them automatically.
@@ -65,6 +66,7 @@ ANCHORED = [
     discriminant_nature,
     derivative_first_principles,
     derivative_rules,
+    tangent_line,
 ]
 
 
