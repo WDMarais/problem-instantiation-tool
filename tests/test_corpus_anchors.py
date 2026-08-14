@@ -48,6 +48,7 @@ from content.examples.motion_calculus import motion_calculus
 from content.examples.nominal_effective import nominal_to_effective
 from content.examples.nonlinear_simultaneous import nonlinear_simultaneous
 from content.examples.optimisation_solve import optimisation_solve
+from content.examples.perpendicular_foot import perpendicular_foot
 from content.examples.present_value_annuity import (
     pv_annuity_n,
     pv_annuity_total_interest,
@@ -80,6 +81,7 @@ ANCHORED = [
     circle_equation,
     circle_tangent,
     circumcentre,
+    perpendicular_foot,
     derivative_first_principles,
     derivative_rules,
     tangent_line,
