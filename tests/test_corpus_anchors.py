@@ -22,6 +22,7 @@ import pytest
 from content.examples.angle_between_lines import angle_between_lines
 from content.examples.circle_equation import circle_equation
 from content.examples.circle_tangent import circle_tangent
+from content.examples.circumcentre import circumcentre
 from content.examples.compound_periodic import (
     appreciation,
     compound_amount,
@@ -78,6 +79,7 @@ ANCHORED = [
     angle_between_lines,
     circle_equation,
     circle_tangent,
+    circumcentre,
     derivative_first_principles,
     derivative_rules,
     tangent_line,
