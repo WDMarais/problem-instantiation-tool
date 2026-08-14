@@ -40,6 +40,37 @@ def _sympy_equal(a: Any, b: Any) -> bool:
         return a == b
 
 
+# Generous defaults for the symbolic grader's decimal fallback (see
+# _numeric_close). Chosen to accept a calculator answer rounded to 2 decimals
+# (e.g. 7.07 for √50, 1.41 for √2) while rejecting a sloppier 1-dp value. A
+# problem that tests exact/surd form sets ``require_exact_form`` to opt out.
+_DECIMAL_ABS_TOL = 5e-3
+_DECIMAL_REL_TOL = 1e-3
+
+
+def _numeric_close(student: Any, canonical: Any, spec: "_StepSpec") -> bool:
+    """Fallback for ``symbolic_equality``: does the student's *decimal* match the
+    canonical *number* within tolerance?
+
+    Only fires when both sides evaluate to a finite real number — a symbolic
+    answer with a free symbol (e.g. a tangent line ``m·x + c``) is not float-able,
+    so ``float(...)`` raises and this returns ``False``, leaving such graders
+    strictly symbolic. This is how "√50 and 7.07 both score" without loosening
+    equation/expression grading.
+    """
+    try:
+        s = float(_to_sympy(student))
+        c = float(_to_sympy(canonical))
+    except (TypeError, ValueError):
+        return False
+    if s != s or c != c or s in (float("inf"), float("-inf")):  # NaN / inf guard
+        return False
+    abs_tol = spec.tolerance or _DECIMAL_ABS_TOL
+    rel_tol = spec.rel_tol or _DECIMAL_REL_TOL
+    diff = abs(s - c)
+    return diff <= abs_tol or diff <= rel_tol * abs(c)
+
+
 def _eval_symbolic(
     expr: sympy.Basic,
     ca_values: dict[int, Any],
@@ -176,6 +207,10 @@ class _StepSpec:
         self.tolerance: float = spec_dict.get("tolerance", 0.0)
         self.rel_tol: float = spec_dict.get("rel_tol", 0.0)
         self.partial_credit: bool = spec_dict.get("partial_credit", True)
+        # symbolic_equality accepts a decimal equivalent of a numeric answer by
+        # default (generous, matching DBE marking). A problem that requires exact
+        # / surd form ("leave your answer in simplest surd form") sets this True.
+        self.require_exact_form: bool = spec_dict.get("require_exact_form", False)
 
 
 def _rate_submitted_step(
@@ -232,6 +267,10 @@ def _rate_submitted_step(
 
     # symbolic_equality (and unknown kinds — fall through to symbolic comparison)
     is_canonical_match = _sympy_equal(student_value, spec.canonical)
+    if not is_canonical_match and not spec.require_exact_form:
+        # generous default: accept a calculator decimal for a numeric answer
+        # (no-op for symbolic/expression answers — see _numeric_close)
+        is_canonical_match = _numeric_close(student_value, spec.canonical, spec)
 
     if spec.depends_on is None or spec.symbolic_expr is None:
         if is_canonical_match:

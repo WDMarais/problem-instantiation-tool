@@ -8,8 +8,11 @@ square:  (x + D/2)² + (y + E/2)² = (D/2)² + (E/2)² − F, so the centre is
 
 Completing the square in x and in y are two separate operations, so centre_x and
 centre_y are graded independently (1 mark each); the radius is the third mark.
-The radius is graded with ``symbolic_equality`` so a student who leaves it as
-√50 and one who simplifies to 5√2 both score.
+The radius is graded with ``symbolic_equality``, which is generous by default:
+√50, the simplified 5√2, and a calculator decimal like 7.07 all score. (A
+variant that tests surd manipulation would set ``require_exact_form`` on the
+radius step, so 7.07 loses the mark — not done here, where any correct value is
+accepted.)
 
 **Construction** is backward from an integer centre (h, k) and an integer
 *radius-squared* r² (not the radius): the equation is (x−h)² + (y−k)² = r², i.e.
