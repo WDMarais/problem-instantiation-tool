@@ -54,6 +54,7 @@ from content.examples.present_value_annuity import (
     pv_annuity_total_interest,
 )
 from content.examples.quadratic_inequality import quadratic_inequality
+from content.examples.regression_line import regression_line
 from content.examples.surd_equation import surd_equation
 from content.examples.tangent_line import tangent_line
 
@@ -89,6 +90,7 @@ ANCHORED = [
     optimisation_solve,
     motion_calculus,
     concavity_inflection,
+    regression_line,
 ]
 
 
