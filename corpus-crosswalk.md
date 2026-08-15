@@ -144,7 +144,7 @@ poster question needs the extended-trig-identity family built.
 | 10.1.2 | P(at least one) | 2 | probability_venn | a | |
 | 10.2.1 | tree diagram | 3 | RESISTANT | c | diagram-producing |
 | 10.2.2 | tree/total probability | 3 | GAP:tree-probability | b | |
-| 10.3.1–2 | arrangements | 5 | GAP:counting-arrangements | b | |
+| 10.3.1–2 | arrangements | 5 | counting_arrangements | b | all / block-together / not-together |
 
 ### 2023 Nov P2 — a 13 / b 102 / c 35 · archetypes hit: analytic_geometry_triangle, trig, trig_graph_properties, statistics_grouped
 

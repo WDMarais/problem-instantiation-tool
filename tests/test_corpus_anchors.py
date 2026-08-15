@@ -29,6 +29,11 @@ from content.examples.compound_periodic import (
     compound_rate,
 )
 from content.examples.concavity_inflection import concavity_inflection
+from content.examples.counting_arrangements import (
+    counting_all,
+    counting_not_together,
+    counting_together,
+)
 from content.examples.cubic_stationary_points import cubic_stationary_points
 from content.examples.depreciation import (
     depreciation_rate,
@@ -95,6 +100,9 @@ ANCHORED = [
     regression_line,
     mean_stddev,
     grouped_mean_solve,
+    counting_all,
+    counting_together,
+    counting_not_together,
 ]
 
 
