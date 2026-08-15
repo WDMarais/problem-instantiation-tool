@@ -16,6 +16,14 @@ Variants:
 
 `angle_a_deg` is carried purely for drawing (the interior angle drawn at vertex A);
 the relationships hold for any parallelogram, so the figure need not be to scale.
+
+**Reason grading (the Tier-3 pilot).** Each variant grades as DBE two-column
+statement/reason: 1 mark for the angle value, 1 mark for citing the correct
+theorem (``value_and_reason``, partial credit). The generator emits the canonical
+reason *id*; the student's phrasing is matched by alias against the closed
+``PARALLELOGRAM_REASONS`` set — the other two reasons in that set are the
+load-bearing distractors, so a student who names the wrong (but plausible)
+theorem keeps the value mark and loses the reason mark (``semantic_error``).
 """
 
 from __future__ import annotations
@@ -26,6 +34,52 @@ import random
 import sympy
 
 from problem_instantiation_tool.schemas import Problem
+
+# Closed reason-set for the parallelogram configuration: canonical theorem id →
+# accepted student surface phrasings (matched after NFC + lowercase + whitespace
+# normalisation). Holding all three reasons in one set makes each a load-bearing
+# distractor for the others — a student can't win the reason mark by always
+# writing the same theorem. v1 grades the theorem name only; the parallel-lines
+# citation ("; AD ∥ BC") is accepted but not required (spec scope cut §5.1).
+PARALLELOGRAM_REASONS: dict[str, list[str]] = {
+    "opp_angles_parallelogram": [
+        "opposite angles of a parallelogram",
+        "opp angles of a parallelogram",
+        "opp angles of a parm",
+        "opp ∠s of parm",
+        "opposite angles of parm",
+        "opposite angles parallelogram",
+    ],
+    "cointerior_angles": [
+        "co-interior angles",
+        "cointerior angles",
+        "co-int angles",
+        "coint angles",
+        "co-interior angles; ad ∥ bc",
+        "allied angles",
+    ],
+    "alternate_angles": [
+        "alternate angles",
+        "alt angles",
+        "z angles",
+        "alternate angles; ab ∥ dc",
+    ],
+}
+
+
+def _value_and_reason_spec(reason_set: dict) -> list[dict]:
+    """The shared two-column S/R verifier: 1 mark value + 1 mark reason."""
+    return [
+        {
+            "kind": "value_and_reason",
+            "marks_possible": 2,
+            "value_key": "answer",
+            "value_kind": "symbolic_equality",
+            "reason_key": "reason",
+            "reason_set": reason_set,
+            "normalize": ["whitespace"],
+        }
+    ]
 
 
 # Givens are arbitrary integer degrees (no "nice" multiples needed — the answers
@@ -91,6 +145,7 @@ def _gen_cointerior(rng: random.Random) -> dict:
         **_shape(rng),
         "labels": _vertex_labels(rng),
         "answer": sympy.Integer(180 - given),
+        "reason": "cointerior_angles",
     }
 
 
@@ -103,6 +158,7 @@ def _gen_opposite(rng: random.Random) -> dict:
         **_shape(rng),
         "labels": _vertex_labels(rng),
         "answer": sympy.Integer(given),
+        "reason": "opp_angles_parallelogram",
     }
 
 
@@ -126,6 +182,7 @@ def _gen_alternate(rng: random.Random) -> dict:
         "pose": _random_pose(rng),
         "labels": _vertex_labels(rng),
         "answer": sympy.Integer(given),
+        "reason": "alternate_angles",
     }
 
 
@@ -135,9 +192,7 @@ parallelogram_cointerior = Problem(
     name="Find an adjacent angle of a parallelogram (co-interior angles)",
     artifact_type="practice",
     problem_spec=_gen_cointerior,
-    verifier_spec=[
-        {"kind": "symbolic_equality", "marks_possible": 1, "param_key": "answer"}
-    ],
+    verifier_spec=_value_and_reason_spec(PARALLELOGRAM_REASONS),
 )
 
 parallelogram_opposite = Problem(
@@ -146,9 +201,7 @@ parallelogram_opposite = Problem(
     name="Find the opposite angle of a parallelogram (opposite angles equal)",
     artifact_type="practice",
     problem_spec=_gen_opposite,
-    verifier_spec=[
-        {"kind": "symbolic_equality", "marks_possible": 1, "param_key": "answer"}
-    ],
+    verifier_spec=_value_and_reason_spec(PARALLELOGRAM_REASONS),
 )
 
 parallelogram_alternate = Problem(
@@ -157,9 +210,7 @@ parallelogram_alternate = Problem(
     name="Find an alternate angle across a parallelogram diagonal (Z-angles)",
     artifact_type="practice",
     problem_spec=_gen_alternate,
-    verifier_spec=[
-        {"kind": "symbolic_equality", "marks_possible": 1, "param_key": "answer"}
-    ],
+    verifier_spec=_value_and_reason_spec(PARALLELOGRAM_REASONS),
 )
 
 
@@ -178,16 +229,31 @@ if __name__ == "__main__":
     }
     engine = Engine(registry=InMemoryRegistry(problems))
 
-    def show(label, instance, *answers):
-        attempt = SolutionAttempt(steps=[SubmittedStep(a) for a in answers])
+    # one accepted surface phrasing per canonical reason id, for the demo
+    _SURFACE = {
+        "cointerior_angles": "co-interior angles",
+        "opp_angles_parallelogram": "opposite angles of a parallelogram",
+        "alternate_angles": "alternate angles",
+    }
+
+    def show(label, instance, value, reason):
+        attempt = SolutionAttempt(
+            steps=[SubmittedStep({"value": value, "reason": reason})]
+        )
         r = instance.verifier.rate(attempt)
-        print(f"  {label}: {r.marks_awarded}/{r.marks_possible}  ok={r.is_correct}")
+        mt = r.steps[0].mistake_type.name
+        print(
+            f"  {label}: {r.marks_awarded}/{r.marks_possible}  "
+            f"ok={r.is_correct}  [{mt}]"
+        )
 
     for pid in problems:
         inst = engine.instantiate(pid, seed=7)
         p = inst.params
-        (canon,) = inst.verifier.canonicals
-        print(f"=== {pid} ===  given={p['given_deg']}°  answer={canon}°")
-        show("correct", inst, canon)
-        show("wrong  ", inst, int(canon) + 5)
+        canon = inst.verifier.canonicals[0]
+        val, good_reason = canon["value"], _SURFACE[canon["reason"]]
+        print(f"=== {pid} ===  given={p['given_deg']}°  answer={val}°")
+        show("value ✓ reason ✓", inst, val, good_reason)
+        show("value ✓ reason ✗", inst, val, "vertically opposite angles")
+        show("value ✗ reason ✓", inst, int(val) + 5, good_reason)
         print()
