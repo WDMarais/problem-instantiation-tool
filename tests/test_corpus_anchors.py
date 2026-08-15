@@ -44,6 +44,7 @@ from content.examples.future_value_annuity import (
 )
 from content.examples.inclination_angle import inclination_angle
 from content.examples.line_equation import line_equation
+from content.examples.mean_stddev import mean_stddev
 from content.examples.motion_calculus import motion_calculus
 from content.examples.nominal_effective import nominal_to_effective
 from content.examples.nonlinear_simultaneous import nonlinear_simultaneous
@@ -91,6 +92,7 @@ ANCHORED = [
     motion_calculus,
     concavity_inflection,
     regression_line,
+    mean_stddev,
 ]
 
 
