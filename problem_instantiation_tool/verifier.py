@@ -128,6 +128,40 @@ def _set_canonical(params: dict) -> frozenset:
     )
 
 
+def _value_and_reason_canonical(spec: dict, params: dict) -> dict:
+    """Canonical for the compound ``value_and_reason`` step: ``{"value","reason"}``.
+
+    Resolves the value from ``value_key`` (default ``answer``) and the reason *id*
+    from ``reason_key`` (default ``reason``), and validates that id against the
+    closed ``reason_set`` up front — a reason id the set doesn't know is an
+    authoring bug, surfaced at instantiation rather than silently mis-graded.
+    """
+    vkey = spec.get("value_key", "answer")
+    rkey = spec.get("reason_key", "reason")
+    for k in (vkey, rkey):
+        if k not in params:
+            raise CanonicalResolutionError(
+                "value_and_reason",
+                list(params.keys()),
+                f"names '{k}' but the generator produced no such param",
+            )
+    reason_set = spec.get("reason_set")
+    if not isinstance(reason_set, dict) or not reason_set:
+        raise CanonicalResolutionError(
+            "value_and_reason",
+            list(params.keys()),
+            "requires a non-empty 'reason_set' dict {canonical_id: [surfaces]}",
+        )
+    reason_id = params[rkey]
+    if reason_id not in reason_set:
+        raise CanonicalResolutionError(
+            "value_and_reason",
+            list(reason_set.keys()),
+            f"canonical reason id '{reason_id}' is not a key in the reason_set",
+        )
+    return {"value": params[vkey], "reason": reason_id}
+
+
 def _compute_canonicals(specs: list[dict], params: dict) -> list[Any]:
     canonicals: list[Any] = []
     for spec in specs:
@@ -157,6 +191,8 @@ def _compute_canonicals(specs: list[dict], params: dict) -> list[Any]:
             canonical = True
         elif kind == "set_equality":
             canonical = _set_canonical(params)
+        elif kind == "value_and_reason":
+            canonical = _value_and_reason_canonical(spec, params)
         elif not params:
             canonical = 0
         else:  # symbolic_equality, numeric_equality, and unknown kinds
@@ -211,6 +247,46 @@ class _StepSpec:
         # default (generous, matching DBE marking). A problem that requires exact
         # / surd form ("leave your answer in simplest surd form") sets this True.
         self.require_exact_form: bool = spec_dict.get("require_exact_form", False)
+        # value_and_reason compound step (see _rate_submitted_step): the value
+        # facet reuses an existing comparator; the reason facet is closed-set
+        # membership against reason_set, split into value_marks + reason_marks.
+        self.value_kind: str = spec_dict.get("value_kind", "symbolic_equality")
+        self.value_marks: int = spec_dict.get("value_marks", 1)
+        self.reason_set: dict = spec_dict.get("reason_set") or {}
+        self.reason_marks: int = spec_dict.get(
+            "reason_marks", self.marks_possible - self.value_marks
+        )
+
+
+def _value_facet_ok(student: Any, canonical: Any, spec: "_StepSpec") -> bool:
+    """The value half of a value_and_reason step, via an existing comparator."""
+    kind = spec.value_kind
+    if kind == "numeric_equality":
+        try:
+            c = float(canonical)
+            diff = abs(float(student) - c)
+        except (TypeError, ValueError):
+            return False
+        return diff <= spec.tolerance or diff <= spec.rel_tol * abs(c)
+    if kind == "exact_equality":
+        return _normalize_string(str(student), spec.normalize) == _normalize_string(
+            str(canonical), spec.normalize
+        )
+    # symbolic_equality (default) — same generous decimal fallback as a plain step
+    ok = _sympy_equal(student, canonical)
+    if not ok and not spec.require_exact_form:
+        ok = _numeric_close(student, canonical, spec)
+    return ok
+
+
+def _reason_facet_ok(
+    student_reason: Any, canonical_id: Any, reason_set: dict, normalize: list[str]
+) -> bool:
+    """The reason half: closed-set membership, not NLP. A phrasing outside the
+    curated alias list for this reason id is wrong — the fix is to widen the
+    list, never to fuzzy-match."""
+    accepted = {_normalize_string(str(s), normalize) for s in reason_set[canonical_id]}
+    return _normalize_string(str(student_reason), normalize) in accepted
 
 
 def _rate_submitted_step(
@@ -253,6 +329,38 @@ def _rate_submitted_step(
             matched = len(student_set & canonical_set)
             if matched > 0:
                 return MistakeType.computation_error, min(matched, spec.marks_possible)
+        return MistakeType.computation_error, 0
+
+    if kind == "value_and_reason":
+        if (
+            not isinstance(student_value, dict)
+            or "value" not in student_value
+            or "reason" not in student_value
+        ):
+            raise AttemptValidationError(
+                step_index,
+                "value_and_reason expects a {'value': ..., 'reason': ...} dict",
+            )
+        canonical = spec.canonical
+        value_ok = _value_facet_ok(student_value["value"], canonical["value"], spec)
+        reason_ok = _reason_facet_ok(
+            student_value["reason"],
+            canonical["reason"],
+            spec.reason_set,
+            spec.normalize,
+        )
+        if spec.partial_credit and spec.marks_possible > 1:
+            marks = value_ok * spec.value_marks + reason_ok * spec.reason_marks
+            if value_ok and reason_ok:
+                return MistakeType.correct, marks
+            if value_ok:  # right number, wrong/missing theorem — the S/R signal
+                return MistakeType.semantic_error, marks
+            return MistakeType.computation_error, marks
+        # fused: both facets required for the mark (DBE "unjustified → no mark")
+        if value_ok and reason_ok:
+            return MistakeType.correct, spec.marks_possible
+        if value_ok:
+            return MistakeType.semantic_error, 0
         return MistakeType.computation_error, 0
 
     if kind == "numeric_equality":
