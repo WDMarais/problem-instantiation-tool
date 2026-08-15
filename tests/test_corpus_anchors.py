@@ -42,6 +42,7 @@ from content.examples.future_value_annuity import (
     fv_annuity_amount,
     fv_annuity_deposit,
 )
+from content.examples.grouped_mean_solve import grouped_mean_solve
 from content.examples.inclination_angle import inclination_angle
 from content.examples.line_equation import line_equation
 from content.examples.mean_stddev import mean_stddev
@@ -93,6 +94,7 @@ ANCHORED = [
     concavity_inflection,
     regression_line,
     mean_stddev,
+    grouped_mean_solve,
 ]
 
 
