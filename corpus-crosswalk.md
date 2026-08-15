@@ -140,10 +140,10 @@ poster question needs the extended-trig-identity family built.
 | 8.5 | inclination angle | 2 | GAP:inclination-angle | b | |
 | 9.1 | optimisation setup | 3 | RESISTANT | c | "show that A(x)=…" |
 | 9.2 | optimisation minimise | 3 | GAP:optimisation | b | |
-| 10.1.1 | independent P(A∩B) | 2 | GAP:independent-events | b | |
+| 10.1.1 | independent P(A∩B) | 2 | independent_events | b | intersection / union / decide |
 | 10.1.2 | P(at least one) | 2 | probability_venn | a | |
 | 10.2.1 | tree diagram | 3 | RESISTANT | c | diagram-producing |
-| 10.2.2 | tree/total probability | 3 | GAP:tree-probability | b | |
+| 10.2.2 | tree/total probability | 3 | tree_probability | b | total-prob / draw-both / one-each |
 | 10.3.1–2 | arrangements | 5 | counting_arrangements | b | all / block-together / not-together |
 
 ### 2023 Nov P2 — a 13 / b 102 / c 35 · archetypes hit: analytic_geometry_triangle, trig, trig_graph_properties, statistics_grouped

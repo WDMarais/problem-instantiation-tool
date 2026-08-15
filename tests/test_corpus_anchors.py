@@ -49,6 +49,11 @@ from content.examples.future_value_annuity import (
 )
 from content.examples.grouped_mean_solve import grouped_mean_solve
 from content.examples.inclination_angle import inclination_angle
+from content.examples.independent_events import (
+    independent_decide,
+    independent_intersection,
+    independent_union,
+)
 from content.examples.line_equation import line_equation
 from content.examples.mean_stddev import mean_stddev
 from content.examples.motion_calculus import motion_calculus
@@ -64,6 +69,11 @@ from content.examples.quadratic_inequality import quadratic_inequality
 from content.examples.regression_line import regression_line
 from content.examples.surd_equation import surd_equation
 from content.examples.tangent_line import tangent_line
+from content.examples.tree_probability import (
+    tree_draw_both,
+    tree_draw_one_each,
+    tree_total_probability,
+)
 
 # Every anchored problem type in the family. New anchored types get appended
 # here; the sweep then covers them automatically.
@@ -103,6 +113,12 @@ ANCHORED = [
     counting_all,
     counting_together,
     counting_not_together,
+    independent_intersection,
+    independent_union,
+    independent_decide,
+    tree_total_probability,
+    tree_draw_both,
+    tree_draw_one_each,
 ]
 
 
