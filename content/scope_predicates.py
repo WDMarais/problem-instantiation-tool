@@ -18,6 +18,7 @@ import math
 
 # Generators under trust gate. Imported here so the sweep test has a registry to drive.
 from content.examples.arithmetic_sequence import nth_term_formula
+from content.examples.discriminant_nature import discriminant_nature
 from content.examples.linear_equation import problem as linear_add_pos
 from content.examples.linear_equations import (
     linear_double_inequality,
@@ -27,8 +28,11 @@ from content.examples.linear_equations import (
     simultaneous_2x2,
 )
 from content.examples.monic_factorise import problem as monic_factorise
+from content.examples.nonlinear_simultaneous import nonlinear_simultaneous
+from content.examples.quadratic_inequality import quadratic_inequality
 from content.examples.quadratic_roots import problem as quadratic_factor
 from content.examples.quadratic_sequence import find_n as quad_seq_find_n
+from content.examples.surd_equation import surd_equation
 from problem_instantiation_tool.schemas import ProblemInstance
 
 # Bounds mirror each generator's declared draw ranges. Kept here (not imported from the
@@ -352,6 +356,148 @@ def simultaneous_2x2_in_scope(instance: ProblemInstance) -> list[str]:
     return reasons
 
 
+# ── quadratics family (ladder 2) ─────────────────────────────────────────────────
+#
+# Each predicate re-solves the *presented* problem via the discriminant, independent of
+# the generator's (usually backward) construction, and cross-checks the stored
+# set/categorical answer against that independent re-derivation. The leak these guard is
+# a draw whose roots are irrational / non-integer / out-of-band, or whose stored
+# categorical answer (region, nature, valid-set) disagrees with the shown coefficients.
+
+_QUAD_INEQ_ROOT_BOUND = 8  # quadratic_inequality draws distinct roots in [−8, 8]
+_QUAD_AB_COEFF = 2  # quadratic_inequality / discriminant_nature draw a in {±1, ±2}
+_SURD_ROOT_BOUND = 6  # surd_equation draws candidate roots p, q in [−6, 6]
+_NLS_X_BOUND = 5  # nonlinear_simultaneous draws intersection x-values in [−5, 5]
+
+
+def _integer_roots(a: int, b: int, c: int) -> tuple[list[int], str | None]:
+    """Solve ax²+bx+c=0 over the integers. Return (roots, reason-if-not-clean).
+
+    ``reason`` is None when the roots are two real integers; otherwise it names why
+    they are out of the archetype's scope (complex, irrational, non-integer)."""
+    disc = b * b - 4 * a * c
+    if disc < 0:
+        return [], f"discriminant {disc} < 0: non-real roots"
+    root = math.isqrt(disc)
+    if root * root != disc:
+        return [], f"discriminant {disc} is not a perfect square: irrational roots"
+    if (-b + root) % (2 * a) != 0 or (-b - root) % (2 * a) != 0:
+        return [], f"(-b ± √Δ)/2a is non-integer for a={a}, b={b}, c={c}"
+    return [(-b + root) // (2 * a), (-b - root) // (2 * a)], None
+
+
+def quadratic_inequality_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: ax²+bx+c ⧠ 0. Re-derive the two critical values and the sign-analysis
+    region from a, b, c and the direction, independent of construction."""
+    p = instance.params
+    a, b, c = p["a"], p["b"], p["c"]
+    reasons: list[str] = []
+    if abs(a) > _QUAD_AB_COEFF or a == 0:
+        reasons.append(f"a={a} outside {{±1, ±2}}")
+    roots, bad = _integer_roots(a, b, c)
+    if bad:
+        reasons.append(bad)
+        return reasons
+    r1, r2 = roots
+    if r1 == r2:
+        reasons.append("double root: this archetype teaches two distinct roots")
+    for r in roots:
+        if abs(r) > _QUAD_INEQ_ROOT_BOUND:
+            reasons.append(f"critical value {r} exceeds band {_QUAD_INEQ_ROOT_BOUND}")
+    # Independent sign analysis: positive OUTSIDE the roots iff the parabola opens up.
+    wants_positive = p["direction"] in (">", ">=")
+    expected = "outside" if (wants_positive == (a > 0)) else "between"
+    if p["region"] != expected:
+        reasons.append(
+            f"stored region '{p['region']}' ≠ sign-analysis result '{expected}'"
+        )
+    return reasons
+
+
+def discriminant_nature_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: ax²+bx+c=0. Recompute Δ and reclassify the nature from a, b, c, then
+    confirm the stored discriminant value and nature label match."""
+    p = instance.params
+    a, b, c = p["a"], p["b"], p["c"]
+    reasons: list[str] = []
+    if abs(a) > _QUAD_AB_COEFF or a == 0:
+        reasons.append(f"a={a} outside {{±1, ±2}}")
+    disc = b * b - 4 * a * c
+    if disc != p["discriminant"]:
+        reasons.append(f"stored Δ={p['discriminant']} ≠ b²−4ac={disc}")
+    if disc < 0:
+        nature = "non_real"
+    elif disc == 0:
+        nature = "real_equal"
+    else:
+        root = math.isqrt(disc)
+        nature = (
+            "real_unequal_rational"
+            if root * root == disc
+            else "real_unequal_irrational"
+        )
+    if p["nature"] != nature:
+        reasons.append(f"stored nature '{p['nature']}' ≠ Δ-classification '{nature}'")
+    return reasons
+
+
+def surd_equation_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: √(ax+b) = sx+c. Re-derive the squared quadratic x²+(2sc−a)x+(c²−b)=0,
+    solve for the candidate roots, and independently reject where sx+c < 0. Cross-check
+    the stored candidate and valid sets."""
+    p = instance.params
+    a, b, c, s = p["a"], p["b"], p["c"], p["s"]
+    reasons: list[str] = []
+    if a == 0:
+        reasons.append("a = 0: √(constant) = line is degenerate, not a surd equation")
+        return reasons
+    roots, bad = _integer_roots(1, 2 * s * c - a, c * c - b)
+    if bad:
+        reasons.append(bad.replace("roots", "candidate roots"))
+        return reasons
+    cands = frozenset(roots)
+    if len(cands) < 2:
+        reasons.append("candidate roots are not distinct")
+    for t in cands:
+        if abs(t) > _SURD_ROOT_BOUND:
+            reasons.append(f"candidate root {t} exceeds band {_SURD_ROOT_BOUND}")
+    valid = frozenset({t for t in cands if s * t + c >= 0})
+    if not valid:
+        reasons.append("no candidate survives the sx+c ≥ 0 check: empty solution set")
+    if cands != p["candidate_roots"]:
+        reasons.append(f"stored candidates {set(p['candidate_roots'])} ≠ {set(cands)}")
+    if valid != p["valid_roots"]:
+        reasons.append(f"stored valid {set(p['valid_roots'])} ≠ {set(valid)}")
+    return reasons
+
+
+def nonlinear_simultaneous_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: y=mx+k and y=x²+px+q. Equate to x²+(p−m)x+(q−k)=0, re-solve for the
+    intersection x-values, back-substitute into the line for y, and cross-check the
+    stored x-values and (x, y) pairs."""
+    p = instance.params
+    m, k, pp, qq = p["m"], p["k"], p["p"], p["q"]
+    reasons: list[str] = []
+    if m == 0:
+        reasons.append("m = 0: a horizontal line hides the pairing skill")
+    roots, bad = _integer_roots(1, pp - m, qq - k)
+    if bad:
+        reasons.append(bad.replace("roots", "intersection x-values"))
+        return reasons
+    xs = frozenset(roots)
+    if len(xs) < 2:
+        reasons.append("line is tangent (one intersection): not the two-pair scope")
+    for x in xs:
+        if abs(x) > _NLS_X_BOUND:
+            reasons.append(f"intersection x={x} exceeds band {_NLS_X_BOUND}")
+    pairs = frozenset({(x, m * x + k) for x in xs})
+    if xs != p["x_values"]:
+        reasons.append(f"stored x-values {set(p['x_values'])} ≠ {set(xs)}")
+    if pairs != p["solution_pairs"]:
+        reasons.append(f"stored pairs {set(p['solution_pairs'])} ≠ {set(pairs)}")
+    return reasons
+
+
 # problem_id → its Problem object (drives the sweep registry)
 PROBLEMS = {
     monic_factorise.id: monic_factorise,
@@ -364,6 +510,10 @@ PROBLEMS = {
     linear_rational.id: linear_rational,
     linear_double_inequality.id: linear_double_inequality,
     simultaneous_2x2.id: simultaneous_2x2,
+    quadratic_inequality.id: quadratic_inequality,
+    discriminant_nature.id: discriminant_nature,
+    surd_equation.id: surd_equation,
+    nonlinear_simultaneous.id: nonlinear_simultaneous,
 }
 
 # problem_id → its in-scope predicate
@@ -378,4 +528,8 @@ PREDICATES = {
     linear_rational.id: linear_rational_in_scope,
     linear_double_inequality.id: linear_double_inequality_in_scope,
     simultaneous_2x2.id: simultaneous_2x2_in_scope,
+    quadratic_inequality.id: quadratic_inequality_in_scope,
+    discriminant_nature.id: discriminant_nature_in_scope,
+    surd_equation.id: surd_equation_in_scope,
+    nonlinear_simultaneous.id: nonlinear_simultaneous_in_scope,
 }

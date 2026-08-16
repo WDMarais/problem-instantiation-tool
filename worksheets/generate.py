@@ -59,6 +59,7 @@ from content.examples.depreciation import (
     depreciation_rate,
     depreciation_to_zero,
 )
+from content.examples.discriminant_nature import discriminant_nature
 from content.examples.factorise_skills import (
     factor_pairs_for_display,
     factorise_constraints,
@@ -101,6 +102,7 @@ from content.examples.nominal_effective import (
     effective_to_nominal,
     nominal_to_effective,
 )
+from content.examples.nonlinear_simultaneous import nonlinear_simultaneous
 from content.examples.parallelogram_angles import (
     parallelogram_alternate,
     parallelogram_cointerior,
@@ -112,6 +114,8 @@ from content.examples.present_value_annuity import (
     pv_annuity_payment,
     pv_annuity_total_interest,
 )
+from content.examples.quadratic_inequality import quadratic_inequality
+from content.examples.quadratic_roots import problem as quadratic_factor_problem
 from content.examples.quadratic_sequence import (
     find_n as quad_find_n,
 )
@@ -148,6 +152,7 @@ from content.examples.series import (
 from content.examples.series import (
     sigma_evaluate as arith_series_sigma,
 )
+from content.examples.surd_equation import surd_equation
 from content.examples.triangle_angles import (
     triangle_angle_sum,
     triangle_exterior,
@@ -1967,6 +1972,20 @@ def _add_const(v: int) -> str:
     return f"+ {v}" if v > 0 else f"- {abs(v)}"
 
 
+def _paren(v: int) -> str:
+    """Wrap a negative in parentheses for substitution: '(-4)', '3'."""
+    return f"({v})" if v < 0 else f"{v}"
+
+
+def _lead(a: int) -> str:
+    """A leading coefficient prefix: '' for 1, '-' for -1, else the number."""
+    if a == 1:
+        return ""
+    if a == -1:
+        return "-"
+    return f"{a}"
+
+
 def template_linear_add_pos(params: dict, detail: str = "full") -> ProblemCard:
     a, b, ans = params["a"], params["b"], params["answer"]
     steps = [rf"x = {b} - {a}", rf"x = {ans}"]
@@ -2097,6 +2116,121 @@ def template_simultaneous_2x2(params: dict, detail: str = "full") -> ProblemCard
         instruction="Solve the system for $x$ and $y$:",
         display_math=system,
         worked_steps=full if detail == "full" else short,
+    )
+
+
+# ── quadratics family templates (ladder 2) ──────────────────────────────────────
+
+
+def template_quadratic_factor(params: dict, detail: str = "full") -> ProblemCard:
+    a = params["leading_coeff"]
+    r1, r2 = sorted([params["root1"], params["root2"]])
+
+    def _factor(r: int) -> str:  # (x − r), or just x when r == 0
+        return "x" if r == 0 else rf"(x {_add_const(-r)})"
+
+    def _zero(r: int) -> str:  # x − r = 0, or x = 0 when r == 0
+        return "x = 0" if r == 0 else rf"x {_add_const(-r)} = 0"
+
+    display = rf"{_lead(a)}{_factor(r1)}{_factor(r2)} = 0"
+    full = [
+        rf"{_zero(r1)} \;\text{{ or }}\; {_zero(r2)}",
+        rf"x = {r1} \;\text{{ or }}\; x = {r2}",
+    ]
+    return ProblemCard(
+        instruction="Solve for $x$:",
+        display_math=display,
+        worked_steps=full if detail == "full" else full[-1:],
+    )
+
+
+def template_quadratic_inequality(params: dict, detail: str = "full") -> ProblemCard:
+    a = params["a"]
+    lo, hi = params["root1"], params["root2"]  # generator stores these sorted lo, hi
+    opens = "upwards" if a > 0 else "downwards"
+    full = [
+        rf"\text{{critical values: }} x = {lo} \;\text{{ or }}\; x = {hi}",
+        rf"\text{{the parabola opens {opens}, so the solution lies "
+        rf"{params['region']} the critical values}}",
+        params["solution_latex"],
+    ]
+    return ProblemCard(
+        instruction="Solve for $x$:",
+        display_math=params["polynomial_latex"],
+        worked_steps=full if detail == "full" else full[-2:],
+    )
+
+
+_NATURE_PHRASE = {
+    "non_real": r"\Delta < 0 \;\Rightarrow\; \text{the roots are non-real}",
+    "real_equal": r"\Delta = 0 \;\Rightarrow\; \text{the roots are real and equal}",
+    "real_unequal_rational": (
+        r"\Delta > 0 \text{ and a perfect square} \;\Rightarrow\; "
+        r"\text{real, unequal, rational}"
+    ),
+    "real_unequal_irrational": (
+        r"\Delta > 0 \text{, not a perfect square} \;\Rightarrow\; "
+        r"\text{real, unequal, irrational}"
+    ),
+}
+
+
+def template_discriminant_nature(params: dict, detail: str = "full") -> ProblemCard:
+    a, b, c = params["a"], params["b"], params["c"]
+    disc = params["discriminant"]
+    full = [
+        rf"\Delta = b^2 - 4ac = {_paren(b)}^2 - 4{_paren(a)}{_paren(c)} = {disc}",
+        _NATURE_PHRASE[params["nature"]],
+    ]
+    return ProblemCard(
+        instruction="Determine the nature of the roots:",
+        display_math=params["quadratic_latex"],
+        worked_steps=full if detail == "full" else full,
+    )
+
+
+def template_surd_equation(params: dict, detail: str = "full") -> ProblemCard:
+    a, b, c, s = params["a"], params["b"], params["c"], params["s"]
+    cands = sorted(params["candidate_roots"])
+    valids = sorted(params["valid_roots"])
+    rhs = rf"{_term(s, 'x')} {_add_const(c)}"
+    # squared quadratic: x² + (2sc − a)x + (c² − b) = 0
+    sq_x = 2 * s * c - a
+    sq_c = c * c - b
+    cand_str = r" \;\text{ or }\; ".join(rf"x = {t}" for t in cands)
+    valid_str = r" \;\text{ or }\; ".join(rf"x = {t}" for t in valids)
+    full = [
+        rf"\text{{square both sides: }} {a}x {_add_const(b)} = ({rhs})^2",
+        rf"x^2 {_add_term(sq_x, 'x')} {_add_const(sq_c)} = 0",
+        rf"\text{{candidate roots: }} {cand_str}",
+        rf"\text{{keep only where }} {rhs} \ge 0",
+        rf"\therefore {valid_str}",
+    ]
+    return ProblemCard(
+        instruction="Solve for $x$ (reject any extraneous roots):",
+        display_math=params["equation_latex"],
+        worked_steps=full if detail == "full" else full[-3:],
+    )
+
+
+def template_nonlinear_simultaneous(params: dict, detail: str = "full") -> ProblemCard:
+    m, k, p, q = params["m"], params["k"], params["p"], params["q"]
+    (x1, y1), (x2, y2) = sorted(params["solution_pairs"])
+    display = (
+        rf"{params['line_latex']} \quad \text{{and}} \quad {params['parabola_latex']}"
+    )
+    full = [
+        rf"\text{{equate: }} x^2 {_add_term(p, 'x')} {_add_const(q)} "
+        rf"= {_term(m, 'x')} {_add_const(k)}",
+        rf"x^2 {_add_term(p - m, 'x')} {_add_const(q - k)} = 0",
+        rf"x = {x1} \;\text{{ or }}\; x = {x2}",
+        rf"\text{{substitute into }} y = {_term(m, 'x')} {_add_const(k)}:\; "
+        rf"({x1},\, {y1}) \;\text{{ and }}\; ({x2},\, {y2})",
+    ]
+    return ProblemCard(
+        instruction="Solve the system simultaneously:",
+        display_math=display,
+        worked_steps=full if detail == "full" else full[-2:],
     )
 
 
@@ -2386,6 +2520,27 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     simultaneous_2x2.id: WorksheetEntry(
         problem=simultaneous_2x2,
         template=template_simultaneous_2x2,
+    ),
+    # ── quadratics family (ladder 2) ──
+    quadratic_factor_problem.id: WorksheetEntry(
+        problem=quadratic_factor_problem,
+        template=template_quadratic_factor,
+    ),
+    quadratic_inequality.id: WorksheetEntry(
+        problem=quadratic_inequality,
+        template=template_quadratic_inequality,
+    ),
+    discriminant_nature.id: WorksheetEntry(
+        problem=discriminant_nature,
+        template=template_discriminant_nature,
+    ),
+    surd_equation.id: WorksheetEntry(
+        problem=surd_equation,
+        template=template_surd_equation,
+    ),
+    nonlinear_simultaneous.id: WorksheetEntry(
+        problem=nonlinear_simultaneous,
+        template=template_nonlinear_simultaneous,
     ),
 }
 

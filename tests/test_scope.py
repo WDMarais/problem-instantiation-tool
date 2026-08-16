@@ -17,14 +17,18 @@ import pytest
 from content.scope_predicates import (
     PREDICATES,
     PROBLEMS,
+    discriminant_nature_in_scope,
     linear_add_pos_in_scope,
     linear_double_inequality_in_scope,
     linear_expand_in_scope,
     linear_literal_in_scope,
     linear_rational_in_scope,
     monic_factorise_in_scope,
+    nonlinear_simultaneous_in_scope,
     quad_seq_find_n_in_scope,
+    quadratic_inequality_in_scope,
     simultaneous_2x2_in_scope,
+    surd_equation_in_scope,
 )
 from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.exceptions import ScopeViolationError
@@ -143,6 +147,67 @@ def test_linear_predicates_have_teeth(
     """Non-tautological control for the linear ladder: each predicate re-solves the
     *presented* equation and must flag the exact leak its type is vulnerable to (a
     non-integer / out-of-band / degenerate solution), naming why."""
+    instance = types.SimpleNamespace(params=out_of_scope_params)
+    reasons = predicate(instance)
+    assert any(needle in r for r in reasons), (
+        f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
+    )
+
+
+@pytest.mark.scope
+@pytest.mark.parametrize(
+    "predicate, out_of_scope_params, needle",
+    [
+        # quadratic_inequality: a>0 and ">0" holds OUTSIDE the roots, but the stored
+        # region claims "between" — a sign-analysis contradiction.
+        (
+            quadratic_inequality_in_scope,
+            {"a": 1, "b": 2, "c": -8, "direction": ">", "region": "between"},
+            "sign-analysis",
+        ),
+        # discriminant_nature: Δ = 4 (>0, perfect square) ⇒ rational, but nature says
+        # non_real.
+        (
+            discriminant_nature_in_scope,
+            {"a": 1, "b": 8, "c": 15, "discriminant": 4, "nature": "non_real"},
+            "Δ-classification",
+        ),
+        # surd_equation: candidates {−4, −1}, but only −1 survives s·t+c ≥ 0 (s=1,c=2);
+        # the stored valid set wrongly keeps the extraneous −4.
+        (
+            surd_equation_in_scope,
+            {
+                "a": -1,
+                "b": 0,
+                "c": 2,
+                "s": 1,
+                "candidate_roots": frozenset({-4, -1}),
+                "valid_roots": frozenset({-4, -1}),
+            },
+            "stored valid",
+        ),
+        # nonlinear_simultaneous: intersections (1,3) and (3,7), but the stored pair
+        # set carries a wrong y for x=3.
+        (
+            nonlinear_simultaneous_in_scope,
+            {
+                "m": 2,
+                "k": 1,
+                "p": -2,
+                "q": 4,
+                "x_values": frozenset({1, 3}),
+                "solution_pairs": frozenset({(1, 3), (3, 99)}),
+            },
+            "stored pairs",
+        ),
+    ],
+)
+def test_quadratic_predicates_have_teeth(
+    predicate, out_of_scope_params: dict, needle: str
+) -> None:
+    """Non-tautological control for the quadratics ladder: each predicate re-solves the
+    presented problem via the discriminant and cross-checks the stored categorical/set
+    answer, flagging a draw whose stored answer disagrees with the coefficients."""
     instance = types.SimpleNamespace(params=out_of_scope_params)
     reasons = predicate(instance)
     assert any(needle in r for r in reasons), (
