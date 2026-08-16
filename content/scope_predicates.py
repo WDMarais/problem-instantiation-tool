@@ -18,6 +18,14 @@ import math
 
 # Generators under trust gate. Imported here so the sweep test has a registry to drive.
 from content.examples.arithmetic_sequence import nth_term_formula
+from content.examples.linear_equation import problem as linear_add_pos
+from content.examples.linear_equations import (
+    linear_double_inequality,
+    linear_expand,
+    linear_literal,
+    linear_rational,
+    simultaneous_2x2,
+)
 from content.examples.monic_factorise import problem as monic_factorise
 from content.examples.quadratic_roots import problem as quadratic_factor
 from content.examples.quadratic_sequence import find_n as quad_seq_find_n
@@ -186,12 +194,176 @@ def quad_seq_find_n_in_scope(instance: ProblemInstance) -> list[str]:
     return reasons
 
 
+# ── linear-equation family (ladder 1) ───────────────────────────────────────────
+#
+# Each predicate re-solves the *presented* equation independently of how the generator
+# built it, then checks the answer is integer-or-clean-rational, non-degenerate, and in
+# the intended teaching band. A naive generator's leak is exactly a non-integer /
+# out-of-band / degenerate solution — read off the shown coefficients.
+
+_LINEAR_ADD_A_RANGE = (1, 15)  # linear_add_pos: a is a positive constant in [1, 15]
+_LINEAR_ADD_X_BOUND = 10  # ... solution x = b − a lands in [−10, 10]
+_LINEAR_EXPAND_X_BOUND = 5  # linear_expand: integer solution in [−5, 5] \ {0}
+_LINEAR_EXPAND_A_BOUND = 15  # ... |a| ≤ 15, a ≠ 0
+_LINEAR_LITERAL_A_RANGE = (3, 8)  # linear_literal: a in [3, 8]
+_LINEAR_LITERAL_B_RANGE = (2, 8)  # ... b in [2, 8]
+_LINEAR_RATIONAL_X_BOUND = 8  # linear_rational: integer solution in [−8, 8] \ {0,p,q}
+_LINEAR_INEQ_X_BOUND = 10  # linear_double_inequality: integer bounds within [−10, 10]
+_SIMUL_XY_BOUND = 5  # simultaneous_2x2: integer x, y in [−5, 5]
+_SIMUL_COEFF_BOUND = 4  # ... coefficients a,b,d,e in [−4, 4] \ {0}
+
+
+def linear_add_pos_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: x + a = b. Read a, b only; the answer is x = b − a."""
+    p = instance.params
+    a, b = p["a"], p["b"]
+    reasons: list[str] = []
+    a_lo, a_hi = _LINEAR_ADD_A_RANGE
+    if not (a_lo <= a <= a_hi):
+        reasons.append(f"a={a} outside positive-constant band [{a_lo}, {a_hi}]")
+    x = b - a
+    if abs(x) > _LINEAR_ADD_X_BOUND:
+        reasons.append(f"solution x={x} exceeds magnitude bound {_LINEAR_ADD_X_BOUND}")
+    return reasons
+
+
+def linear_expand_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: a − b(cx − d) = −(x − e). Solve independently:
+    x·(1 − bc) = e − bd − a ⇒ x must be a nonzero integer in the band."""
+    p = instance.params
+    a, b, c, d, e = p["a"], p["b"], p["c"], p["d"], p["e"]
+    reasons: list[str] = []
+    if a == 0 or abs(a) > _LINEAR_EXPAND_A_BOUND:
+        reasons.append(f"a={a} is zero or exceeds |a| ≤ {_LINEAR_EXPAND_A_BOUND}")
+    denom = 1 - b * c
+    if denom == 0:
+        reasons.append(f"1 − bc = 0 for b={b}, c={c}: no unique solution")
+        return reasons
+    num = e - b * d - a
+    if num % denom != 0:
+        reasons.append(f"solution ({num})/({denom}) is not an integer")
+        return reasons
+    x = num // denom
+    if x == 0:
+        reasons.append("solution x = 0 (excluded — trivial)")
+    if abs(x) > _LINEAR_EXPAND_X_BOUND:
+        reasons.append(f"solution x={x} exceeds band {_LINEAR_EXPAND_X_BOUND}")
+    return reasons
+
+
+def linear_literal_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: ax − bq = cx. Solve independently: x = bq/(a − c). In scope when
+    a − c ≥ 2 (unique, non-trivial coefficient) and a, b in band."""
+    p = instance.params
+    a, b, c = p["a"], p["b"], p["c"]
+    reasons: list[str] = []
+    a_lo, a_hi = _LINEAR_LITERAL_A_RANGE
+    b_lo, b_hi = _LINEAR_LITERAL_B_RANGE
+    if not (a_lo <= a <= a_hi):
+        reasons.append(f"a={a} outside band [{a_lo}, {a_hi}]")
+    if not (b_lo <= b <= b_hi):
+        reasons.append(f"b={b} outside band [{b_lo}, {b_hi}]")
+    if a - c < 2:
+        reasons.append(
+            f"a − c = {a - c} < 2: coefficient of q is trivial or undefined "
+            f"(need a − c ≥ 2 for a unique, non-degenerate x)"
+        )
+    return reasons
+
+
+def linear_rational_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: Ax/(x−p) + Bx/(x−q) = (kx² + m)/((x−p)(x−q)). For the equation to
+    reduce to a *linear* one the presented x² coefficient k must equal A + B (else it
+    stays quadratic). Then the remainder solves to x = −m/(Aq + Bp) — check integer,
+    nonzero, in band, and off the excluded values."""
+    p = instance.params
+    A, B, pp, qq = p["A"], p["B"], p["p"], p["q"]
+    k, m = p["rhs_quad_coeff"], p["rhs_const"]
+    reasons: list[str] = []
+    if pp == qq:
+        reasons.append(f"excluded values coincide (p = q = {pp})")
+    if k != A + B:
+        reasons.append(
+            f"x² coefficient {k} ≠ A+B ({A + B}): equation does not reduce to linear"
+        )
+        return reasons
+    denom = A * qq + B * pp
+    if denom == 0:
+        reasons.append("Aq + Bp = 0: linear term vanishes, no unique solution")
+        return reasons
+    if (-m) % denom != 0:
+        reasons.append(f"solution ({-m})/({denom}) is not an integer")
+        return reasons
+    x = (-m) // denom
+    if x == 0 or x == pp or x == qq:
+        reasons.append(f"solution x={x} is excluded (0 or an excluded value)")
+    if abs(x) > _LINEAR_RATIONAL_X_BOUND:
+        reasons.append(f"solution x={x} exceeds band {_LINEAR_RATIONAL_X_BOUND}")
+    return reasons
+
+
+def linear_double_inequality_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: p < ax + b < q. Solve independently: the two boundary x-values are
+    (p−b)/a and (q−b)/a. In scope when both are integers, distinct, and in band. (a<0
+    just swaps which is the lower bound — min/max normalise it.)"""
+    p = instance.params
+    a, b, lo_bound, hi_bound = p["a"], p["b"], p["p"], p["q"]
+    reasons: list[str] = []
+    if a == 0:
+        reasons.append("a = 0: not linear in x")
+        return reasons
+    n1, n2 = lo_bound - b, hi_bound - b
+    if n1 % a != 0 or n2 % a != 0:
+        reasons.append(f"boundary x-values ({n1})/({a}), ({n2})/({a}) are not integers")
+        return reasons
+    xb1, xb2 = n1 // a, n2 // a
+    lo, hi = min(xb1, xb2), max(xb1, xb2)
+    if lo == hi:
+        reasons.append(f"solution bounds coincide (x = {lo}): empty/degenerate range")
+    if abs(lo) > _LINEAR_INEQ_X_BOUND or abs(hi) > _LINEAR_INEQ_X_BOUND:
+        reasons.append(f"solution bounds {lo}, {hi} exceed band {_LINEAR_INEQ_X_BOUND}")
+    return reasons
+
+
+def simultaneous_2x2_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: ax+by=c, dx+ey=f. Solve independently by Cramer's rule:
+    det = ae − bd must be nonzero (unique), and x = (ce−bf)/det, y = (af−cd)/det must
+    be integers in band, not both zero."""
+    p = instance.params
+    a, b, c = p["a"], p["b"], p["c"]
+    d, e, f = p["d"], p["e"], p["f"]
+    reasons: list[str] = []
+    for name, v in (("a", a), ("b", b), ("d", d), ("e", e)):
+        if v == 0 or abs(v) > _SIMUL_COEFF_BOUND:
+            reasons.append(f"{name}={v} is zero or exceeds |·| ≤ {_SIMUL_COEFF_BOUND}")
+    det = a * e - b * d
+    if det == 0:
+        reasons.append(f"determinant ae − bd = {det}: system is singular")
+        return reasons
+    nx, ny = c * e - b * f, a * f - c * d
+    if nx % det != 0 or ny % det != 0:
+        reasons.append(f"solution ({nx}/{det}, {ny}/{det}) is not integer")
+        return reasons
+    x, y = nx // det, ny // det
+    if x == 0 and y == 0:
+        reasons.append("solution (0, 0): trivial")
+    if abs(x) > _SIMUL_XY_BOUND or abs(y) > _SIMUL_XY_BOUND:
+        reasons.append(f"solution ({x}, {y}) exceeds band {_SIMUL_XY_BOUND}")
+    return reasons
+
+
 # problem_id → its Problem object (drives the sweep registry)
 PROBLEMS = {
     monic_factorise.id: monic_factorise,
     quadratic_factor.id: quadratic_factor,
     nth_term_formula.id: nth_term_formula,
     quad_seq_find_n.id: quad_seq_find_n,
+    linear_add_pos.id: linear_add_pos,
+    linear_expand.id: linear_expand,
+    linear_literal.id: linear_literal,
+    linear_rational.id: linear_rational,
+    linear_double_inequality.id: linear_double_inequality,
+    simultaneous_2x2.id: simultaneous_2x2,
 }
 
 # problem_id → its in-scope predicate
@@ -200,4 +372,10 @@ PREDICATES = {
     quadratic_factor.id: quadratic_factor_in_scope,
     nth_term_formula.id: arith_nth_term_in_scope,
     quad_seq_find_n.id: quad_seq_find_n_in_scope,
+    linear_add_pos.id: linear_add_pos_in_scope,
+    linear_expand.id: linear_expand_in_scope,
+    linear_literal.id: linear_literal_in_scope,
+    linear_rational.id: linear_rational_in_scope,
+    linear_double_inequality.id: linear_double_inequality_in_scope,
+    simultaneous_2x2.id: simultaneous_2x2_in_scope,
 }

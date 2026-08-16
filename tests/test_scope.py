@@ -17,8 +17,14 @@ import pytest
 from content.scope_predicates import (
     PREDICATES,
     PROBLEMS,
+    linear_add_pos_in_scope,
+    linear_double_inequality_in_scope,
+    linear_expand_in_scope,
+    linear_literal_in_scope,
+    linear_rational_in_scope,
     monic_factorise_in_scope,
     quad_seq_find_n_in_scope,
+    simultaneous_2x2_in_scope,
 )
 from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.exceptions import ScopeViolationError
@@ -97,6 +103,53 @@ def test_quad_seq_find_n_predicate_flags_ambiguous_and_non_quadratic() -> None:
 
 
 @pytest.mark.scope
+@pytest.mark.scope
+@pytest.mark.parametrize(
+    "predicate, out_of_scope_params, needle",
+    [
+        # linear_add_pos: x = b − a = 19 blows the [−10, 10] band.
+        (linear_add_pos_in_scope, {"a": 1, "b": 20, "answer": 19}, "magnitude bound"),
+        # linear_expand: (e − bd − a)/(1 − bc) = (−2)/(−3) is not an integer.
+        (
+            linear_expand_in_scope,
+            {"a": 1, "b": 2, "c": 2, "d": 1, "e": 1},
+            "not an integer",
+        ),
+        # linear_literal: a − c = 1 < 2 makes the coefficient of q trivial.
+        (linear_literal_in_scope, {"a": 5, "c": 4, "b": 3}, "a − c"),
+        # linear_rational: presented x² coefficient 3 ≠ A + B = 2 → still quadratic.
+        (
+            linear_rational_in_scope,
+            {"A": 1, "B": 1, "p": 2, "q": 3, "rhs_quad_coeff": 3, "rhs_const": -10},
+            "does not reduce to linear",
+        ),
+        # linear_double_inequality: boundary (p − b)/a = 1/2 is not an integer.
+        (
+            linear_double_inequality_in_scope,
+            {"a": 2, "b": 0, "p": 1, "q": 5},
+            "not integers",
+        ),
+        # simultaneous_2x2: det = ae − bd = 0 → singular system.
+        (
+            simultaneous_2x2_in_scope,
+            {"a": 2, "b": 2, "c": 4, "d": 1, "e": 1, "f": 2},
+            "singular",
+        ),
+    ],
+)
+def test_linear_predicates_have_teeth(
+    predicate, out_of_scope_params: dict, needle: str
+) -> None:
+    """Non-tautological control for the linear ladder: each predicate re-solves the
+    *presented* equation and must flag the exact leak its type is vulnerable to (a
+    non-integer / out-of-band / degenerate solution), naming why."""
+    instance = types.SimpleNamespace(params=out_of_scope_params)
+    reasons = predicate(instance)
+    assert any(needle in r for r in reasons), (
+        f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
+    )
+
+
 def test_sweep_report_is_informative_on_failure() -> None:
     """A failing sweep must name the offending seed + params so the author can replay.
     Drive it with a deliberately-broken predicate that rejects everything."""

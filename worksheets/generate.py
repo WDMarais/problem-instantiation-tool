@@ -88,6 +88,14 @@ from content.examples.geometric_sequence import (
 from content.examples.geometric_sequence import (
     nth_term_formula as geo_nth_term_formula,
 )
+from content.examples.linear_equation import problem as linear_add_pos_problem
+from content.examples.linear_equations import (
+    linear_double_inequality,
+    linear_expand,
+    linear_literal,
+    linear_rational,
+    simultaneous_2x2,
+)
 from content.examples.monic_factorise import problem as monic_factorise_problem
 from content.examples.nominal_effective import (
     effective_to_nominal,
@@ -1929,6 +1937,169 @@ quad_nth_unlabeled = _unlabeled_variant(
 )
 
 
+# ── linear-equation family templates (ladder 1) ─────────────────────────────────
+
+
+def _term(coeff: int, sym: str) -> str:
+    """A signed leading term: '3x', '-x', 'x'. For the FIRST term of an expression."""
+    if coeff == 1:
+        return sym
+    if coeff == -1:
+        return f"-{sym}"
+    return f"{coeff}{sym}"
+
+
+def _add_term(coeff: int, sym: str) -> str:
+    """A trailing term joined with its own sign: '+ 3y', '- y', '' (when 0)."""
+    if coeff == 0:
+        return ""
+    if coeff == 1:
+        return f"+ {sym}"
+    if coeff == -1:
+        return f"- {sym}"
+    return f"+ {coeff}{sym}" if coeff > 0 else f"- {abs(coeff)}{sym}"
+
+
+def _add_const(v: int) -> str:
+    """A trailing constant with its own sign: '+ 5', '- 3', '' (when 0)."""
+    if v == 0:
+        return ""
+    return f"+ {v}" if v > 0 else f"- {abs(v)}"
+
+
+def template_linear_add_pos(params: dict, detail: str = "full") -> ProblemCard:
+    a, b, ans = params["a"], params["b"], params["answer"]
+    steps = [rf"x = {b} - {a}", rf"x = {ans}"]
+    return ProblemCard(
+        instruction="Solve for $x$:",
+        display_math=rf"x + {a} = {b}",
+        worked_steps=steps,
+    )
+
+
+def template_linear_expand(params: dict, detail: str = "full") -> ProblemCard:
+    a, b, c, d, e = (params[k] for k in ("a", "b", "c", "d", "e"))
+    ans = params["answer"]
+    lhs_const = a + b * d  # a + bd  (constant after distributing -b·(cx - d))
+    x_coeff = -b * c  # coefficient of x on the LHS after expanding
+    rhs_const = e  # RHS is -(x - e) = -x + e
+    collected_coeff = x_coeff + 1  # move -x from RHS: (-bc + 1)x
+    collected_const = rhs_const - lhs_const
+    full = [
+        rf"{a} - {b * c}x + {b * d} = -x + {e}",
+        rf"{lhs_const} {_add_term(x_coeff, 'x')} = -x + {e}",
+        rf"{_term(collected_coeff, 'x')} = {collected_const}",
+        rf"x = {ans}",
+    ]
+    short = full[-2:]
+    return ProblemCard(
+        instruction="Solve for $x$:",
+        display_math=rf"{a} - {b}({c}x - {d}) = -(x - {e})",
+        worked_steps=full if detail == "full" else short,
+    )
+
+
+def template_linear_literal(params: dict, detail: str = "full") -> ProblemCard:
+    a, b, c, ans = params["a"], params["b"], params["c"], params["answer"]
+    full = [
+        rf"{_term(a, 'x')} - {_term(c, 'x')} = {b}q",
+        rf"{_term(a - c, 'x')} = {b}q",
+        rf"x = {sympy.latex(ans)}",
+    ]
+    short = full[-2:]
+    return ProblemCard(
+        instruction="Solve for $x$ in terms of $q$:",
+        display_math=rf"{_term(a, 'x')} - {b}q = {_term(c, 'x')}",
+        worked_steps=full if detail == "full" else short,
+    )
+
+
+def template_linear_rational(params: dict, detail: str = "full") -> ProblemCard:
+    A, B, p, q = params["A"], params["B"], params["p"], params["q"]
+    num_coeff, num_const = params["rhs_quad_coeff"], params["rhs_const"]
+    ans = params["answer"]
+    lhs = rf"\frac{{{_term(A, 'x')}}}{{x - {p}}} + \frac{{{_term(B, 'x')}}}{{x - {q}}}"
+    rhs = rf"\frac{{{num_coeff}x^2 {_add_const(num_const)}}}{{(x - {p})(x - {q})}}"
+    lin_coeff = -(A * q + B * p)  # coefficient of x once the x² terms cancel
+    full = [
+        rf"\text{{Restrictions: }} x \neq {p}, \; x \neq {q}",
+        # multiply both sides by the LCD (x−p)(x−q)
+        rf"{_term(A, 'x')}(x - {q}) + {_term(B, 'x')}(x - {p}) "
+        rf"= {num_coeff}x^2 {_add_const(num_const)}",
+        # expand the left side — the x² term matches the right side
+        rf"{num_coeff}x^2 {_add_term(lin_coeff, 'x')} = {num_coeff}x^2 "
+        rf"{_add_const(num_const)}",
+        # subtract {num_coeff}x² from both sides — the x² terms cancel
+        rf"{_term(lin_coeff, 'x')} = {num_const}",
+        rf"x = {sympy.latex(ans)}",
+    ]
+    short = full[-2:]
+    return ProblemCard(
+        instruction="Solve for $x$ (state any restrictions):",
+        display_math=rf"{lhs} = {rhs}",
+        worked_steps=full if detail == "full" else short,
+    )
+
+
+def template_linear_double_inequality(
+    params: dict, detail: str = "full"
+) -> ProblemCard:
+    a, b, p, q = params["a"], params["b"], params["p"], params["q"]
+    lo, hi = params["answer_lower"], params["answer_upper"]
+    # Subtract b from all three parts, then divide by a. Dividing by a negative reverses
+    # both inequalities (so the constructed bounds are already min/max ordered).
+    p2, q2 = p - b, q - b
+    full = []
+    if b != 0:  # skip the subtraction step when there's nothing to subtract
+        full.append(rf"{p2} < {_term(a, 'x')} < {q2}")
+    full.append(
+        rf"\text{{divide all parts by }} {a} \text{{, reversing the inequalities}}"
+        if a < 0
+        else rf"\text{{divide all parts by }} {a}"
+    )
+    full.append(rf"{lo} < x < {hi}")
+    short = full[-2:]
+    return ProblemCard(
+        instruction="Solve for $x$:",
+        display_math=rf"{p} < {_term(a, 'x')} {_add_const(b)} < {q}",
+        worked_steps=full if detail == "full" else short,
+    )
+
+
+def template_simultaneous_2x2(params: dict, detail: str = "full") -> ProblemCard:
+    a, b, c = params["a"], params["b"], params["c"]
+    d, e, f = params["d"], params["e"], params["f"]
+    x_ans, y_ans = params["answer_x"], params["answer_y"]
+    eq1 = rf"{_term(a, 'x')} {_add_term(b, 'y')} = {c}"
+    eq2 = rf"{_term(d, 'x')} {_add_term(e, 'y')} = {f}"
+    # NB: KaTeX does not support \tag inside a cases environment — it throws and the
+    # whole block falls back to raw source. Label the rows with an inline \quad (n).
+    system = rf"\begin{{cases}} {eq1} \quad (1) \\ {eq2} \quad (2) \end{{cases}}"
+    # Eliminate x: scale (1) by d and (2) by a so both have x-coefficient ad, then
+    # subtract. (1)×d − (2)×a  ⇒  (bd − ae)y = cd − af.
+    dmul = f"({d})" if d < 0 else f"{d}"
+    amul = f"({a})" if a < 0 else f"{a}"
+    y_coeff = b * d - a * e
+    y_rhs = c * d - a * f
+    dy = int(y_ans)  # answer_y is a sympy.Integer
+    full = [
+        rf"\text{{Eliminate }} x:\ (1)\times {dmul},\ (2)\times {amul}",
+        rf"{_term(a * d, 'x')} {_add_term(b * d, 'y')} = {c * d}",
+        rf"{_term(a * d, 'x')} {_add_term(a * e, 'y')} = {a * f}",
+        rf"\text{{Subtract: }} {_term(y_coeff, 'y')} = {y_rhs} "
+        rf"\;\Rightarrow\; y = {sympy.latex(y_ans)}",
+        rf"\text{{Substitute into (1): }} {_term(a, 'x')} {_add_const(b * dy)} = {c} "
+        rf"\;\Rightarrow\; x = {sympy.latex(x_ans)}",
+        rf"x = {sympy.latex(x_ans)}, \quad y = {sympy.latex(y_ans)}",
+    ]
+    short = full[-2:]
+    return ProblemCard(
+        instruction="Solve the system for $x$ and $y$:",
+        display_math=system,
+        worked_steps=full if detail == "full" else short,
+    )
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
     identify_sequence_type.id: WorksheetEntry(
         problem=identify_sequence_type,
@@ -2190,6 +2361,31 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     depreciation_to_zero.id: WorksheetEntry(
         problem=depreciation_to_zero,
         template=template_depreciation_to_zero,
+    ),
+    # ── linear-equation family (ladder 1) ──
+    linear_add_pos_problem.id: WorksheetEntry(
+        problem=linear_add_pos_problem,
+        template=template_linear_add_pos,
+    ),
+    linear_expand.id: WorksheetEntry(
+        problem=linear_expand,
+        template=template_linear_expand,
+    ),
+    linear_literal.id: WorksheetEntry(
+        problem=linear_literal,
+        template=template_linear_literal,
+    ),
+    linear_rational.id: WorksheetEntry(
+        problem=linear_rational,
+        template=template_linear_rational,
+    ),
+    linear_double_inequality.id: WorksheetEntry(
+        problem=linear_double_inequality,
+        template=template_linear_double_inequality,
+    ),
+    simultaneous_2x2.id: WorksheetEntry(
+        problem=simultaneous_2x2,
+        template=template_simultaneous_2x2,
     ),
 }
 
