@@ -157,7 +157,9 @@ from content.examples.zero_product_rule import (
     zero_product_extension,
     zero_product_standard,
 )
+from content.scope_predicates import PREDICATES
 from problem_instantiation_tool.engine import Engine
+from problem_instantiation_tool.exceptions import ScopeViolationError
 from problem_instantiation_tool.registry import InMemoryRegistry
 from problem_instantiation_tool.schemas import Problem
 from render.geometry import (
@@ -2716,12 +2718,24 @@ def _generate_unique_retry(
     n: int,
     max_retries: int = 50,
 ) -> list[dict]:
+    # F1 runtime gate. If this problem type declares an in-scope predicate, an
+    # out-of-scope draw is rejected exactly like a duplicate — dropped and retried —
+    # so a pedagogically-wrong instance never reaches the worksheet. A type with no
+    # predicate is drawn uniqueness-only, identical to before. The predicate reads the
+    # *presented* instance, independent of construction (see scope_predicates.py).
+    predicate = PREDICATES.get(problem_id)
     seen: set[str] = set()
     result: list[dict] = []
     for _ in range(n):
         params = None
+        fallback = None  # last in-scope (or, ungated, last) candidate — see below
         for _ in range(max_retries):
             candidate = engine.instantiate(problem_id, seed=rng.randint(0, 2**31))
+            if predicate is not None and predicate(candidate):
+                continue  # out of scope: reject like a duplicate, keep drawing
+            fallback = (
+                candidate  # in scope (or ungated): safe to emit if uniqueness fails
+            )
             key = str(
                 sorted(
                     (k, v) for k, v in candidate.params.items() if isinstance(v, str)
@@ -2731,7 +2745,21 @@ def _generate_unique_retry(
                 seen.add(key)
                 params = candidate.params
                 break
-        result.append(params if params is not None else candidate.params)
+        if params is None:
+            if fallback is None:
+                # Every draw was out of scope. Never silently emit one — raise loudly
+                # with the last instance's reasons (a genuine authoring bug: the draw
+                # space and the predicate disagree). Only reachable when gated.
+                raise ScopeViolationError(
+                    candidate.spec.id,
+                    dict(candidate.params),
+                    predicate(candidate),
+                    seed=candidate.seed,
+                )
+            # Ran out of *unique* in-scope draws — uniqueness is best-effort, so emit
+            # an in-scope duplicate rather than fail (unchanged for ungated types).
+            params = fallback.params
+        result.append(params)
     return result
 
 
