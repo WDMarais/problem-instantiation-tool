@@ -17,7 +17,14 @@ import pytest
 from content.scope_predicates import (
     PREDICATES,
     PROBLEMS,
+    arith_find_missing_in_scope,
+    arith_find_n_in_scope,
+    arith_from_two_terms_in_scope,
+    arith_series_find_n_in_scope,
     discriminant_nature_in_scope,
+    geo_find_missing_in_scope,
+    geo_find_n_in_scope,
+    geo_from_two_terms_in_scope,
     linear_add_pos_in_scope,
     linear_double_inequality_in_scope,
     linear_expand_in_scope,
@@ -208,6 +215,52 @@ def test_quadratic_predicates_have_teeth(
     """Non-tautological control for the quadratics ladder: each predicate re-solves the
     presented problem via the discriminant and cross-checks the stored categorical/set
     answer, flagging a draw whose stored answer disagrees with the coefficients."""
+    instance = types.SimpleNamespace(params=out_of_scope_params)
+    reasons = predicate(instance)
+    assert any(needle in r for r in reasons), (
+        f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
+    )
+
+
+@pytest.mark.scope
+@pytest.mark.parametrize(
+    "predicate, out_of_scope_params, needle",
+    [
+        # arith_find_n: (target − a)/d = 5/2 is not an integer ⇒ no term equals 5.
+        (arith_find_n_in_scope, {"a": 0, "d": 2, "target": 5}, "not an integer"),
+        # arith_find_missing: gap t_after − t_before = 3 is odd ⇒ mean not an integer.
+        (arith_find_missing_in_scope, {"t_before": 1, "t_after": 4}, "odd"),
+        # arith_from_two_terms: (T_q − T_p)/(q − p) = 10/3 is not an integer d.
+        (
+            arith_from_two_terms_in_scope,
+            {"p": 2, "q": 5, "tp": 0, "tq": 10},
+            "not an integer",
+        ),
+        # geo_find_n: 5 is not a power a·rᵏ of the sequence 1, 2, 4 ⇒ no term equals it.
+        (
+            geo_find_n_in_scope,
+            {"t1": 1, "t2": 2, "t3": 4, "target": 5},
+            "not a term",
+        ),
+        # geo_find_missing: t_before·t_after = 12 is not a perfect square ⇒ surd mean.
+        (geo_find_missing_in_scope, {"t_before": 2, "t_after": 6}, "irrational"),
+        # geo_from_two_terms: even gap (q − p = 2), stored r = −2 ⇒ sign hidden.
+        (
+            geo_from_two_terms_in_scope,
+            {"p": 1, "q": 3, "tp": 1, "tq": 4, "r": -2},
+            "hides the sign",
+        ),
+        # arith_series_find_n: a=10, d=−2 ⇒ S₄ = S₇ = 28, two positive n solutions.
+        (arith_series_find_n_in_scope, {"a": 10, "d": -2, "sn": 28}, "ambiguous"),
+    ],
+)
+def test_sequence_solve_mode_predicates_have_teeth(
+    predicate, out_of_scope_params: dict, needle: str
+) -> None:
+    """Non-tautological control for the sequence solve-mode ladder: each predicate
+    re-derives the answer (term index / missing term / ratio) from the presented terms
+    and must flag the exact leak its type is vulnerable to — a non-integer, ambiguous,
+    or sign-hidden solve — even though the current generator closes that surface."""
     instance = types.SimpleNamespace(params=out_of_scope_params)
     reasons = predicate(instance)
     assert any(needle in r for r in reasons), (
