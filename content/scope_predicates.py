@@ -49,6 +49,10 @@ from content.examples.linear_equations import (
 )
 from content.examples.monic_factorise import problem as monic_factorise
 from content.examples.nonlinear_simultaneous import nonlinear_simultaneous
+from content.examples.probability_venn import (
+    prob_count_intersection,
+    prob_venn_intersection,
+)
 from content.examples.quadratic_inequality import quadratic_inequality
 from content.examples.quadratic_roots import problem as quadratic_factor
 from content.examples.quadratic_sequence import find_n as quad_seq_find_n
@@ -485,6 +489,58 @@ def arith_series_find_n_in_scope(instance: ProblemInstance) -> list[str]:
     return reasons
 
 
+# ── probability Venn "find the intersection" family (ladder 5) ───────────────────
+#
+# Both are solve-for-unknown: the tutee recovers the intersection from the other three
+# quantities via inclusion–exclusion. The F1 surface is *Venn consistency* — the
+# recovered intersection must be a legal region (0 < it ≤ min of the two sets, and the
+# union ≤ the whole). A naive draw leaks an impossible Venn (a union too small, counts
+# exceeding the total); the predicate re-derives the intersection and rejects it.
+
+
+def prob_venn_intersection_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: P(A), P(B), P(A∪B). The tutee solves P(A∩B) = P(A)+P(B)−P(A∪B).
+    In scope when that intersection is a legal probability consistent with a Venn
+    diagram: 0 < P(A∩B) ≤ min(P(A), P(B)), each value in [0, 1], and P(A∪B) ≤ 1."""
+    p = instance.params
+    pa, pb, paub = p["p_a"], p["p_b"], p["p_aub"]
+    reasons: list[str] = []
+    for name, v in (("P(A)", pa), ("P(B)", pb), ("P(A∪B)", paub)):
+        if not (0 <= v <= 1):
+            reasons.append(f"{name} = {v} is not a probability in [0, 1]")
+    if paub > 1:
+        reasons.append(f"P(A∪B) = {paub} exceeds 1")
+    p_ab = pa + pb - paub
+    if p_ab <= 0:
+        reasons.append(f"P(A∩B) = {p_ab} ≤ 0: events disjoint or Venn inconsistent")
+    if p_ab > min(pa, pb):
+        reasons.append(
+            f"P(A∩B) = {p_ab} exceeds min(P(A), P(B)) = {min(pa, pb)}: impossible Venn"
+        )
+    return reasons
+
+
+def prob_count_intersection_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: n(A), n(B), n(neither), n(total). The tutee solves
+    n(A∩B) = n(A) + n(B) + n(neither) − n(total). In scope when that count is a legal
+    Venn region: 0 ≤ n(A∩B) ≤ min(n(A), n(B)), and no single count exceeds the total."""
+    p = instance.params
+    nt, na, nb, nn = p["n_total"], p["n_a"], p["n_b"], p["n_neither"]
+    reasons: list[str] = []
+    if nn < 0:
+        reasons.append(f"n(neither) = {nn} is negative")
+    n_ab = na + nb + nn - nt
+    if n_ab < 0:
+        reasons.append(f"n(A∩B) = {n_ab} < 0: counts exceed the total (inconsistent)")
+    if n_ab > min(na, nb):
+        reasons.append(
+            f"n(A∩B) = {n_ab} exceeds min(n(A), n(B)) = {min(na, nb)}: impossible"
+        )
+    if na > nt or nb > nt:
+        reasons.append(f"a single-set count exceeds the total {nt}")
+    return reasons
+
+
 # ── linear-equation family (ladder 1) ───────────────────────────────────────────
 #
 # Each predicate re-solves the *presented* equation independently of how the generator
@@ -798,6 +854,8 @@ PROBLEMS = {
     geo_seq_find_missing.id: geo_seq_find_missing,
     geo_seq_from_two_terms.id: geo_seq_from_two_terms,
     arith_series_find_n.id: arith_series_find_n,
+    prob_venn_intersection.id: prob_venn_intersection,
+    prob_count_intersection.id: prob_count_intersection,
     linear_add_pos.id: linear_add_pos,
     linear_expand.id: linear_expand,
     linear_literal.id: linear_literal,
@@ -823,6 +881,8 @@ PREDICATES = {
     geo_seq_find_missing.id: geo_find_missing_in_scope,
     geo_seq_from_two_terms.id: geo_from_two_terms_in_scope,
     arith_series_find_n.id: arith_series_find_n_in_scope,
+    prob_venn_intersection.id: prob_venn_intersection_in_scope,
+    prob_count_intersection.id: prob_count_intersection_in_scope,
     linear_add_pos.id: linear_add_pos_in_scope,
     linear_expand.id: linear_expand_in_scope,
     linear_literal.id: linear_literal_in_scope,

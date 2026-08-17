@@ -32,6 +32,8 @@ from content.scope_predicates import (
     linear_rational_in_scope,
     monic_factorise_in_scope,
     nonlinear_simultaneous_in_scope,
+    prob_count_intersection_in_scope,
+    prob_venn_intersection_in_scope,
     quad_seq_find_n_in_scope,
     quadratic_inequality_in_scope,
     simultaneous_2x2_in_scope,
@@ -261,6 +263,37 @@ def test_sequence_solve_mode_predicates_have_teeth(
     re-derives the answer (term index / missing term / ratio) from the presented terms
     and must flag the exact leak its type is vulnerable to — a non-integer, ambiguous,
     or sign-hidden solve — even though the current generator closes that surface."""
+    instance = types.SimpleNamespace(params=out_of_scope_params)
+    reasons = predicate(instance)
+    assert any(needle in r for r in reasons), (
+        f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
+    )
+
+
+@pytest.mark.scope
+@pytest.mark.parametrize(
+    "predicate, out_of_scope_params, needle",
+    [
+        # prob_venn_intersection: P(A)+P(B)−P(A∪B) = 0.3 > min(0.2, 0.2) ⇒ impossible.
+        (
+            prob_venn_intersection_in_scope,
+            {"p_a": 0.2, "p_b": 0.2, "p_aub": 0.1},
+            "impossible Venn",
+        ),
+        # prob_count_intersection: 10 + 10 + 5 − 40 = −15 ⇒ counts exceed the total.
+        (
+            prob_count_intersection_in_scope,
+            {"n_total": 40, "n_a": 10, "n_b": 10, "n_neither": 5},
+            "inconsistent",
+        ),
+    ],
+)
+def test_probability_predicates_have_teeth(
+    predicate, out_of_scope_params: dict, needle: str
+) -> None:
+    """Non-tautological control for the probability Venn ladder: each predicate
+    re-derives the intersection via inclusion–exclusion and must flag a draw whose
+    presented quantities describe an impossible Venn diagram."""
     instance = types.SimpleNamespace(params=out_of_scope_params)
     reasons = predicate(instance)
     assert any(needle in r for r in reasons), (

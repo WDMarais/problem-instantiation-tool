@@ -54,6 +54,11 @@ from content.examples.compound_periodic import (
     compound_principal,
     compound_rate,
 )
+from content.examples.counting_arrangements import (
+    counting_all,
+    counting_not_together,
+    counting_together,
+)
 from content.examples.depreciation import (
     depreciation_amount,
     depreciation_rate,
@@ -89,6 +94,11 @@ from content.examples.geometric_sequence import (
 from content.examples.geometric_sequence import (
     nth_term_formula as geo_nth_term_formula,
 )
+from content.examples.independent_events import (
+    independent_decide,
+    independent_intersection,
+    independent_union,
+)
 from content.examples.linear_equation import problem as linear_add_pos_problem
 from content.examples.linear_equations import (
     linear_double_inequality,
@@ -113,6 +123,10 @@ from content.examples.present_value_annuity import (
     pv_annuity_n,
     pv_annuity_payment,
     pv_annuity_total_interest,
+)
+from content.examples.probability_venn import (
+    prob_count_intersection,
+    prob_venn_intersection,
 )
 from content.examples.quadratic_inequality import quadratic_inequality
 from content.examples.quadratic_roots import problem as quadratic_factor_problem
@@ -153,6 +167,11 @@ from content.examples.series import (
     sigma_evaluate as arith_series_sigma,
 )
 from content.examples.surd_equation import surd_equation
+from content.examples.tree_probability import (
+    tree_draw_both,
+    tree_draw_one_each,
+    tree_total_probability,
+)
 from content.examples.triangle_angles import (
     triangle_angle_sum,
     triangle_exterior,
@@ -2234,6 +2253,245 @@ def template_nonlinear_simultaneous(params: dict, detail: str = "full") -> Probl
     )
 
 
+# ── probability templates (ladder 5) ─────────────────────────────────────────
+#
+# All values are exact (SymPy Integers / Rationals); worked_steps show the counting
+# principle or probability identity substituted, then the closed value. The two Venn
+# "find the intersection" types are solve-for-unknown (F1-gated); the rest are
+# forward-compute from a menu (no F1 surface).
+
+
+def template_counting_all(params: dict, detail: str = "full") -> ProblemCard:
+    n = params["n"]
+    ans = params["answer"]
+    full = [
+        rf"\text{{arrange }} {n} \text{{ distinct objects in a row: }} {n}!",
+        rf"{n}! = {sympy.latex(ans)}",
+    ]
+    return ProblemCard(
+        instruction=(
+            f"In how many different ways can {n} different "
+            f"{params['noun_plural']} be arranged {params['setting']}?"
+        ),
+        display_math=rf"\text{{objects: }} {', '.join(params['labels'])}",
+        worked_steps=full if detail == "full" else full[-1:],
+    )
+
+
+def template_counting_together(params: dict, detail: str = "full") -> ProblemCard:
+    n, k = params["n"], params["block_size"]
+    des = params["designated"]
+    ans = params["answer"]
+    units = n - k + 1
+    full = [
+        rf"\text{{treat the {k} designated objects as one block}} "
+        rf"\Rightarrow {units} \text{{ units}}",
+        rf"\text{{units arrange in }} {units}!,\ \text{{block internally in }} {k}!",
+        rf"{k}! \times {units}! = {sympy.latex(ans)}",
+    ]
+    return ProblemCard(
+        instruction=(
+            f"The {n} {params['noun_plural']} are arranged {params['setting']}. "
+            f"In how many ways can this be done if {', '.join(des)} must stay "
+            f"together?"
+        ),
+        display_math=rf"\text{{objects: }} {', '.join(params['labels'])}",
+        worked_steps=full if detail == "full" else full[-2:],
+    )
+
+
+def template_counting_not_together(params: dict, detail: str = "full") -> ProblemCard:
+    n = params["n"]
+    des = params["designated"]
+    ans = params["answer"]
+    full = [
+        rf"\text{{total arrangements: }} {n}!",
+        rf"\text{{with {des[0]} and {des[1]} adjacent (as a block): }} "
+        rf"2 \times ({n}-1)!",
+        rf"{n}! - 2\times {n - 1}! = {sympy.latex(ans)}",
+    ]
+    return ProblemCard(
+        instruction=(
+            f"The {n} {params['noun_plural']} are arranged {params['setting']}. "
+            f"In how many ways can this be done if {des[0]} and {des[1]} are "
+            f"never next to each other?"
+        ),
+        display_math=rf"\text{{objects: }} {', '.join(params['labels'])}",
+        worked_steps=full if detail == "full" else full[-2:],
+    )
+
+
+def template_independent_intersection(
+    params: dict, detail: str = "full"
+) -> ProblemCard:
+    pa, pb, ans = params["p_a"], params["p_b"], params["answer"]
+    full = [
+        r"P(A \cap B) = P(A)\cdot P(B)",
+        rf"= {sympy.latex(pa)} \times {sympy.latex(pb)} = {sympy.latex(ans)}",
+    ]
+    return ProblemCard(
+        instruction=r"$A$ and $B$ are independent events. Determine $P(A \cap B)$.",
+        display_math=rf"P(A) = {sympy.latex(pa)}, \quad P(B) = {sympy.latex(pb)}",
+        worked_steps=full if detail == "full" else full[-1:],
+    )
+
+
+def template_independent_union(params: dict, detail: str = "full") -> ProblemCard:
+    pa, pb, ans = params["p_a"], params["p_b"], params["answer"]
+    full = [
+        r"P(A \cup B) = P(A) + P(B) - P(A)\cdot P(B)",
+        rf"= {sympy.latex(pa)} + {sympy.latex(pb)} "
+        rf"- {sympy.latex(pa)}\times {sympy.latex(pb)}",
+        rf"= {sympy.latex(ans)}",
+    ]
+    return ProblemCard(
+        instruction=r"$A$ and $B$ are independent events. Determine $P(A \cup B)$.",
+        display_math=rf"P(A) = {sympy.latex(pa)}, \quad P(B) = {sympy.latex(pb)}",
+        worked_steps=full if detail == "full" else full[-2:],
+    )
+
+
+def template_independent_decide(params: dict, detail: str = "full") -> ProblemCard:
+    pa, pb, pab = params["p_a"], params["p_b"], params["p_ab"]
+    prod, verdict = params["product"], params["verdict"]
+    concl = "independent" if verdict == "independent" else "not independent"
+    rel = "=" if verdict == "independent" else r"\neq"
+    full = [
+        rf"P(A)\cdot P(B) = {sympy.latex(pa)} \times {sympy.latex(pb)} "
+        rf"= {sympy.latex(prod)}",
+        rf"P(A \cap B) = {sympy.latex(pab)}",
+        rf"{sympy.latex(prod)} {rel} {sympy.latex(pab)} \;\Rightarrow\; "
+        rf"\text{{{concl}}}",
+    ]
+    return ProblemCard(
+        instruction=(
+            r"Calculate $P(A)\cdot P(B)$ and hence state whether $A$ and $B$ are "
+            r"independent."
+        ),
+        display_math=(
+            rf"P(A) = {sympy.latex(pa)},\quad P(B) = {sympy.latex(pb)},\quad "
+            rf"P(A \cap B) = {sympy.latex(pab)}"
+        ),
+        worked_steps=full if detail == "full" else full[-2:],
+    )
+
+
+def template_prob_venn_intersection(params: dict, detail: str = "full") -> ProblemCard:
+    pa, pb, paub = params["p_a"], params["p_b"], params["p_aub"]
+    ans = params["answer"]
+    full = [
+        r"P(A \cap B) = P(A) + P(B) - P(A \cup B)",
+        rf"= {sympy.latex(pa)} + {sympy.latex(pb)} - {sympy.latex(paub)} "
+        rf"= {sympy.latex(ans)}",
+    ]
+    return ProblemCard(
+        instruction=r"For events $A$ and $B$, determine $P(A \cap B)$.",
+        display_math=(
+            rf"P(A) = {sympy.latex(pa)},\quad P(B) = {sympy.latex(pb)},\quad "
+            rf"P(A \cup B) = {sympy.latex(paub)}"
+        ),
+        worked_steps=full if detail == "full" else full[-1:],
+    )
+
+
+def template_prob_count_intersection(params: dict, detail: str = "full") -> ProblemCard:
+    nt, na, nb, nn = (
+        params["n_total"],
+        params["n_a"],
+        params["n_b"],
+        params["n_neither"],
+    )
+    ans = params["answer"]
+    n_aub = nt - nn
+    full = [
+        rf"n(A \cup B) = n(\text{{total}}) - n(\text{{neither}}) "
+        rf"= {nt} - {nn} = {n_aub}",
+        rf"n(A \cap B) = n(A) + n(B) - n(A \cup B) "
+        rf"= {na} + {nb} - {n_aub} = {sympy.latex(ans)}",
+    ]
+    return ProblemCard(
+        instruction=(
+            f"In a group of {nt} people, {na} do activity $A$, {nb} do activity "
+            f"$B$, and {nn} do neither. How many do both?"
+        ),
+        display_math=(
+            rf"n(A) = {na},\quad n(B) = {nb},\quad "
+            rf"n(\text{{neither}}) = {nn},\quad n(\text{{total}}) = {nt}"
+        ),
+        worked_steps=full if detail == "full" else full[-1:],
+    )
+
+
+def template_tree_total_probability(params: dict, detail: str = "full") -> ProblemCard:
+    p, q1, q2 = (
+        params["p_branch1"],
+        params["p_success_given1"],
+        params["p_success_given2"],
+    )
+    ans = params["answer"]
+    one_minus_p = 1 - p
+    full = [
+        r"P(\text{success}) = p\cdot q_1 + (1-p)\cdot q_2",
+        rf"= {sympy.latex(p)}\times {sympy.latex(q1)} "
+        rf"+ {sympy.latex(one_minus_p)}\times {sympy.latex(q2)}",
+        rf"= {sympy.latex(ans)}",
+    ]
+    return ProblemCard(
+        instruction=(
+            f"A two-stage experiment involves {params['setting']}. Using the "
+            f"branch probabilities below, find $P(\\text{{{params['outcome']}}})$."
+        ),
+        display_math=(
+            rf"P(\text{{first branch}}) = {sympy.latex(p)},\quad "
+            rf"q_1 = {sympy.latex(q1)},\quad q_2 = {sympy.latex(q2)}"
+        ),
+        worked_steps=full if detail == "full" else full[-2:],
+    )
+
+
+def template_tree_draw_both(params: dict, detail: str = "full") -> ProblemCard:
+    ca, cb, item = params["colour_a"], params["colour_b"], params["item"]
+    ra, rb, n = params["count_a"], params["count_b"], params["n_total"]
+    target = params["target_colour"]
+    t = ra if target == ca else rb
+    ans = params["answer"]
+    full = [
+        rf"P(\text{{both {target}}}) = \frac{{{t}}}{{{n}}}\times "
+        rf"\frac{{{t}-1}}{{{n}-1}}",
+        rf"= \frac{{{t}}}{{{n}}}\times \frac{{{t - 1}}}{{{n - 1}}} "
+        rf"= {sympy.latex(ans)}",
+    ]
+    return ProblemCard(
+        instruction=(
+            f"A bag holds {ra} {ca} and {rb} {cb} {item}. Two are drawn at random "
+            f"without replacement. Find the probability that both are {target}."
+        ),
+        display_math=rf"{ra}\ \text{{{ca}}},\ {rb}\ \text{{{cb}}}\ \text{{{item}}}",
+        worked_steps=full if detail == "full" else full[-1:],
+    )
+
+
+def template_tree_draw_one_each(params: dict, detail: str = "full") -> ProblemCard:
+    ca, cb, item = params["colour_a"], params["colour_b"], params["item"]
+    ra, rb, n = params["count_a"], params["count_b"], params["n_total"]
+    ans = params["answer"]
+    full = [
+        rf"P(\text{{one of each}}) = \frac{{{ra}}}{{{n}}}\times \frac{{{rb}}}{{{n}-1}} "
+        rf"+ \frac{{{rb}}}{{{n}}}\times \frac{{{ra}}}{{{n}-1}}",
+        rf"= \frac{{2\times {ra}\times {rb}}}{{{n}\times {n - 1}}} "
+        rf"= {sympy.latex(ans)}",
+    ]
+    return ProblemCard(
+        instruction=(
+            f"A bag holds {ra} {ca} and {rb} {cb} {item}. Two are drawn at random "
+            f"without replacement. Find the probability of drawing one of each "
+            f"colour."
+        ),
+        display_math=rf"{ra}\ \text{{{ca}}},\ {rb}\ \text{{{cb}}}\ \text{{{item}}}",
+        worked_steps=full if detail == "full" else full[-1:],
+    )
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
     identify_sequence_type.id: WorksheetEntry(
         problem=identify_sequence_type,
@@ -2541,6 +2799,50 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     nonlinear_simultaneous.id: WorksheetEntry(
         problem=nonlinear_simultaneous,
         template=template_nonlinear_simultaneous,
+    ),
+    counting_all.id: WorksheetEntry(
+        problem=counting_all,
+        template=template_counting_all,
+    ),
+    counting_together.id: WorksheetEntry(
+        problem=counting_together,
+        template=template_counting_together,
+    ),
+    counting_not_together.id: WorksheetEntry(
+        problem=counting_not_together,
+        template=template_counting_not_together,
+    ),
+    independent_intersection.id: WorksheetEntry(
+        problem=independent_intersection,
+        template=template_independent_intersection,
+    ),
+    independent_union.id: WorksheetEntry(
+        problem=independent_union,
+        template=template_independent_union,
+    ),
+    independent_decide.id: WorksheetEntry(
+        problem=independent_decide,
+        template=template_independent_decide,
+    ),
+    prob_venn_intersection.id: WorksheetEntry(
+        problem=prob_venn_intersection,
+        template=template_prob_venn_intersection,
+    ),
+    prob_count_intersection.id: WorksheetEntry(
+        problem=prob_count_intersection,
+        template=template_prob_count_intersection,
+    ),
+    tree_total_probability.id: WorksheetEntry(
+        problem=tree_total_probability,
+        template=template_tree_total_probability,
+    ),
+    tree_draw_both.id: WorksheetEntry(
+        problem=tree_draw_both,
+        template=template_tree_draw_both,
+    ),
+    tree_draw_one_each.id: WorksheetEntry(
+        problem=tree_draw_one_each,
+        template=template_tree_draw_one_each,
     ),
 }
 
