@@ -21,11 +21,14 @@ from content.scope_predicates import (
     arith_find_n_in_scope,
     arith_from_two_terms_in_scope,
     arith_series_find_n_in_scope,
+    circle_equation_in_scope,
+    circle_tangent_in_scope,
     discriminant_nature_in_scope,
     geo_find_missing_in_scope,
     geo_find_n_in_scope,
     geo_from_two_terms_in_scope,
     grouped_mean_solve_in_scope,
+    line_equation_in_scope,
     linear_add_pos_in_scope,
     linear_double_inequality_in_scope,
     linear_expand_in_scope,
@@ -347,6 +350,97 @@ def test_grouped_mean_solve_predicate_has_teeth(
     out-of-band (negative) count — even though the generator closes that surface."""
     instance = types.SimpleNamespace(params=out_of_scope_params)
     reasons = grouped_mean_solve_in_scope(instance)
+    assert any(needle in r for r in reasons), (
+        f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
+    )
+
+
+@pytest.mark.scope
+@pytest.mark.parametrize(
+    "out_of_scope_params, needle",
+    [
+        # L is vertical (x=2 twice): its gradient is undefined, so no y=mx+c exists.
+        (
+            {
+                "gx1": 2,
+                "gy1": 1,
+                "gx2": 2,
+                "gy2": 5,
+                "px": 0,
+                "py": 0,
+                "relation": "parallel",
+            },
+            "L is vertical",
+        ),
+        # L horizontal (y=3 twice) and the ask is perpendicular ⇒ vertical answer line.
+        (
+            {
+                "gx1": 0,
+                "gy1": 3,
+                "gx2": 6,
+                "gy2": 3,
+                "px": 1,
+                "py": 1,
+                "relation": "perpendicular",
+            },
+            "required line is vertical",
+        ),
+    ],
+)
+def test_line_equation_predicate_has_teeth(
+    out_of_scope_params: dict, needle: str
+) -> None:
+    """Non-tautological control for line_equation: re-derives the required gradient from
+    the presented points + relation and flags the draws whose answer line has no finite
+    gradient — a vertical L, or a perpendicular asked of a horizontal L."""
+    instance = types.SimpleNamespace(params=out_of_scope_params)
+    reasons = line_equation_in_scope(instance)
+    assert any(needle in r for r in reasons), (
+        f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
+    )
+
+
+@pytest.mark.scope
+@pytest.mark.parametrize(
+    "out_of_scope_params, needle",
+    [
+        # D=3 is odd ⇒ centre_x = -3/2 is not an integer (completing-the-square leak).
+        ({"D": 3, "E": 4, "F": 100}, "non-integer centre"),
+        # r^2 = 0 + 0 - 50 = -50 ≤ 0 ⇒ an imaginary circle, not a real one.
+        ({"D": 0, "E": 0, "F": 50}, "not a real circle"),
+    ],
+)
+def test_circle_equation_predicate_has_teeth(
+    out_of_scope_params: dict, needle: str
+) -> None:
+    """Non-tautological control for circle_equation: re-derives centre (-D/2, -E/2) and
+    r^2 from the presented D, E, F and flags an odd D/E (non-integer centre) or an
+    F that leaves r^2 ≤ 0 (no real circle)."""
+    instance = types.SimpleNamespace(params=out_of_scope_params)
+    reasons = circle_equation_in_scope(instance)
+    assert any(needle in r for r in reasons), (
+        f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
+    )
+
+
+@pytest.mark.scope
+@pytest.mark.parametrize(
+    "out_of_scope_params, needle",
+    [
+        # P level with the centre (py=k=5) ⇒ the tangent is vertical, no y=mx+c.
+        ({"h": 2, "k": 5, "px": 4, "py": 5}, "tangent is vertical"),
+        # P directly above the centre (px=h=2) ⇒ the radius gradient is undefined.
+        ({"h": 2, "k": 5, "px": 2, "py": 9}, "radius gradient undefined"),
+    ],
+)
+def test_circle_tangent_predicate_has_teeth(
+    out_of_scope_params: dict, needle: str
+) -> None:
+    """Non-tautological control for circle_tangent: re-derives the radius offset from
+    the presented centre + point and flags py==k (vertical tangent) and px==h (radius
+    gradient undefined — the taught method divides by px-h)."""
+    instance = types.SimpleNamespace(params=out_of_scope_params)
+    reasons = circle_tangent_in_scope(instance)
     assert any(needle in r for r in reasons), (
         f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
     )

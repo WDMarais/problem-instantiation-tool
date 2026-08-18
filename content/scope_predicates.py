@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import math
 
+import sympy
+
 # Generators under trust gate. Imported here so the sweep test has a registry to drive.
 from content.examples.arithmetic_sequence import (
     find_missing as arith_seq_find_missing,
@@ -29,6 +31,8 @@ from content.examples.arithmetic_sequence import (
 from content.examples.arithmetic_sequence import (
     nth_term_formula,
 )
+from content.examples.circle_equation import circle_equation
+from content.examples.circle_tangent import circle_tangent
 from content.examples.discriminant_nature import discriminant_nature
 from content.examples.geometric_sequence import (
     find_missing as geo_seq_find_missing,
@@ -40,6 +44,7 @@ from content.examples.geometric_sequence import (
     from_two_terms as geo_seq_from_two_terms,
 )
 from content.examples.grouped_mean_solve import grouped_mean_solve
+from content.examples.line_equation import line_equation
 from content.examples.linear_equation import problem as linear_add_pos
 from content.examples.linear_equations import (
     linear_double_inequality,
@@ -599,6 +604,121 @@ def grouped_mean_solve_in_scope(instance: ProblemInstance) -> list[str]:
     return reasons
 
 
+# ── analytic-geometry family (ladder 7) ─────────────────────────────────────────
+#
+# Of the five analytic-geo archetypes only the three that construct *toward a target
+# answer-form* carry F1 surface: a line equation y = m·x + c and a circle centre/radius
+# both fall out of scope when a draw makes that form undefined. The two forward
+# read-offs (triangle five-answers, angle-between-lines) draw raw integer points and
+# report whatever midpoint/gradient/surd/angle results — the surds and decimals ARE the
+# expected answer and every degeneracy is guarded — so they carry no F1 surface.
+#
+# Each predicate re-derives the answer-form from the *presented* points/coefficients and
+# flags the draw that pushes it out of the y = m·x + c (or real-circle) scope.
+
+_CIRCLE_RSQ_RANGE = (2, 40)  # circle_equation draws r^2 as a whole number 2..40
+
+
+def line_equation_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: line L through two points, a point P, and 'parallel'/'perpendicular'.
+    The required line is y = m·x + c. Re-derive m from the shown points and the
+    relation; flag the draws where that gradient is undefined — a vertical L (no m),
+    or a horizontal L asked for a perpendicular (the required line is vertical)."""
+    p = instance.params
+    gx1, gy1, gx2, gy2 = p["gx1"], p["gy1"], p["gx2"], p["gy2"]
+    px, py = p["px"], p["py"]
+    relation = p["relation"]
+    reasons: list[str] = []
+
+    if gx1 == gx2:
+        reasons.append(
+            f"line L is vertical (x={gx1} twice): gradient undefined, no y=mx+c"
+        )
+        return reasons
+    if relation == "perpendicular" and gy1 == gy2:
+        reasons.append(
+            f"L is horizontal (y={gy1} twice) and the ask is perpendicular: "
+            "the required line is vertical, no y=mx+c"
+        )
+        return reasons
+
+    m_l = sympy.Rational(gy2 - gy1, gx2 - gx1)
+    required = m_l if relation == "parallel" else -1 / m_l
+    c = sympy.Rational(py) - required * px
+    if required != p["required_gradient"]:
+        reasons.append(
+            f"recovered gradient {required} disagrees with stored "
+            f"{p['required_gradient']}"
+        )
+    if c != p["c"]:
+        reasons.append(f"recovered intercept {c} disagrees with stored {p['c']}")
+    return reasons
+
+
+def circle_equation_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: x^2 + y^2 + Dx + Ey + F = 0. Completing the square gives centre
+    (-D/2, -E/2) and r^2 = (D/2)^2 + (E/2)^2 - F. Re-derive both from the shown D, E, F
+    and demand an integer centre (D, E even) and a positive, in-band, whole r^2 — an odd
+    D/E leaks a non-integer centre and F too large leaves an imaginary circle."""
+    p = instance.params
+    d, e, f = p["D"], p["E"], p["F"]
+    reasons: list[str] = []
+
+    if d % 2 != 0 or e % 2 != 0:
+        reasons.append(
+            f"D={d}, E={e}: completing the square gives a non-integer centre"
+        )
+    centre_x = sympy.Rational(-d, 2)
+    centre_y = sympy.Rational(-e, 2)
+    rsq = sympy.Rational(d, 2) ** 2 + sympy.Rational(e, 2) ** 2 - f
+    if rsq <= 0:
+        reasons.append(f"radius^2 = {rsq} ≤ 0: not a real circle")
+        return reasons
+    lo, hi = _CIRCLE_RSQ_RANGE
+    if rsq != int(rsq) or not (lo <= rsq <= hi):
+        reasons.append(f"radius^2 = {rsq} outside the integer band [{lo}, {hi}]")
+    if centre_x != p["centre_x"] or centre_y != p["centre_y"]:
+        reasons.append(
+            f"recovered centre ({centre_x}, {centre_y}) disagrees with stored "
+            f"({p['centre_x']}, {p['centre_y']})"
+        )
+    return reasons
+
+
+def circle_tangent_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: centre C(h, k) and point P(px, py) on the circle. The tangent at P is
+    y = m·x + c with m = -(px-h)/(py-k). Re-derive the radius offset from the shown
+    points; flag py==k (tangent vertical, no y=mx+c) and px==h (radius gradient
+    undefined — the taught method divides by px-h)."""
+    p = instance.params
+    h, k, px, py = p["h"], p["k"], p["px"], p["py"]
+    reasons: list[str] = []
+
+    dx, dy = px - h, py - k
+    if dx == 0:
+        reasons.append(
+            f"P is directly above/below the centre (x={px}=h): radius gradient "
+            "undefined"
+        )
+    if dy == 0:
+        reasons.append(
+            f"P is level with the centre (y={py}=k): tangent is vertical, no y=mx+c"
+        )
+    if reasons:
+        return reasons
+
+    tangent = -sympy.Rational(dx, dy)
+    c = sympy.Rational(py) - tangent * px
+    if tangent != p["tangent_gradient"]:
+        reasons.append(
+            f"recovered tangent gradient {tangent} disagrees with stored "
+            f"{p['tangent_gradient']}"
+        )
+    if c != p["c"]:
+        reasons.append(f"recovered intercept {c} disagrees with stored {p['c']}")
+    return reasons
+
+
 # ── linear-equation family (ladder 1) ───────────────────────────────────────────
 #
 # Each predicate re-solves the *presented* equation independently of how the generator
@@ -915,6 +1035,9 @@ PROBLEMS = {
     prob_venn_intersection.id: prob_venn_intersection,
     prob_count_intersection.id: prob_count_intersection,
     grouped_mean_solve.id: grouped_mean_solve,
+    line_equation.id: line_equation,
+    circle_equation.id: circle_equation,
+    circle_tangent.id: circle_tangent,
     linear_add_pos.id: linear_add_pos,
     linear_expand.id: linear_expand,
     linear_literal.id: linear_literal,
@@ -943,6 +1066,9 @@ PREDICATES = {
     prob_venn_intersection.id: prob_venn_intersection_in_scope,
     prob_count_intersection.id: prob_count_intersection_in_scope,
     grouped_mean_solve.id: grouped_mean_solve_in_scope,
+    line_equation.id: line_equation_in_scope,
+    circle_equation.id: circle_equation_in_scope,
+    circle_tangent.id: circle_tangent_in_scope,
     linear_add_pos.id: linear_add_pos_in_scope,
     linear_expand.id: linear_expand_in_scope,
     linear_literal.id: linear_literal_in_scope,

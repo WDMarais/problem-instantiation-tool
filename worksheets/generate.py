@@ -30,6 +30,10 @@ import sympy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from content.examples.analytic_geometry_triangle import (
+    problem as analytic_geometry_triangle,
+)
+from content.examples.angle_between_lines import angle_between_lines
 from content.examples.arithmetic_sequence import (
     find_missing as arith_find_missing,
 )
@@ -48,6 +52,8 @@ from content.examples.arithmetic_sequence import (
 from content.examples.arithmetic_sequence import (
     nth_term_formula as arith_nth_term_formula,
 )
+from content.examples.circle_equation import circle_equation
+from content.examples.circle_tangent import circle_tangent
 from content.examples.compound_periodic import (
     appreciation,
     compound_amount,
@@ -100,6 +106,7 @@ from content.examples.independent_events import (
     independent_intersection,
     independent_union,
 )
+from content.examples.line_equation import line_equation
 from content.examples.linear_equation import problem as linear_add_pos_problem
 from content.examples.linear_equations import (
     linear_double_inequality,
@@ -230,6 +237,17 @@ class ProblemCard:
 
 
 # ── problem templates ─────────────────────────────────────────────────────────
+
+
+def _signed(n) -> str:
+    """'+ 5' / '- 3/2' — a signed (possibly Rational) coefficient as a LaTeX term."""
+    mag = sympy.latex(abs(n))
+    return f"- {mag}" if n < 0 else f"+ {mag}"
+
+
+def _par(n) -> str:
+    """Parenthesise a negative operand so a sum reads '3 + (-6)', not '3+-6'."""
+    return f"({n})" if n < 0 else f"{n}"
 
 
 def _poly_latex(b: int, c: int) -> str:
@@ -2630,6 +2648,135 @@ def template_stats_grouped(params: dict, detail: str = "full") -> ProblemCard:
     )
 
 
+# ── analytic geometry (ladder 7) ──────────────────────────────────────────────
+def template_analytic_geometry_triangle(
+    params: dict, detail: str = "full"
+) -> ProblemCard:
+    x1, y1 = params["x1"], params["y1"]
+    x2, y2 = params["x2"], params["y2"]
+    x3, y3 = params["x3"], params["y3"]
+    mx, my = sympy.latex(params["midpoint_x"]), sympy.latex(params["midpoint_y"])
+    grad = sympy.latex(params["gradient_ac"])
+    dist = sympy.latex(params["distance_bc"])
+    dist_sq = (x3 - x2) ** 2 + (y3 - y2) ** 2
+    area = sympy.latex(params["area"])
+    area2 = x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2)
+    full = [
+        rf"M_{{BC}} = \left(\frac{{{x2} + {_par(x3)}}}{{2}},\ "
+        rf"\frac{{{y2} + {_par(y3)}}}{{2}}\right) = ({mx},\ {my})",
+        rf"m_{{AC}} = \frac{{{y3}-({y1})}}{{{x3}-({x1})}} = {grad}",
+        rf"BC = \sqrt{{({x3}-({x2}))^2 + ({y3}-({y2}))^2}} "
+        rf"= \sqrt{{{dist_sq}}} = {dist}",
+        rf"\text{{area}} = \tfrac12\left|{x1}({y2}-({y3})) + {x2}({y3}-({y1})) "
+        rf"+ {x3}({y1}-({y2}))\right| = \tfrac12\left|{area2}\right| = {area}",
+    ]
+    return ProblemCard(
+        instruction=(
+            r"For $\triangle ABC$ with the vertices shown, find the midpoint of "
+            r"$BC$, the gradient of $AC$, the length of $BC$, and the area of the "
+            r"triangle."
+        ),
+        display_math=(rf"A({x1},\,{y1}),\quad B({x2},\,{y2}),\quad C({x3},\,{y3})"),
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_line_equation(params: dict, detail: str = "full") -> ProblemCard:
+    relation = params["relation"]
+    mL = sympy.latex(params["given_gradient"])
+    req = sympy.latex(params["required_gradient"])
+    c = sympy.latex(params["c"])
+    px, py = params["px"], params["py"]
+    if relation == "parallel":
+        grad_step = rf"m = m_L = {mL}\quad(\text{{parallel}})"
+    else:
+        grad_step = rf"m = -\frac{{1}}{{m_L}} = {req}\quad(\text{{perpendicular}})"
+    full = [
+        rf"m_L = {mL}",
+        grad_step,
+        rf"c = {py} - ({req})({px}) = {c}",
+        params["equation_latex"],
+    ]
+    return ProblemCard(
+        instruction=(
+            rf"Find the equation of the line through $P{params['point_latex']}$ that "
+            rf"is {relation} to the line $L$ through the two points shown."
+        ),
+        display_math=rf"L:\ {params['given_line_latex']}",
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_circle_equation(params: dict, detail: str = "full") -> ProblemCard:
+    D, E, F = params["D"], params["E"], params["F"]
+    h, k = params["centre_x"], params["centre_y"]
+    r = sympy.latex(params["radius"])
+    rsq = params["radius_sq"]
+    hh = sympy.Rational(D, 2)
+    ee = sympy.Rational(E, 2)
+    full = [
+        rf"(x^2 {_signed(D)}x) + (y^2 {_signed(E)}y) = {-F}",
+        rf"\left(x {_signed(hh)}\right)^2 + "
+        rf"\left(y {_signed(ee)}\right)^2 = {rsq}",
+        rf"\text{{centre}} = \left(-\tfrac{{{D}}}{{2}},\ -\tfrac{{{E}}}{{2}}\right) "
+        rf"= ({h},\ {k})",
+        rf"r = \sqrt{{{rsq}}} = {r}",
+    ]
+    return ProblemCard(
+        instruction=(
+            r"Find the coordinates of the centre and the length of the radius of "
+            r"the circle by completing the square."
+        ),
+        display_math=params["equation_latex"],
+        worked_steps=full if detail == "full" else full[2:],
+    )
+
+
+def template_circle_tangent(params: dict, detail: str = "full") -> ProblemCard:
+    h, k = params["h"], params["k"]
+    px, py = params["px"], params["py"]
+    rg = sympy.latex(params["radius_gradient"])
+    tg = sympy.latex(params["tangent_gradient"])
+    c = sympy.latex(params["c"])
+    full = [
+        rf"m_{{CP}} = \frac{{{py}-({k})}}{{{px}-({h})}} = {rg}",
+        rf"m_{{\text{{tan}}}} = -\frac{{1}}{{m_{{CP}}}} = {tg}",
+        rf"c = {py} - ({tg})({px}) = {c}",
+        params["tangent_latex"],
+    ]
+    return ProblemCard(
+        instruction=(
+            rf"$P{params['point_latex']}$ lies on the circle with centre "
+            rf"${params['centre_latex']}$. Find the equation of the tangent to the "
+            rf"circle at $P$."
+        ),
+        display_math=(rf"{params['centre_latex']},\quad {params['point_latex']}"),
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_angle_between_lines(params: dict, detail: str = "full") -> ProblemCard:
+    m1, m2 = sympy.latex(params["m1"]), sympy.latex(params["m2"])
+    t1, t2 = params["theta1"], params["theta2"]
+    ab = params["angle_between"]
+    full = [
+        rf"m_{{AB}} = {m1},\quad m_{{CD}} = {m2}",
+        rf"\theta_1 = \tan^{{-1}} m_{{AB}} = {t1}^\circ,\quad "
+        rf"\theta_2 = \tan^{{-1}} m_{{CD}} = {t2}^\circ",
+        rf"\theta = |\theta_1 - \theta_2| \to {ab}^\circ\ (\text{{acute}})",
+    ]
+    return ProblemCard(
+        instruction=(
+            r"Find the acute angle between lines $AB$ and $CD$, working through "
+            r"their inclinations."
+        ),
+        display_math=(
+            rf"AB:\ {params['line_ab_latex']} \\ CD:\ {params['line_cd_latex']}"
+        ),
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
     identify_sequence_type.id: WorksheetEntry(
         problem=identify_sequence_type,
@@ -2998,6 +3145,27 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     stats_grouped.id: WorksheetEntry(
         problem=stats_grouped,
         template=template_stats_grouped,
+    ),
+    # ── analytic geometry family (ladder 7) ──
+    analytic_geometry_triangle.id: WorksheetEntry(
+        problem=analytic_geometry_triangle,
+        template=template_analytic_geometry_triangle,
+    ),
+    angle_between_lines.id: WorksheetEntry(
+        problem=angle_between_lines,
+        template=template_angle_between_lines,
+    ),
+    line_equation.id: WorksheetEntry(
+        problem=line_equation,
+        template=template_line_equation,
+    ),
+    circle_equation.id: WorksheetEntry(
+        problem=circle_equation,
+        template=template_circle_equation,
+    ),
+    circle_tangent.id: WorksheetEntry(
+        problem=circle_tangent,
+        template=template_circle_tangent,
     ),
 }
 
