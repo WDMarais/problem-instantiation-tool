@@ -94,6 +94,7 @@ from content.examples.geometric_sequence import (
 from content.examples.geometric_sequence import (
     nth_term_formula as geo_nth_term_formula,
 )
+from content.examples.grouped_mean_solve import grouped_mean_solve
 from content.examples.independent_events import (
     independent_decide,
     independent_intersection,
@@ -107,6 +108,7 @@ from content.examples.linear_equations import (
     linear_rational,
     simultaneous_2x2,
 )
+from content.examples.mean_stddev import mean_stddev
 from content.examples.monic_factorise import problem as monic_factorise_problem
 from content.examples.nominal_effective import (
     effective_to_nominal,
@@ -166,6 +168,8 @@ from content.examples.series import (
 from content.examples.series import (
     sigma_evaluate as arith_series_sigma,
 )
+from content.examples.statistics_grouped import problem as stats_grouped
+from content.examples.statistics_one_var import problem as stats_one_var
 from content.examples.surd_equation import surd_equation
 from content.examples.tree_probability import (
     tree_draw_both,
@@ -2492,6 +2496,140 @@ def template_tree_draw_one_each(params: dict, detail: str = "full") -> ProblemCa
     )
 
 
+# ── statistics (ladder 6) ───────────────────────────────────────────────────────
+
+
+def _dataset_latex(data: list, per_row: int = 10) -> str:
+    """A raw dataset as a left-aligned array, chunked so long lists wrap.
+
+    A single-line ``$$13,\\ 17,\\ …$$`` is one unbreakable KaTeX box and runs off
+    the page for n=25/30. Breaking every ``per_row`` values into array rows keeps
+    it inside the margin while reading as one comma-separated list.
+    """
+    cells = [f"{x}," for x in data[:-1]] + [str(data[-1])]
+    rows = [cells[i : i + per_row] for i in range(0, len(cells), per_row)]
+    body = r" \\ ".join(r"\ ".join(row) for row in rows)
+    return r"\begin{array}{l}" + body + r"\end{array}"
+
+
+def _grouped_table_latex(intervals: list[tuple[int, int]], freqs: list) -> str:
+    """A two-column interval/frequency array with SA-convention '\\le x <' labels."""
+    rows = r" \\ ".join(
+        rf"{a} \le x < {b} & {f}" for (a, b), f in zip(intervals, freqs)
+    )
+    return r"\begin{array}{c|c}\text{interval} & f \\ \hline " + rows + r"\end{array}"
+
+
+def template_grouped_mean_solve(params: dict, detail: str = "full") -> ProblemCard:
+    mids = params["midpoints"]
+    freqs = params["frequencies"]  # None at the unknown class
+    j = params["unknown_index"]
+    xbar = params["mean_given"]
+    k = params["unknown_frequency"]
+    m_j = mids[j]
+    sum_kf = sum(f for i, f in enumerate(freqs) if i != j)
+    sum_kfm = sum(f * mids[i] for i, f in enumerate(freqs) if i != j)
+    rhs = xbar * sum_kf - sum_kfm  # (m_j − x̄)·k = rhs
+    coeff = m_j - xbar
+    full = [
+        r"\bar{x} = \frac{\sum f\cdot x}{\sum f}",
+        rf"\sum_{{\text{{known}}}} f = {sum_kf}, \quad "
+        rf"\sum_{{\text{{known}}}} f\cdot x = {sum_kfm}",
+        rf"\frac{{{sum_kfm} + {m_j}k}}{{{sum_kf} + k}} = {xbar}",
+        rf"{sum_kfm} + {m_j}k = {xbar}({sum_kf} + k)",
+        rf"({m_j} - {xbar})k = {xbar}\cdot {sum_kf} - {sum_kfm} = {rhs}",
+        rf"k = \frac{{{rhs}}}{{{coeff}}} = {k}",
+    ]
+    return ProblemCard(
+        instruction=(
+            r"The grouped frequency table has one unknown frequency $k$. The "
+            rf"estimated mean of the data is ${xbar}$. Determine $k$."
+        ),
+        display_math=params["table_latex"],
+        worked_steps=full if detail == "full" else full[-2:],
+    )
+
+
+def template_mean_stddev(params: dict, detail: str = "full") -> ProblemCard:
+    data, n = params["data"], params["n"]
+    mean_dec = round(float(params["mean"]), 2)
+    sigma = round(float(params["stddev"]), 2)
+    within = params["within_1sd"]
+    lo = round(mean_dec - sigma, 2)
+    hi = round(mean_dec + sigma, 2)
+    full = [
+        rf"\bar{{x}} = \frac{{\sum x}}{{n}} = \frac{{{sum(data)}}}{{{n}}} = {mean_dec}",
+        r"\sigma = \sqrt{\frac{\sum (x - \bar{x})^2}{n}} \approx " + f"{sigma}",
+        rf"[\,\bar{{x}} - \sigma,\ \bar{{x}} + \sigma\,] = [{lo};\ {hi}]",
+        rf"\text{{values in this interval}} = {within}",
+    ]
+    return ProblemCard(
+        instruction=(
+            r"For the data set below, calculate the mean $\bar{x}$, the "
+            r"(population) standard deviation $\sigma$, and the number of data "
+            r"values within one standard deviation of the mean."
+        ),
+        display_math=_dataset_latex(params["data"]),
+        worked_steps=full if detail == "full" else full[-2:],
+    )
+
+
+def template_stats_one_var(params: dict, detail: str = "full") -> ProblemCard:
+    n = params["n"]
+    mode = sympy.latex(params["mode"])
+    median = sympy.latex(params["median"])
+    q1, q3 = sympy.latex(params["q1"]), sympy.latex(params["q3"])
+    rng = sympy.latex(params["data_range"])
+    data = params["data"]
+    pct = round(params["pct_above_q3"], 1)
+    full = [
+        rf"\text{{mode}} = {mode}\quad(\text{{most frequent value}})",
+        rf"\text{{median: position }} \tfrac{{{n}+1}}{{2}} "
+        rf"\;\Rightarrow\; \text{{median}} = {median}",
+        rf"Q_1 = {q1}, \quad Q_3 = {q3}",
+        rf"\text{{range}} = {data[-1]} - {data[0]} = {rng}",
+        rf"\%\text{{ above }} Q_3 \approx {pct}\%",
+    ]
+    return ProblemCard(
+        instruction=(
+            rf"For the ordered data set below (${n}$ values), determine the mode, "
+            r"median, quartiles $Q_1$ and $Q_3$, the range, and the percentage of "
+            r"data above $Q_3$."
+        ),
+        display_math=_dataset_latex(params["data"]),
+        worked_steps=full if detail == "full" else full[-3:],
+    )
+
+
+def template_stats_grouped(params: dict, detail: str = "full") -> ProblemCard:
+    intervals, freqs, total = params["intervals"], params["freqs"], params["total"]
+    p = params["percentile_p"]
+    pct_pos = p / 100 * total
+    modal_freq = params["modal_freq"]
+    least = params["least_freq_class"].replace("≤", r"\le ")
+    pct_class = params["percentile_class"].replace("≤", r"\le ")
+    angle = params["pie_angle"]
+    full = [
+        rf"\text{{least frequency }} = {min(freqs)} "
+        rf"\;\Rightarrow\; {least}",
+        rf"{p}\% \times {total} = {pct_pos:g}\text{{th value}} "
+        rf"\;\Rightarrow\; {pct_class}",
+        rf"\text{{pie angle}} = \frac{{{modal_freq}}}{{{total}}} \times 360^\circ "
+        rf"= {angle}^\circ",
+        r"\text{histogram: draw a bar per interval at its frequency}",
+    ]
+    return ProblemCard(
+        instruction=(
+            rf"The grouped frequency table below summarises the data. State the "
+            rf"least-frequent class, the class containing the ${p}$th percentile, "
+            rf"and the angle of the modal class in a pie chart. Then draw the "
+            rf"histogram."
+        ),
+        display_math=_grouped_table_latex(intervals, freqs),
+        worked_steps=full if detail == "full" else full[:3],
+    )
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
     identify_sequence_type.id: WorksheetEntry(
         problem=identify_sequence_type,
@@ -2844,6 +2982,23 @@ PROBLEMS: dict[str, WorksheetEntry] = {
         problem=tree_draw_one_each,
         template=template_tree_draw_one_each,
     ),
+    # ── statistics family (ladder 6) ──
+    grouped_mean_solve.id: WorksheetEntry(
+        problem=grouped_mean_solve,
+        template=template_grouped_mean_solve,
+    ),
+    mean_stddev.id: WorksheetEntry(
+        problem=mean_stddev,
+        template=template_mean_stddev,
+    ),
+    stats_one_var.id: WorksheetEntry(
+        problem=stats_one_var,
+        template=template_stats_one_var,
+    ),
+    stats_grouped.id: WorksheetEntry(
+        problem=stats_grouped,
+        template=template_stats_grouped,
+    ),
 }
 
 REGISTRY = {id: e.problem for id, e in PROBLEMS.items()}
@@ -3178,6 +3333,19 @@ def _working_height_mm(marks: int | None) -> int:
     return 72
 
 
+def _tex_html(body: str) -> str:
+    """Escape a LaTeX math body for safe embedding between HTML $$…$$ delimiters.
+
+    KaTeX auto-render reads text-node content *after* the browser's HTML parser
+    has run, so a raw ``<`` (e.g. ``10<x``) is consumed as an open tag and the
+    closing ``$$`` is swallowed — the whole block then shows as literal source.
+    Escaping ``&``/``<``/``>`` to entities makes the parser leave them alone; the
+    browser decodes them back to the real characters in the text node, so KaTeX
+    still sees ``<`` (a relation) and ``&`` (an array column separator).
+    """
+    return body.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
 def _problem_html(n: int, card: ProblemCard) -> str:
     if card.graph_svg:
         body = (
@@ -3199,7 +3367,7 @@ def _problem_html(n: int, card: ProblemCard) -> str:
     # blank for finance (the stem is self-contained; the formula lives on the
     # front sheet), so the equation row is omitted when there's nothing to show.
     equation = (
-        f'<div class="problem-equation">$${card.display_math}$$</div>'
+        f'<div class="problem-equation">$${_tex_html(card.display_math)}$$</div>'
         if card.display_math
         else ""
     )
@@ -3235,7 +3403,7 @@ def _page_html(
 def _formula_sheet_html(title: str, rows: list[tuple[str, str]]) -> str:
     items = "".join(
         f'<div class="formula-row">'
-        f'<div class="formula-tex">$${tex}$$</div>'
+        f'<div class="formula-tex">$${_tex_html(tex)}$$</div>'
         f'<div class="formula-desc">{desc}</div>'
         f"</div>"
         for tex, desc in rows
@@ -3255,7 +3423,7 @@ def _formula_sheet_html(title: str, rows: list[tuple[str, str]]) -> str:
 
 def _answer_key_html(cards: list[ProblemCard]) -> str:
     def _steps_html(steps: list[str]) -> str:
-        return "".join(f"<div>${s}$</div>" for s in steps)
+        return "".join(f"<div>${_tex_html(s)}$</div>" for s in steps)
 
     def _marks_html(card: ProblemCard) -> str:
         if not card.marks:

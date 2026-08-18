@@ -39,6 +39,7 @@ from content.examples.geometric_sequence import (
 from content.examples.geometric_sequence import (
     from_two_terms as geo_seq_from_two_terms,
 )
+from content.examples.grouped_mean_solve import grouped_mean_solve
 from content.examples.linear_equation import problem as linear_add_pos
 from content.examples.linear_equations import (
     linear_double_inequality,
@@ -541,6 +542,63 @@ def prob_count_intersection_in_scope(instance: ProblemInstance) -> list[str]:
     return reasons
 
 
+# ── statistics solve-mode family (ladder 6) ─────────────────────────────────────
+#
+# Of the four stats archetypes only ``grouped_mean_solve`` is solve-for-unknown: the
+# tutee recovers a single missing frequency k from the presented table and the stated
+# estimated mean. The other three (mean/σ, one-var five-number, grouped read-offs) are
+# forward read-offs — the dataset IS the draw, answers are whatever it produces, and any
+# degeneracy is guarded in the generator — so they carry no F1 surface and no predicate.
+#
+# The load-bearing property here is that k is a *count*: the linear equation
+# x̄ = (Σ_known f·m + k·m_j)/(Σ_known f + k) must yield a positive whole-number k. We
+# recover k from the presented midpoints/frequencies/mean — NOT the generator's stored
+# ``unknown_frequency`` — so a construction regression that leaks a fractional or
+# out-of-band k (or an unknown class whose midpoint equals the mean, dividing by zero)
+# is caught here.
+_GROUPED_MEAN_K_RANGE = (1, 40)  # grouped_mean_solve draws k as a whole frequency 1..40
+
+
+def grouped_mean_solve_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: a grouped table (midpoints + frequencies, one class blank) and the
+    stated estimated mean x̄. The tutee solves the single linear equation in the unknown
+    frequency k. Re-derive k = (x̄·Σ_known f − Σ_known f·m)/(m_j − x̄) from the shown
+    table and demand it is a positive whole number in band."""
+    p = instance.params
+    mids = p["midpoints"]
+    freqs = p["frequencies"]  # None marks the unknown class
+    j = p["unknown_index"]
+    xbar = p["mean_given"]
+    reasons: list[str] = []
+
+    m_j = mids[j]
+    if m_j == xbar:
+        reasons.append(
+            f"unknown-class midpoint {m_j} equals the mean {xbar}: divides by zero"
+        )
+        return reasons
+
+    sum_known_f = sum(f for i, f in enumerate(freqs) if i != j)
+    sum_known_fm = sum(f * mids[i] for i, f in enumerate(freqs) if i != j)
+    num = xbar * sum_known_f - sum_known_fm
+    den = m_j - xbar
+    if num % den != 0:
+        reasons.append(
+            f"solved frequency ({num})/({den}) is not an integer: k must be a count"
+        )
+        return reasons
+
+    k = num // den
+    k_lo, k_hi = _GROUPED_MEAN_K_RANGE
+    if not (k_lo <= k <= k_hi):
+        reasons.append(f"solved frequency k={k} outside band [{k_lo}, {k_hi}]")
+    if "unknown_frequency" in p and k != p["unknown_frequency"]:
+        reasons.append(
+            f"stored k={p['unknown_frequency']} disagrees with recovered k={k}"
+        )
+    return reasons
+
+
 # ── linear-equation family (ladder 1) ───────────────────────────────────────────
 #
 # Each predicate re-solves the *presented* equation independently of how the generator
@@ -856,6 +914,7 @@ PROBLEMS = {
     arith_series_find_n.id: arith_series_find_n,
     prob_venn_intersection.id: prob_venn_intersection,
     prob_count_intersection.id: prob_count_intersection,
+    grouped_mean_solve.id: grouped_mean_solve,
     linear_add_pos.id: linear_add_pos,
     linear_expand.id: linear_expand,
     linear_literal.id: linear_literal,
@@ -883,6 +942,7 @@ PREDICATES = {
     arith_series_find_n.id: arith_series_find_n_in_scope,
     prob_venn_intersection.id: prob_venn_intersection_in_scope,
     prob_count_intersection.id: prob_count_intersection_in_scope,
+    grouped_mean_solve.id: grouped_mean_solve_in_scope,
     linear_add_pos.id: linear_add_pos_in_scope,
     linear_expand.id: linear_expand_in_scope,
     linear_literal.id: linear_literal_in_scope,

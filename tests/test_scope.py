@@ -25,6 +25,7 @@ from content.scope_predicates import (
     geo_find_missing_in_scope,
     geo_find_n_in_scope,
     geo_from_two_terms_in_scope,
+    grouped_mean_solve_in_scope,
     linear_add_pos_in_scope,
     linear_double_inequality_in_scope,
     linear_expand_in_scope,
@@ -296,6 +297,56 @@ def test_probability_predicates_have_teeth(
     presented quantities describe an impossible Venn diagram."""
     instance = types.SimpleNamespace(params=out_of_scope_params)
     reasons = predicate(instance)
+    assert any(needle in r for r in reasons), (
+        f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
+    )
+
+
+@pytest.mark.scope
+@pytest.mark.parametrize(
+    "out_of_scope_params, needle",
+    [
+        # k = (28·4 − 150)/(25 − 28) = −38/−3 is not a whole number ⇒ k isn't a count.
+        (
+            {
+                "midpoints": [15, 25, 35, 45, 55],
+                "frequencies": [1, None, 1, 1, 1],
+                "unknown_index": 1,
+                "mean_given": 28,
+            },
+            "not an integer",
+        ),
+        # unknown class midpoint (35) equals the stated mean (35) ⇒ divides by zero.
+        (
+            {
+                "midpoints": [15, 25, 35, 45, 55],
+                "frequencies": [4, 6, None, 6, 4],
+                "unknown_index": 2,
+                "mean_given": 35,
+            },
+            "divides by zero",
+        ),
+        # recovered k = (35·10 − 370)/(55 − 35) = −20/20 = −1 ⇒ negative, out of band.
+        (
+            {
+                "midpoints": [15, 25, 35, 45, 55],
+                "frequencies": [1, 1, 3, 5, None],
+                "unknown_index": 4,
+                "mean_given": 35,
+            },
+            "outside band",
+        ),
+    ],
+)
+def test_grouped_mean_solve_predicate_has_teeth(
+    out_of_scope_params: dict, needle: str
+) -> None:
+    """Non-tautological control for the stats solve-mode: the predicate re-derives the
+    unknown frequency k from the presented table + mean and must flag the leaks a naive
+    draw would produce — a fractional k, a divide-by-zero unknown class, or an
+    out-of-band (negative) count — even though the generator closes that surface."""
+    instance = types.SimpleNamespace(params=out_of_scope_params)
+    reasons = grouped_mean_solve_in_scope(instance)
     assert any(needle in r for r in reasons), (
         f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
     )

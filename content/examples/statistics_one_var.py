@@ -59,6 +59,7 @@ def _generate(rng: random.Random) -> dict:
             "q3": q3,
             "data_range": sympy.Integer(data[-1] - data[0]),
             "pct_above_q3": sum(1 for x in data if x > float(q3)) / n * 100,
+            "data_latex": r",\ ".join(str(x) for x in data),
         }
 
 
