@@ -43,8 +43,11 @@ from content.scope_predicates import (
     prob_venn_intersection_in_scope,
     quad_seq_find_n_in_scope,
     quadratic_inequality_in_scope,
+    rform_solve_in_scope,
     simultaneous_2x2_in_scope,
     surd_equation_in_scope,
+    trig_graph_solve_in_scope,
+    trig_special_angles_in_scope,
 )
 from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.exceptions import ScopeViolationError
@@ -514,6 +517,58 @@ def test_optimisation_solve_predicate_has_teeth(
     instance = types.SimpleNamespace(params=out_of_scope_params)
     reasons = optimisation_solve_in_scope(instance)
     assert any(needle in r for r in reasons), (
+        f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
+    )
+
+
+@pytest.mark.scope
+@pytest.mark.parametrize(
+    "out_of_scope_params, needle",
+    [
+        # sin60°·cosec45° = (√3/2)·√2 = √6/2 — a surd beyond √2/√3.
+        (
+            {"func1": "sin", "angle1": 60, "func2": "cosec", "angle2": 45, "op": "*"},
+            "surd beyond √2/√3",
+        ),
+        # sin45° − sin45° = 0 — a trivially-zero result.
+        (
+            {"func1": "sin", "angle1": 45, "func2": "sin", "angle2": 45, "op": "-"},
+            "trivially-zero",
+        ),
+    ],
+)
+def test_trig_special_angles_predicate_has_teeth(
+    out_of_scope_params: dict, needle: str
+) -> None:
+    """Non-tautological control for trig_special_angles: re-evaluates the presented
+    fₙ(θ) expression from scratch and flags an answer carrying √6 (a √2-term times a
+    √3-term) or collapsing to zero — neither is a Gr10 exact-form evaluation."""
+    instance = types.SimpleNamespace(params=out_of_scope_params)
+    reasons = trig_special_angles_in_scope(instance)
+    assert any(needle in r for r in reasons), (
+        f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
+    )
+
+
+@pytest.mark.scope
+@pytest.mark.parametrize(
+    "predicate, out_of_scope_params",
+    [
+        # a=3,b=4 ⇒ R=5; k=5 ⇒ |k|≥R, sin(x−φ)=1 has one solution, not two.
+        (rform_solve_in_scope, {"a": 3, "b": 4, "k": 5}),
+        # a=1,b=1 ⇒ R=√2≈1.41; k=5 ≫ R, the line never cuts the wave.
+        (trig_graph_solve_in_scope, {"a": 1, "b": 1, "n": 1, "k": 5}),
+    ],
+)
+def test_rform_solvability_predicates_have_teeth(
+    predicate, out_of_scope_params: dict
+) -> None:
+    """Non-tautological control for the two solve archetypes: re-derives R=√(a²+b²)
+    from the presented coefficients and flags k ≥ R, where the 'two solutions' the ask
+    presumes do not exist."""
+    instance = types.SimpleNamespace(params=out_of_scope_params)
+    reasons = predicate(instance)
+    assert any("≥ amplitude" in r for r in reasons), (
         f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
     )
 

@@ -195,6 +195,11 @@ from content.examples.triangle_angles import (
     triangle_exterior,
     triangle_isosceles,
 )
+from content.examples.trig import (
+    trig_cast_ratios,
+    trig_equation,
+    trig_special_angles,
+)
 from content.examples.trig_graph_properties import (
     trig_graph_amplitude,
     trig_graph_decreasing,
@@ -2940,6 +2945,89 @@ def template_concavity_inflection(params: dict, detail: str = "full") -> Problem
     )
 
 
+# ── trigonometry (ladder 9) ───────────────────────────────────────────────────
+_FN_TEX = {
+    "sin": r"\sin",
+    "cos": r"\cos",
+    "tan": r"\tan",
+    "cosec": r"\csc",
+    "cot": r"\cot",
+}
+_OP_TEX = {"+": "+", "-": "-", "*": r"\times", "/": r"\div"}
+_FN_SYMPY = {
+    "sin": sympy.sin,
+    "cos": sympy.cos,
+    "tan": sympy.tan,
+    "cosec": lambda a: 1 / sympy.sin(a),
+    "cot": lambda a: sympy.cos(a) / sympy.sin(a),
+}
+
+
+def _special_val_latex(fn: str, deg: int) -> str:
+    """Exact special-angle value of fn(deg°) as LaTeX (e.g. cos 30° → √3/2)."""
+    rad = sympy.pi * deg / 180
+    return sympy.latex(sympy.simplify(_FN_SYMPY[fn](rad)))
+
+
+def template_trig_cast_ratios(params: dict, detail: str = "full") -> ProblemCard:
+    x, y, r = params["x"], params["y"], params["hyp"]
+    sin_l = sympy.latex(params["answer_sin"])
+    cos_l = sympy.latex(params["answer_cos"])
+    tan_l = sympy.latex(params["answer_tan"])
+    full = [
+        rf"r = \sqrt{{({x})^2 + ({y})^2}} = {r}",
+        rf"\sin\theta = \dfrac{{y}}{{r}} = {sin_l}",
+        rf"\cos\theta = \dfrac{{x}}{{r}} = {cos_l}",
+        rf"\tan\theta = \dfrac{{y}}{{x}} = {tan_l}",
+    ]
+    return ProblemCard(
+        instruction=(
+            r"The point $P$ lies on the terminal arm of $\theta$. "
+            r"Determine $\sin\theta$, $\cos\theta$ and $\tan\theta$."
+        ),
+        display_math=rf"P({x};\ {y})",
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_trig_equation(params: dict, detail: str = "full") -> ProblemCard:
+    fn, n, theta = params["trig"], params["n"], params["theta"]
+    beta = int(params["answer"])
+    rhs_l = sympy.latex(params["rhs"])
+    lhs = rf"\{fn}({n}\beta)"
+    # Domain nβ ∈ [0°, 90°] keeps the ratio monotonic → the solution is unique.
+    full = [
+        rf"{lhs} = {rhs_l} \Rightarrow {n}\beta = {theta}^\circ",
+        rf"\beta = \dfrac{{{theta}^\circ}}{{{n}}} = {beta}^\circ",
+    ]
+    return ProblemCard(
+        instruction=rf"Solve for $\beta \in [0°;\ {90 // n}°]$:",
+        display_math=rf"{lhs} = {rhs_l}",
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_trig_special_angles(params: dict, detail: str = "full") -> ProblemCard:
+    f1, a1 = params["func1"], params["angle1"]
+    f2, a2 = params["func2"], params["angle2"]
+    op_tex = _OP_TEX[params["op"]]
+    t1 = rf"{_FN_TEX[f1]} {a1}^\circ"
+    t2 = rf"{_FN_TEX[f2]} {a2}^\circ"
+    v1 = _special_val_latex(f1, a1)
+    v2 = _special_val_latex(f2, a2)
+    ans_l = sympy.latex(params["answer"])
+    expr = rf"{t1} {op_tex} {t2}"
+    full = [
+        rf"{expr} = {v1} {op_tex} {v2}",
+        rf"= {ans_l}",
+    ]
+    return ProblemCard(
+        instruction="Evaluate without a calculator, leaving the answer in exact form:",
+        display_math=expr,
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
     identify_sequence_type.id: WorksheetEntry(
         problem=identify_sequence_type,
@@ -3113,6 +3201,19 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     rform_solve.id: WorksheetEntry(
         problem=rform_solve,
         template=template_rform_solve,
+    ),
+    # ── trigonometry family (ladder 9) ──
+    trig_cast_ratios.id: WorksheetEntry(
+        problem=trig_cast_ratios,
+        template=template_trig_cast_ratios,
+    ),
+    trig_equation.id: WorksheetEntry(
+        problem=trig_equation,
+        template=template_trig_equation,
+    ),
+    trig_special_angles.id: WorksheetEntry(
+        problem=trig_special_angles,
+        template=template_trig_special_angles,
     ),
     parallelogram_cointerior.id: WorksheetEntry(
         problem=parallelogram_cointerior,

@@ -65,8 +65,11 @@ from content.examples.probability_venn import (
 from content.examples.quadratic_inequality import quadratic_inequality
 from content.examples.quadratic_roots import problem as quadratic_factor
 from content.examples.quadratic_sequence import find_n as quad_seq_find_n
+from content.examples.rform_skills import rform_solve
 from content.examples.series import find_n_from_sum as arith_series_find_n
 from content.examples.surd_equation import surd_equation
+from content.examples.trig import trig_special_angles
+from content.examples.trig_graph_properties import trig_graph_solve
 from problem_instantiation_tool.schemas import ProblemInstance
 
 # Bounds mirror each generator's declared draw ranges. Kept here (not imported from the
@@ -832,6 +835,112 @@ def optimisation_solve_in_scope(instance: ProblemInstance) -> list[str]:
     return reasons
 
 
+# ── trigonometry family (ladder 9) ──────────────────────────────────────────────
+#
+# Eleven trig archetypes; three carry F1 surface. The special-angle evaluation is
+# rejection-sampled toward an answer in ℚ[√2, √3] — a draw pairing a √2-term with a
+# √3-term yields √6, out of Gr10 scope — so it is gated on the *presented* expression.
+# The two "solve" archetypes (R-form and its graph twin) construct backward toward a
+# solvable equation |k| < R; a draw with k ≥ R leaves the 'two solutions' ask with none,
+# so both are gated on R re-derived from the shown coefficients (these two were wired in
+# an earlier pass and are gated here for the first time).
+#
+# The other eight are forward reads with no F1 surface: cast-ratios (a proper-quadrant
+# point always gives defined ratios in lowest terms), trig_equation (domain β ∈ [0°,
+# 90°/n] forces nβ ∈ [0°, 90°] where each ratio is monotonic, so the tabulated answer is
+# unique), and the amplitude / range / decreasing / match / find_R / find_φ read-offs.
+
+_TRIG_FN = {
+    "sin": sympy.sin,
+    "cos": sympy.cos,
+    "tan": sympy.tan,
+    "cosec": lambda a: 1 / sympy.sin(a),
+    "cot": lambda a: sympy.cos(a) / sympy.sin(a),
+}
+
+
+def _nice_surd(expr: sympy.Basic) -> bool:
+    """True iff expr is real, finite, and its only surds are √2 and/or √3."""
+    if not expr.is_real or expr.is_infinite:
+        return False
+    for pw in expr.atoms(sympy.Pow):
+        if pw.exp == sympy.Rational(1, 2) and pw.base not in (
+            sympy.Integer(2),
+            sympy.Integer(3),
+        ):
+            return False
+    return True
+
+
+def trig_special_angles_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: a two-term special-angle expression f₁(θ₁) OP f₂(θ₂), asked to
+    evaluate in exact form. Gr10 scope keeps the answer in ℚ[√2, √3] — a √2-term times a
+    √3-term produces √6, out of scope. Re-evaluate the *shown* functions and angles from
+    scratch and flag any answer carrying a surd other than √2/√3, or a trivially-zero
+    result."""
+    p = instance.params
+    reasons: list[str] = []
+    v1 = _TRIG_FN[p["func1"]](sympy.pi * p["angle1"] / 180)
+    v2 = _TRIG_FN[p["func2"]](sympy.pi * p["angle2"] / 180)
+    op = p["op"]
+    if op == "+":
+        result = v1 + v2
+    elif op == "-":
+        result = v1 - v2
+    elif op == "*":
+        result = v1 * v2
+    else:
+        result = v1 / v2
+    result = sympy.simplify(result)
+
+    label = f"{p['func1']}{p['angle1']}° {op} {p['func2']}{p['angle2']}°"
+    if result == 0:
+        reasons.append(
+            f"{label} = 0: a trivially-zero result, not a genuine exact-form evaluation"
+        )
+        return reasons
+    if not _nice_surd(result):
+        reasons.append(
+            f"{label} = {result} carries a surd beyond √2/√3 (e.g. √6): out of Gr10 "
+            "exact-form scope"
+        )
+    return reasons
+
+
+def rform_solve_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: R·sin(x − φ) = k with R = √(a² + b²), asked for the two solutions in
+    [0°, 360°]. Those exist only when |k| < R (arcsin(k/R) is defined and the line k
+    cuts the wave twice). Re-derive R from the shown a, b and flag k ≥ R, where the
+    equation has at most one solution — the 'two solutions' ask is wrong."""
+    p = instance.params
+    a, b, k = p["a"], p["b"], p["k"]
+    reasons: list[str] = []
+    r_squared = a**2 + b**2
+    if k**2 >= r_squared:
+        reasons.append(
+            f"k={k} ≥ R=√{r_squared}: |k| ≥ amplitude, R·sin(x−φ)=k has no two "
+            "solutions in [0°,360°]"
+        )
+    return reasons
+
+
+def trig_graph_solve_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: a·sin(nx) − b·cos(nx) = k on [0°, 360°/n], asked for the two
+    solutions. Written as R·sin(nx − φ) = k with R = √(a² + b²), solutions exist only
+    when |k| < R. Re-derive R from the shown a, b and flag k ≥ R, where the line k does
+    not cut the wave twice and the 'two solutions' ask is wrong."""
+    p = instance.params
+    a, b, k = p["a"], p["b"], p["k"]
+    reasons: list[str] = []
+    r_squared = a**2 + b**2
+    if k**2 >= r_squared:
+        reasons.append(
+            f"k={k} ≥ R=√{r_squared}: |k| ≥ amplitude, a·sin(nx)−b·cos(nx)=k has no "
+            "two solutions in the shown domain"
+        )
+    return reasons
+
+
 # ── linear-equation family (ladder 1) ───────────────────────────────────────────
 #
 # Each predicate re-solves the *presented* equation independently of how the generator
@@ -1154,6 +1263,9 @@ PROBLEMS = {
     cubic_stationary_points.id: cubic_stationary_points,
     motion_calculus.id: motion_calculus,
     optimisation_solve.id: optimisation_solve,
+    trig_special_angles.id: trig_special_angles,
+    rform_solve.id: rform_solve,
+    trig_graph_solve.id: trig_graph_solve,
     linear_add_pos.id: linear_add_pos,
     linear_expand.id: linear_expand,
     linear_literal.id: linear_literal,
@@ -1188,6 +1300,9 @@ PREDICATES = {
     cubic_stationary_points.id: cubic_stationary_points_in_scope,
     motion_calculus.id: motion_calculus_in_scope,
     optimisation_solve.id: optimisation_solve_in_scope,
+    trig_special_angles.id: trig_special_angles_in_scope,
+    rform_solve.id: rform_solve_in_scope,
+    trig_graph_solve.id: trig_graph_solve_in_scope,
     linear_add_pos.id: linear_add_pos_in_scope,
     linear_expand.id: linear_expand_in_scope,
     linear_literal.id: linear_literal_in_scope,
