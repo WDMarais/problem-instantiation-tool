@@ -33,6 +33,7 @@ from content.examples.arithmetic_sequence import (
 )
 from content.examples.circle_equation import circle_equation
 from content.examples.circle_tangent import circle_tangent
+from content.examples.cubic_stationary_points import cubic_stationary_points
 from content.examples.discriminant_nature import discriminant_nature
 from content.examples.geometric_sequence import (
     find_missing as geo_seq_find_missing,
@@ -54,7 +55,9 @@ from content.examples.linear_equations import (
     simultaneous_2x2,
 )
 from content.examples.monic_factorise import problem as monic_factorise
+from content.examples.motion_calculus import motion_calculus
 from content.examples.nonlinear_simultaneous import nonlinear_simultaneous
+from content.examples.optimisation_solve import optimisation_solve
 from content.examples.probability_venn import (
     prob_count_intersection,
     prob_venn_intersection,
@@ -719,6 +722,116 @@ def circle_tangent_in_scope(instance: ProblemInstance) -> list[str]:
     return reasons
 
 
+# ── calculus family (ladder 8) ──────────────────────────────────────────────────
+#
+# Of the seven calculus archetypes only the three that construct *backward toward a
+# clean, well-posed answer* carry F1 surface: the cubic-turning-points ask presumes
+# two distinct real stationary points, the motion ask presumes a genuine maximum
+# velocity in the physical domain, and the optimisation ask presumes a genuine minimum
+# for x > 0. A draw that breaks the presumption leaves a question whose own wording is
+# wrong. The other four (both differentiations, the tangent line, the concavity
+# read-off) are forward reports: a polynomial always has a finite derivative and a
+# cubic always has exactly one real inflection, so no draw pushes them out of scope.
+# (Integer turning-point/inflection coordinates are cosmetic, not scope —
+# numeric_equality accepts the decimal.)
+#
+# Each predicate re-derives the presumption from the *presented* coefficients — f′ / f″
+# solved fresh — independently of the backward construction.
+
+
+def cubic_stationary_points_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: cubic f(x) = a·x³ + b·x² + c·x + d, asked for *the two* turning
+    points and their max/min classification. f′(x) = 3a·x² + 2b·x + c must have two
+    distinct real roots — re-derive its discriminant Δ = (2b)² − 12ac from the shown
+    coefficients and flag Δ ≤ 0, where the cubic has a repeated stationary point (Δ = 0,
+    an inflection with a horizontal tangent) or none at all (Δ < 0) and the 'two turning
+    points' ask is wrong."""
+    p = instance.params
+    a, b, c = p["a"], p["b"], p["c"]
+    reasons: list[str] = []
+
+    disc = (2 * b) ** 2 - 4 * (3 * a) * c
+    if disc < 0:
+        reasons.append(
+            f"f'(x)=3·{a}x²+2·{b}x+{c} has discriminant {disc} < 0: no real "
+            "stationary points, the 'two turning points' ask is unsolvable"
+        )
+        return reasons
+    if disc == 0:
+        reasons.append(
+            f"f'(x) discriminant {disc} = 0: a single repeated stationary point, "
+            "not the two distinct turning points the ask presumes"
+        )
+        return reasons
+
+    xsym = sympy.Symbol("x")
+    roots = sympy.solve(3 * a * xsym**2 + 2 * b * xsym + c, xsym)
+    if frozenset(roots) != p["stationary_x"]:
+        reasons.append(
+            f"recovered stationary x {frozenset(roots)} disagrees with stored "
+            f"{p['stationary_x']}"
+        )
+    return reasons
+
+
+def motion_calculus_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: displacement s(t) = α·t³ + β·t² + γ·t + δ, asked for the *maximum*
+    velocity. v(t) = 3α·t² + 2β·t + γ; its stationary point (a(t) = 6α·t + 2β = 0) is a
+    maximum only when the parabola opens downward, i.e. 3α < 0, and lands in the
+    physical domain t > 0. Re-derive t* = −β/(3α) and flag α ≥ 0 (the stationary
+    velocity is a minimum, so 'maximum velocity' is wrong) and t* ≤ 0 (outside
+    t ≥ 0)."""
+    p = instance.params
+    alpha, beta = p["alpha"], p["beta"]
+    reasons: list[str] = []
+
+    if alpha >= 0:
+        reasons.append(
+            f"α={alpha} ≥ 0: velocity v=3α·t²+… opens upward, its turning point is a "
+            "minimum — 'maximum velocity' is wrong"
+        )
+        return reasons
+
+    t_star = sympy.Rational(-beta, 3 * alpha)
+    if t_star <= 0:
+        reasons.append(
+            f"time of maximum velocity t*={t_star} ≤ 0: outside the physical domain t≥0"
+        )
+        return reasons
+    if t_star != p["t_max"]:
+        reasons.append(f"recovered time t*={t_star} disagrees with stored {p['t_max']}")
+    return reasons
+
+
+def optimisation_solve_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: quantity Q(x) = a·x + b/x on x > 0, asked to *minimise*. Q′(x) = a −
+    b/x² vanishes at x = √(b/a), and Q″ = 2b/x³ > 0 there, giving a genuine minimum,
+    only when a > 0 and b > 0. Re-derive from the shown coefficients and flag a ≤ 0 (Q
+    decreasing, no minimum for x > 0) or b ≤ 0 (Q′ never zero on x > 0, no stationary
+    point)."""
+    p = instance.params
+    a, b = p["a"], p["b"]
+    reasons: list[str] = []
+
+    if a <= 0:
+        reasons.append(
+            f"a={a} ≤ 0: Q(x)=a·x+b/x has no minimum for x>0 (unbounded below)"
+        )
+        return reasons
+    if b <= 0:
+        reasons.append(
+            f"b={b} ≤ 0: Q′(x)=a−b/x² never zero for x>0, no minimum to find"
+        )
+        return reasons
+
+    x_star = sympy.sqrt(sympy.Rational(b, a))
+    if x_star != p["optimal_x"]:
+        reasons.append(
+            f"recovered optimal x={x_star} disagrees with stored {p['optimal_x']}"
+        )
+    return reasons
+
+
 # ── linear-equation family (ladder 1) ───────────────────────────────────────────
 #
 # Each predicate re-solves the *presented* equation independently of how the generator
@@ -1038,6 +1151,9 @@ PROBLEMS = {
     line_equation.id: line_equation,
     circle_equation.id: circle_equation,
     circle_tangent.id: circle_tangent,
+    cubic_stationary_points.id: cubic_stationary_points,
+    motion_calculus.id: motion_calculus,
+    optimisation_solve.id: optimisation_solve,
     linear_add_pos.id: linear_add_pos,
     linear_expand.id: linear_expand,
     linear_literal.id: linear_literal,
@@ -1069,6 +1185,9 @@ PREDICATES = {
     line_equation.id: line_equation_in_scope,
     circle_equation.id: circle_equation_in_scope,
     circle_tangent.id: circle_tangent_in_scope,
+    cubic_stationary_points.id: cubic_stationary_points_in_scope,
+    motion_calculus.id: motion_calculus_in_scope,
+    optimisation_solve.id: optimisation_solve_in_scope,
     linear_add_pos.id: linear_add_pos_in_scope,
     linear_expand.id: linear_expand_in_scope,
     linear_literal.id: linear_literal_in_scope,

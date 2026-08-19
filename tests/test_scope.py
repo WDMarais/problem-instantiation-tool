@@ -23,6 +23,7 @@ from content.scope_predicates import (
     arith_series_find_n_in_scope,
     circle_equation_in_scope,
     circle_tangent_in_scope,
+    cubic_stationary_points_in_scope,
     discriminant_nature_in_scope,
     geo_find_missing_in_scope,
     geo_find_n_in_scope,
@@ -35,7 +36,9 @@ from content.scope_predicates import (
     linear_literal_in_scope,
     linear_rational_in_scope,
     monic_factorise_in_scope,
+    motion_calculus_in_scope,
     nonlinear_simultaneous_in_scope,
+    optimisation_solve_in_scope,
     prob_count_intersection_in_scope,
     prob_venn_intersection_in_scope,
     quad_seq_find_n_in_scope,
@@ -441,6 +444,75 @@ def test_circle_tangent_predicate_has_teeth(
     gradient undefined — the taught method divides by px-h)."""
     instance = types.SimpleNamespace(params=out_of_scope_params)
     reasons = circle_tangent_in_scope(instance)
+    assert any(needle in r for r in reasons), (
+        f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
+    )
+
+
+@pytest.mark.scope
+@pytest.mark.parametrize(
+    "out_of_scope_params, needle",
+    [
+        # f'(x)=3x²+1 has discriminant 0-12=-12<0 ⇒ no real stationary points.
+        ({"a": 1, "b": 0, "c": 1}, "no real stationary points"),
+        # f'(x)=3x² has discriminant 0 ⇒ one repeated stationary point, not two.
+        ({"a": 1, "b": 0, "c": 0}, "repeated stationary point"),
+    ],
+)
+def test_cubic_stationary_points_predicate_has_teeth(
+    out_of_scope_params: dict, needle: str
+) -> None:
+    """Non-tautological control for cubic_stationary_points: re-derives f′'s
+    discriminant from the presented coefficients and flags Δ ≤ 0, where the 'two
+    distinct turning points' the ask presumes do not exist."""
+    instance = types.SimpleNamespace(params=out_of_scope_params)
+    reasons = cubic_stationary_points_in_scope(instance)
+    assert any(needle in r for r in reasons), (
+        f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
+    )
+
+
+@pytest.mark.scope
+@pytest.mark.parametrize(
+    "out_of_scope_params, needle",
+    [
+        # α=1>0 ⇒ velocity parabola opens upward, its turning point is a minimum.
+        ({"alpha": 1, "beta": -3}, "opens upward"),
+        # α=-1, β=-3 ⇒ t*=-β/(3α)=-1 ≤ 0, outside the physical domain t≥0.
+        ({"alpha": -1, "beta": -3}, "outside the physical domain"),
+    ],
+)
+def test_motion_calculus_predicate_has_teeth(
+    out_of_scope_params: dict, needle: str
+) -> None:
+    """Non-tautological control for motion_calculus: re-derives the sign of 3α (max vs
+    min) and t*=-β/(3α) from the presented coefficients and flags the upward-opening
+    velocity (no maximum) or a stationary time outside t ≥ 0."""
+    instance = types.SimpleNamespace(params=out_of_scope_params)
+    reasons = motion_calculus_in_scope(instance)
+    assert any(needle in r for r in reasons), (
+        f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
+    )
+
+
+@pytest.mark.scope
+@pytest.mark.parametrize(
+    "out_of_scope_params, needle",
+    [
+        # a=-2 ≤ 0 ⇒ Q(x)=-2x+b/x is unbounded below on x>0, no minimum.
+        ({"a": -2, "b": 8}, "unbounded below"),
+        # b=-8 ≤ 0 ⇒ Q'(x)=a-b/x²=a+8/x²>0 for all x>0, no stationary point.
+        ({"a": 2, "b": -8}, "no minimum to find"),
+    ],
+)
+def test_optimisation_solve_predicate_has_teeth(
+    out_of_scope_params: dict, needle: str
+) -> None:
+    """Non-tautological control for optimisation_solve: re-derives the signs of a and b
+    from the presented Q(x)=a·x+b/x and flags a ≤ 0 (unbounded below) or b ≤ 0 (Q′ never
+    zero on x>0) — either way no genuine minimum for the ask to find."""
+    instance = types.SimpleNamespace(params=out_of_scope_params)
+    reasons = optimisation_solve_in_scope(instance)
     assert any(needle in r for r in reasons), (
         f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
     )

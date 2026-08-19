@@ -60,16 +60,20 @@ from content.examples.compound_periodic import (
     compound_principal,
     compound_rate,
 )
+from content.examples.concavity_inflection import concavity_inflection
 from content.examples.counting_arrangements import (
     counting_all,
     counting_not_together,
     counting_together,
 )
+from content.examples.cubic_stationary_points import cubic_stationary_points
 from content.examples.depreciation import (
     depreciation_amount,
     depreciation_rate,
     depreciation_to_zero,
 )
+from content.examples.derivative_first_principles import derivative_first_principles
+from content.examples.derivative_rules import derivative_rules
 from content.examples.discriminant_nature import discriminant_nature
 from content.examples.factorise_skills import (
     factor_pairs_for_display,
@@ -117,11 +121,13 @@ from content.examples.linear_equations import (
 )
 from content.examples.mean_stddev import mean_stddev
 from content.examples.monic_factorise import problem as monic_factorise_problem
+from content.examples.motion_calculus import motion_calculus
 from content.examples.nominal_effective import (
     effective_to_nominal,
     nominal_to_effective,
 )
 from content.examples.nonlinear_simultaneous import nonlinear_simultaneous
+from content.examples.optimisation_solve import optimisation_solve
 from content.examples.parallelogram_angles import (
     parallelogram_alternate,
     parallelogram_cointerior,
@@ -178,6 +184,7 @@ from content.examples.series import (
 from content.examples.statistics_grouped import problem as stats_grouped
 from content.examples.statistics_one_var import problem as stats_one_var
 from content.examples.surd_equation import surd_equation
+from content.examples.tangent_line import tangent_line
 from content.examples.tree_probability import (
     tree_draw_both,
     tree_draw_one_each,
@@ -2777,6 +2784,162 @@ def template_angle_between_lines(params: dict, detail: str = "full") -> ProblemC
     )
 
 
+# ── calculus (ladder 8) ───────────────────────────────────────────────────────
+def template_derivative_first_principles(
+    params: dict, detail: str = "full"
+) -> ProblemCard:
+    a, b, c = params["a"], params["b"], params["c"]
+    quo = sympy.latex(params["quotient"])
+    der = params["derivative_latex"]
+    _xh, _hh = sympy.symbols("x h")
+    fxh = sympy.expand(a * (_xh + _hh) ** 2 + b * (_xh + _hh) + c)
+    full = [
+        r"f'(x) = \lim_{h \to 0} \dfrac{f(x+h) - f(x)}{h}",
+        rf"f(x+h) = {sympy.latex(fxh)}",
+        rf"\dfrac{{f(x+h) - f(x)}}{{h}} = {quo}",
+        rf"f'(x) = \lim_{{h \to 0}}\left({quo}\right) = {der}",
+    ]
+    return ProblemCard(
+        instruction=r"Determine $f'(x)$ from first principles.",
+        display_math=params["function_latex"],
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_derivative_rules(params: dict, detail: str = "full") -> ProblemCard:
+    a_plain, n_plain = params["a_plain"], params["n_plain"]
+    a_surd = params["a_surd"]
+    a_recip, n_recip = params["a_recip"], params["n_recip"]
+    const = params["const"]
+    der = params["derivative_latex"]
+    rewrite = (
+        rf"f(x) = {a_plain}x^{{{n_plain}}} {_signed(a_surd)}x^{{1/2}} "
+        rf"{_signed(a_recip)}x^{{-{n_recip}}} {_signed(const)}"
+    )
+    full = [
+        rewrite,
+        rf"f'(x) = {der}",
+    ]
+    return ProblemCard(
+        instruction=(
+            r"Differentiate $f$. Rewrite each surd and quotient term as a power "
+            r"of $x$ first."
+        ),
+        display_math=params["function_latex"],
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_tangent_line(params: dict, detail: str = "full") -> ProblemCard:
+    a, b, c, d = params["a"], params["b"], params["c"], params["d"]
+    x0, y0, grad = params["x0"], params["y0"], params["gradient"]
+    _xt = sympy.Symbol("x")
+    fprime = sympy.latex(sympy.diff(a * _xt**3 + b * _xt**2 + c * _xt + d, _xt))
+    k = y0 - grad * x0
+    full = [
+        rf"f'(x) = {fprime}",
+        rf"m = f'({x0}) = {grad}",
+        rf"y_0 = f({x0}) = {y0}",
+        rf"c = {y0} - ({grad})({x0}) = {k}",
+        params["tangent_latex"],
+    ]
+    return ProblemCard(
+        instruction=(
+            rf"Find the equation of the tangent to $f$ at ${params['point_latex']}$."
+        ),
+        display_math=params["function_latex"],
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_cubic_stationary_points(params: dict, detail: str = "full") -> ProblemCard:
+    a, b, c, d = params["a"], params["b"], params["c"], params["d"]
+    der = params["derivative_latex"]
+    _xc = sympy.Symbol("x")
+    fpp = sympy.latex(sympy.diff(a * _xc**3 + b * _xc**2 + c * _xc + d, _xc, 2))
+    xs = sorted(params["stationary_x"])
+    coords = sorted(params["tp_coords"])
+    labels = dict(params["classification"])
+    x_str = r",\ ".join(str(xv) for xv in xs)
+    coord_str = r",\quad ".join(rf"({xv},\ {yv})" for xv, yv in coords)
+    class_str = r",\quad ".join(
+        rf"f''({xv}) {'<' if labels[xv] == 'local_max' else '>'} 0 "
+        rf"\Rightarrow \text{{{labels[xv].replace('_', ' ')}}}"
+        for xv in xs
+    )
+    full = [
+        rf"f'(x) = {der}",
+        rf"f'(x) = 0 \Rightarrow x = {x_str}",
+        rf"\text{{turning points:}}\ {coord_str}",
+        rf"f''(x) = {fpp}",
+        class_str,
+    ]
+    return ProblemCard(
+        instruction=(
+            r"Find the turning points of $f$ and classify each as a local maximum "
+            r"or minimum."
+        ),
+        display_math=params["function_latex"],
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_optimisation_solve(params: dict, detail: str = "full") -> ProblemCard:
+    xo, vo = params["optimal_x"], params["optimal_value"]
+    full = [
+        rf"Q'(x) = {params['derivative_latex']}",
+        rf"Q'(x) = 0 \Rightarrow x = {xo}",
+        rf"Q({xo}) = {vo}\quad(\text{{minimum}})",
+    ]
+    return ProblemCard(
+        instruction=(
+            r"For the quantity $Q(x)$ with $x > 0$, find the value of $x$ that "
+            r"minimises $Q$, and the minimum value."
+        ),
+        display_math=params["function_latex"],
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_motion_calculus(params: dict, detail: str = "full") -> ProblemCard:
+    t_max, vmax = params["t_max"], params["max_velocity"]
+    full = [
+        rf"v(t) = s'(t) = {params['velocity_latex']}",
+        rf"a(t) = s''(t) = {params['acceleration_latex']}",
+        rf"a(t) = 0 \Rightarrow t = {t_max}\ \text{{s}}",
+        rf"v({t_max}) = {vmax}\ \text{{m/s}}\quad(\text{{maximum velocity}})",
+    ]
+    return ProblemCard(
+        instruction=(
+            r"A body has displacement $s(t)$ metres after $t$ seconds. Find its "
+            r"velocity, and its maximum velocity (where the acceleration is zero)."
+        ),
+        display_math=params["displacement_latex"],
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_concavity_inflection(params: dict, detail: str = "full") -> ProblemCard:
+    xi, yi = params["inflection_x"], params["inflection_y"]
+    fpp = params["second_derivative_latex"]
+    a = params["a"]
+    rel = ">" if a > 0 else "<"
+    word = "concave up" if a > 0 else "concave down"
+    full = [
+        rf"f''(x) = {fpp}",
+        rf"f''(x) = 0 \Rightarrow x = {xi}",
+        rf"\text{{inflection point}}\ ({xi},\ {yi})",
+        rf"x > {xi}:\ f''(x) {rel} 0 \Rightarrow \text{{{word}}}",
+    ]
+    return ProblemCard(
+        instruction=(
+            r"Determine the point of inflection of $f$ and describe its concavity."
+        ),
+        display_math=params["function_latex"],
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
     identify_sequence_type.id: WorksheetEntry(
         problem=identify_sequence_type,
@@ -3166,6 +3329,35 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     circle_tangent.id: WorksheetEntry(
         problem=circle_tangent,
         template=template_circle_tangent,
+    ),
+    # ── calculus family (ladder 8) ──
+    derivative_first_principles.id: WorksheetEntry(
+        problem=derivative_first_principles,
+        template=template_derivative_first_principles,
+    ),
+    derivative_rules.id: WorksheetEntry(
+        problem=derivative_rules,
+        template=template_derivative_rules,
+    ),
+    tangent_line.id: WorksheetEntry(
+        problem=tangent_line,
+        template=template_tangent_line,
+    ),
+    cubic_stationary_points.id: WorksheetEntry(
+        problem=cubic_stationary_points,
+        template=template_cubic_stationary_points,
+    ),
+    optimisation_solve.id: WorksheetEntry(
+        problem=optimisation_solve,
+        template=template_optimisation_solve,
+    ),
+    motion_calculus.id: WorksheetEntry(
+        problem=motion_calculus,
+        template=template_motion_calculus,
+    ),
+    concavity_inflection.id: WorksheetEntry(
+        problem=concavity_inflection,
+        template=template_concavity_inflection,
     ),
 }
 
