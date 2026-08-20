@@ -25,6 +25,7 @@ from content.scope_predicates import (
     circle_tangent_in_scope,
     cubic_stationary_points_in_scope,
     discriminant_nature_in_scope,
+    exponential_equation_in_scope,
     geo_find_missing_in_scope,
     geo_find_n_in_scope,
     geo_from_two_terms_in_scope,
@@ -569,6 +570,50 @@ def test_rform_solvability_predicates_have_teeth(
     instance = types.SimpleNamespace(params=out_of_scope_params)
     reasons = predicate(instance)
     assert any("≥ amplitude" in r for r in reasons), (
+        f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
+    )
+
+
+@pytest.mark.scope
+@pytest.mark.parametrize(
+    "out_of_scope_params, needle",
+    [
+        # "Forgot to reject u≤0": the stored valid set keeps the non-positive root −3.
+        (
+            {
+                "base": 2,
+                "b_coef": -1,
+                "c_coef": -12,
+                "candidate_u": frozenset({-3, 4}),
+                "valid_u": frozenset({-3, 4}),
+                "x_roots": frozenset({2}),
+            },
+            "stored valid",
+        ),
+        # A "valid" u that is not a power of k → x = log_k(u) is non-integer.
+        (
+            {
+                "base": 2,
+                "b_coef": -8,
+                "c_coef": 12,
+                "candidate_u": frozenset({2, 6}),
+                "valid_u": frozenset({2, 6}),
+                "x_roots": frozenset({1}),
+            },
+            "not a power of 2",
+        ),
+    ],
+)
+def test_exponential_equation_predicate_has_teeth(
+    out_of_scope_params: dict, needle: str
+) -> None:
+    """Non-tautological control for exponential_equation: re-solves the quadratic in
+    u=k^x from the presented coefficients, independently applies the u>0 rejection and
+    the x=log_k(u) back-substitution, and flags a stored valid-set that keeps a
+    non-positive u or an x-root that isn't log_k of a kept power of k."""
+    instance = types.SimpleNamespace(params=out_of_scope_params)
+    reasons = exponential_equation_in_scope(instance)
+    assert any(needle in r for r in reasons), (
         f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
     )
 

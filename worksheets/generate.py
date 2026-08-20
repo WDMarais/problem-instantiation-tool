@@ -75,6 +75,11 @@ from content.examples.depreciation import (
 from content.examples.derivative_first_principles import derivative_first_principles
 from content.examples.derivative_rules import derivative_rules
 from content.examples.discriminant_nature import discriminant_nature
+from content.examples.exponent_laws import (
+    exponent_algebraic_simplify,
+    exponent_variable_simplify,
+)
+from content.examples.exponential_equation import exponential_equation
 from content.examples.factorise_skills import (
     factor_pairs_for_display,
     factorise_constraints,
@@ -3028,6 +3033,103 @@ def template_trig_special_angles(params: dict, detail: str = "full") -> ProblemC
     )
 
 
+# ── exponents & surds (ladder 10) ─────────────────────────────────────────────
+def _cdot(coef: int, tex: str) -> str:
+    """Coefficient in front of a power, dropping a unit coefficient (3·2^n, 2^n)."""
+    return tex if coef == 1 else rf"{coef} \cdot {tex}"
+
+
+def _pn_exp(p: int, off: int) -> str:
+    """Linear exponent p·n + off as LaTeX ('n+3', '2n', '2n+1')."""
+    base = "n" if p == 1 else rf"{p}n"
+    return rf"{base}+{off}" if off > 0 else base
+
+
+def template_exponent_variable_simplify(
+    params: dict, detail: str = "full"
+) -> ProblemCard:
+    b, p, k, m = params["base"], params["p"], params["k"], params["m"]
+    a, c, d = params["a"], params["c"], params["d"]
+    denom_base = params["denom_base"]
+    pn_a, pn_c, pn_d = _pn_exp(p, a), _pn_exp(p, c), _pn_exp(p, d)
+    num = rf"{_cdot(k, f'{b}^{{{pn_a}}}')} - {_cdot(m, f'{b}^{{{pn_c}}}')}"
+    den = rf"{denom_base}^{{n}}" if d == 0 else rf"{denom_base}^{{n}} \cdot {b}^{{{d}}}"
+    inner = k * b ** (a - c)
+    bcd = b ** (c - d)
+    factored = rf"{_cdot(k, f'{b}^{{{a - c}}}')} - {m}"
+    full = [
+        rf"= \dfrac{{{b}^{{{pn_c}}}\left({factored}\right)}}{{{b}^{{{pn_d}}}}}",
+        rf"= {b}^{{{c} - {d}}}\left({factored}\right)",
+        rf"= {bcd} \times ({inner} - {m}) = {params['answer']}",
+    ]
+    return ProblemCard(
+        instruction="Simplify to a single value (n is a natural number):",
+        display_math=rf"\dfrac{{{num}}}{{{den}}}",
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_exponent_algebraic_simplify(
+    params: dict, detail: str = "full"
+) -> ProblemCard:
+    ck, k, a, b_c, c_c, t = (
+        params["Ck"],
+        params["k"],
+        params["a"],
+        params["B"],
+        params["C"],
+        params["t"],
+    )
+    a2 = 2 * a
+    ans_tex = "0" if t == 0 else (rf"x^{{-{a2}}}" if t == 1 else rf"{t}x^{{-{a2}}}")
+    full = [
+        rf"= {c_c}^{{-1}}x^{{-{a}}} \cdot {b_c}x^{{-{a}}} - x^{{-{a2}}}",
+        rf"= \dfrac{{{b_c}}}{{{c_c}}}x^{{-{a2}}} - x^{{-{a2}}}",
+        rf"= \left(\dfrac{{{b_c}}}{{{c_c}}} - 1\right)x^{{-{a2}}} = {ans_tex}",
+    ]
+    display = (
+        rf"\left({ck}x^{{{k * a}}}\right)^{{-\frac{{1}}{{{k}}}}} "
+        rf"\cdot {b_c}x^{{-{a}}} - x^{{-{a2}}}"
+    )
+    return ProblemCard(
+        instruction="Simplify, leaving the answer with positive exponents (x > 0):",
+        display_math=display,
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_exponential_equation(params: dict, detail: str = "full") -> ProblemCard:
+    k = params["base"]
+    b, c = params["b_coef"], params["c_coef"]
+    cands = sorted(params["candidate_u"])
+    valid = sorted(params["valid_u"])
+    rejected = sorted(params["rejected_u"])
+    quad = "u^2"
+    if b:
+        quad += " + u" if b == 1 else " - u" if b == -1 else rf" {_signed(b)}u"
+    if c:
+        quad += rf" {_signed(c)}"
+    quad += " = 0"
+    steps = [
+        rf"\text{{Let }} u = {k}^{{x}}\ (u > 0):\quad {quad}",
+        r"\text{ or }".join(rf"u = {u}" for u in cands),
+    ]
+    if rejected:
+        rej = r",\ ".join(str(u) for u in rejected)
+        steps.append(rf"{rej} \le 0 \Rightarrow \text{{reject }}({k}^x > 0)")
+    for u in valid:
+        m, v = 0, 1
+        while v < u:
+            v *= k
+            m += 1
+        steps.append(rf"{k}^x = {u} \Rightarrow x = {m}")
+    return ProblemCard(
+        instruction=r"Solve for $x$:",
+        display_math=params["equation_latex"],
+        worked_steps=steps if detail == "full" else steps[1:],
+    )
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
     identify_sequence_type.id: WorksheetEntry(
         problem=identify_sequence_type,
@@ -3348,6 +3450,19 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     nonlinear_simultaneous.id: WorksheetEntry(
         problem=nonlinear_simultaneous,
         template=template_nonlinear_simultaneous,
+    ),
+    # ── exponents & surds family (ladder 10) ──
+    exponent_variable_simplify.id: WorksheetEntry(
+        problem=exponent_variable_simplify,
+        template=template_exponent_variable_simplify,
+    ),
+    exponent_algebraic_simplify.id: WorksheetEntry(
+        problem=exponent_algebraic_simplify,
+        template=template_exponent_algebraic_simplify,
+    ),
+    exponential_equation.id: WorksheetEntry(
+        problem=exponential_equation,
+        template=template_exponential_equation,
     ),
     counting_all.id: WorksheetEntry(
         problem=counting_all,

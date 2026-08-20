@@ -35,6 +35,7 @@ from content.examples.circle_equation import circle_equation
 from content.examples.circle_tangent import circle_tangent
 from content.examples.cubic_stationary_points import cubic_stationary_points
 from content.examples.discriminant_nature import discriminant_nature
+from content.examples.exponential_equation import exponential_equation
 from content.examples.geometric_sequence import (
     find_missing as geo_seq_find_missing,
 )
@@ -1241,6 +1242,61 @@ def nonlinear_simultaneous_in_scope(instance: ProblemInstance) -> list[str]:
     return reasons
 
 
+# ── exponents & surds family (ladder 10) ─────────────────────────────────────────
+#
+# Of the three archetypes only exponential_equation carries F1 surface. The two
+# "simplify" drills are forward reductions: the rejection loops size the answer into an
+# exam band (cosmetic, per the no-cosmetic-range rule) and pick a clean coefficient — no
+# draw makes "simplify this expression" ill-posed, and symbolic_equality grades whatever
+# the reduction yields. exponential_equation is the value-plus-reason / subset-guard
+# shape (the exponential twin of surd_equation): the assessed skill is the u > 0
+# rejection and the log_k back-substitution, so a leak is a stored valid-set that keeps
+# a non-positive u, or an x-root that isn't log_k of a kept power. Re-derive all three
+# sets from the presented base and coefficients.
+
+
+def exponential_equation_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: k^(2x) + b·k^x + c = 0. Substitute u = k^x → u² + b·u + c = 0.
+    Re-solve for the candidate u-roots from the shown b, c; independently reject u ≤ 0
+    (k^x > 0 for all real x); and back-substitute x = log_k(u), which must be a clean
+    non-negative integer (u a power of k). Cross-check the stored candidate / valid /
+    x-root sets."""
+    p = instance.params
+    k, b, c = p["base"], p["b_coef"], p["c_coef"]
+    reasons: list[str] = []
+    roots, bad = _integer_roots(1, b, c)
+    if bad:
+        reasons.append(bad.replace("roots", "candidate u-values"))
+        return reasons
+    cands = frozenset(roots)
+    if len(cands) < 2:
+        reasons.append("candidate u-values are not distinct")
+    valid = frozenset({u for u in cands if u > 0})
+    if not valid:
+        reasons.append(
+            "no candidate u is positive: k^x > 0 leaves an empty solution set"
+        )
+    x_roots: set[int] = set()
+    for u in valid:
+        m, v = 0, 1
+        while v < u:
+            v *= k
+            m += 1
+        if v != u:
+            reasons.append(
+                f"valid u={u} is not a power of {k}: x = log_{k}(u) non-integer"
+            )
+        else:
+            x_roots.add(m)
+    if cands != p["candidate_u"]:
+        reasons.append(f"stored candidates {set(p['candidate_u'])} ≠ {set(cands)}")
+    if valid != p["valid_u"]:
+        reasons.append(f"stored valid {set(p['valid_u'])} ≠ {set(valid)}")
+    if frozenset(x_roots) != p["x_roots"]:
+        reasons.append(f"stored x-roots {set(p['x_roots'])} ≠ {x_roots}")
+    return reasons
+
+
 # problem_id → its Problem object (drives the sweep registry)
 PROBLEMS = {
     monic_factorise.id: monic_factorise,
@@ -1276,6 +1332,7 @@ PROBLEMS = {
     discriminant_nature.id: discriminant_nature,
     surd_equation.id: surd_equation,
     nonlinear_simultaneous.id: nonlinear_simultaneous,
+    exponential_equation.id: exponential_equation,
 }
 
 # problem_id → its in-scope predicate
@@ -1313,4 +1370,5 @@ PREDICATES = {
     discriminant_nature.id: discriminant_nature_in_scope,
     surd_equation.id: surd_equation_in_scope,
     nonlinear_simultaneous.id: nonlinear_simultaneous_in_scope,
+    exponential_equation.id: exponential_equation_in_scope,
 }
