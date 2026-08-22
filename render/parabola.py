@@ -89,5 +89,79 @@ def parabola_scene(
     )
 
 
+def parabola_vertex_scene(
+    a: int,
+    p: int,
+    q: int,
+    *,
+    show_vertex: bool = True,
+    show_yint: bool = True,
+    width_pad: float = 1.5,
+) -> CartesianScene:
+    """Scene for ``y = a(x - p)^2 + q`` — the *turning-point* determine-equation
+    sketch (as opposed to the intercepts sketch of :func:`parabola_scene`).
+
+    ``show_vertex`` labels the turning point with its coordinates and ``show_yint``
+    the y-intercept — the "given" information a student uses to pin ``a`` and write
+    the equation. The x-intercepts (which may be irrational) are never labelled.
+    """
+    yint = a * p * p + q  # f(0)
+
+    def f(x: float) -> float:
+        return a * (x - p) ** 2 + q
+
+    # ── window: hold the vertex, the y-intercept and the origin, centred on p so
+    #    both branches show symmetrically ───────────────────────────────────────
+    x_lo = min(0, p) - width_pad
+    x_hi = max(0, p) + width_pad
+    half = max(p - x_lo, x_hi - p)
+    x_lo, x_hi = p - half, p + half
+
+    y_vals = [0.0, float(q), float(yint)]
+    y_lo_data, y_hi_data = min(y_vals), max(y_vals)
+    y_pad = max((y_hi_data - y_lo_data) * 0.15, 1.0)
+    y_lo, y_hi = y_lo_data - y_pad, y_hi_data + y_pad
+
+    pts: list[tuple[float, float] | None] = []
+    for i in range(_N_SAMPLES + 1):
+        x = x_lo + (x_hi - x_lo) * i / _N_SAMPLES
+        pts.append((x, f(x)))
+    items: list[object] = [Polyline(points=tuple(pts))]
+
+    x_ticks = sorted({0, p})
+    y_ticks = sorted({0, int(q), int(yint)})
+
+    if show_vertex:
+        items.append(
+            Point(
+                float(p),
+                float(q),
+                label=f"({_fmt_int(p)}; {_fmt_int(q)})",
+                droplines=True,
+                color="#16A34A",
+            )
+        )
+    if show_yint:
+        items.append(
+            Point(
+                0.0,
+                float(yint),
+                label=f"(0; {_fmt_int(yint)})",
+                droplines=False,
+                color="#DC2626",
+            )
+        )
+
+    return CartesianScene(
+        x_min=x_lo,
+        x_max=x_hi,
+        y_min=y_lo,
+        y_max=y_hi,
+        items=tuple(items),
+        x_ticks=tuple(float(t) for t in x_ticks),
+        y_ticks=tuple(float(t) for t in y_ticks),
+    )
+
+
 def _fmt_int(v: float) -> str:
     return f"{int(round(v))}"

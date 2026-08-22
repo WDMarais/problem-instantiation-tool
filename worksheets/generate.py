@@ -134,6 +134,7 @@ from content.examples.nominal_effective import (
 from content.examples.nonlinear_simultaneous import nonlinear_simultaneous
 from content.examples.optimisation_solve import optimisation_solve
 from content.examples.parabola_from_graph import parabola_from_graph
+from content.examples.parabola_from_turning_point import parabola_from_turning_point
 from content.examples.parallelogram_angles import (
     parallelogram_alternate,
     parallelogram_cointerior,
@@ -233,7 +234,7 @@ from render.geometry import (
     render_figure,
 )
 from render.graph import render_trig_graph
-from render.parabola import parabola_scene
+from render.parabola import parabola_scene, parabola_vertex_scene
 
 # ── data models ───────────────────────────────────────────────────────────────
 
@@ -3175,6 +3176,42 @@ def template_parabola_from_graph(params: dict, detail: str = "full") -> ProblemC
     )
 
 
+def template_parabola_from_turning_point(
+    params: dict, detail: str = "full"
+) -> ProblemCard:
+    a, p, q = params["a"], params["vertex_x"], params["vertex_y"]
+    c = params["y_intercept"]  # = a·p² + q
+    p2 = p * p  # coefficient of a in f(0)
+    vtx = _factor_tex(p) + "^2"  # (x - p)^2, sign normalised
+    a_tex = "" if a == 1 else "-" if a == -1 else str(a)
+    # coefficient of `a` in f(0) = p²·a + q — render 1·a as "a", never "1a"
+    p2_a = "a" if p2 == 1 else f"{p2}a"
+    expanded = sympy.latex(params["answer"])
+
+    svg = render_scene(parabola_vertex_scene(a, p, q, show_vertex=True))
+
+    steps = [
+        # 1. read the turning point off the sketch → vertex form with unknown a
+        rf"\text{{turning point }} ({p};\ {q})"
+        rf"\;\Rightarrow\; f(x) = a{vtx} {_signed(q)}",
+        # 2. use the y-intercept (0; c) to pin a — always shown, so a = 1 is a
+        #    value the student verifies here, never one assumed from the vertex
+        rf"f(0) = a({-p})^2 {_signed(q)} = {p2_a} {_signed(q)} = {c}"
+        rf"\;\Rightarrow\; a = {a}",
+        # 3. substitute a and expand
+        rf"f(x) = {a_tex}{vtx} {_signed(q)} = {expanded}",
+    ]
+    return ProblemCard(
+        instruction=(
+            "Determine the equation of the parabola $f$ from its graph, "
+            "in the form $f(x) = ax^2 + bx + c$."
+        ),
+        display_math=r"f(x) = a(x - p)^2 + q",
+        worked_steps=steps if detail == "full" else steps[-1:],
+        graph_svg=svg,
+    )
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
     identify_sequence_type.id: WorksheetEntry(
         problem=identify_sequence_type,
@@ -3513,6 +3550,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     parabola_from_graph.id: WorksheetEntry(
         problem=parabola_from_graph,
         template=template_parabola_from_graph,
+    ),
+    parabola_from_turning_point.id: WorksheetEntry(
+        problem=parabola_from_turning_point,
+        template=template_parabola_from_turning_point,
     ),
     counting_all.id: WorksheetEntry(
         problem=counting_all,
