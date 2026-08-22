@@ -53,6 +53,7 @@ from content.examples.arithmetic_sequence import (
     nth_term_formula as arith_nth_term_formula,
 )
 from content.examples.circle_equation import circle_equation
+from content.examples.circle_from_graph import circle_from_graph
 from content.examples.circle_tangent import circle_tangent
 from content.examples.compound_periodic import (
     appreciation,
@@ -228,6 +229,7 @@ from problem_instantiation_tool.exceptions import ScopeViolationError
 from problem_instantiation_tool.registry import InMemoryRegistry
 from problem_instantiation_tool.schemas import Problem
 from render.cartesian import render_scene
+from render.circle import circle_scene
 from render.exponential import exponential_scene
 from render.geometry import (
     Angle,
@@ -3307,6 +3309,35 @@ def template_line_from_graph(params: dict, detail: str = "full") -> ProblemCard:
     )
 
 
+def template_circle_from_graph(params: dict, detail: str = "full") -> ProblemCard:
+    a, b, r2 = params["a"], params["b"], params["radius_sq"]
+    x0, y0 = params["point_x"], params["point_y"]
+    dx, dy = x0 - a, y0 - b  # offset of the labelled point from the centre
+    # centred form (x - a)^2 + (y - b)^2: _signed(-a) renders "x - a" / "x + |a|"
+    xt, yt = rf"(x {_signed(-a)})", rf"(y {_signed(-b)})"
+
+    svg = render_scene(circle_scene(a, b, r2, point=(x0, y0)))
+
+    steps = [
+        # 1. read the centre off the sketch → form with unknown r²
+        rf"\text{{centre }}({a};\ {b}) \;\Rightarrow\; {xt}^2 + {yt}^2 = r^2",
+        # 2. distance from centre to the labelled point, squared → r²
+        rf"r^2 = ({x0} {_signed(-a)})^2 + ({y0} {_signed(-b)})^2 "
+        rf"= {_par(dx)}^2 + {_par(dy)}^2 = {r2}",
+        # 3. state the equation
+        rf"{xt}^2 + {yt}^2 = {r2}",
+    ]
+    return ProblemCard(
+        instruction=(
+            "Determine the equation of the circle from its graph, in the form "
+            r"$(x - a)^2 + (y - b)^2 = r^2$."
+        ),
+        display_math=r"(x - a)^2 + (y - b)^2 = r^2",
+        worked_steps=steps if detail == "full" else steps[-1:],
+        graph_svg=svg,
+    )
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
     identify_sequence_type.id: WorksheetEntry(
         problem=identify_sequence_type,
@@ -3657,6 +3688,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     line_from_graph.id: WorksheetEntry(
         problem=line_from_graph,
         template=template_line_from_graph,
+    ),
+    circle_from_graph.id: WorksheetEntry(
+        problem=circle_from_graph,
+        template=template_circle_from_graph,
     ),
     exponential_from_graph.id: WorksheetEntry(
         problem=exponential_from_graph,

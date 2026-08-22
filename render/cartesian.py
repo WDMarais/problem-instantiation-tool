@@ -74,6 +74,22 @@ class Point:
 
 
 @dataclass(frozen=True)
+class Circle:
+    """A circle centred at (cx, cy) with radius `r`, all in data coordinates.
+
+    The emitter draws it as a native SVG ellipse whose radii follow the two axis
+    scales, so it is faithful to the window→pixel transform. Set the scene's
+    `equal_aspect` so the two scales match and it renders visually round."""
+
+    cx: float
+    cy: float
+    r: float
+    color: str = _CURVE_COLOR
+    width: float = 2.0
+    dashed: bool = False
+
+
+@dataclass(frozen=True)
 class Label:
     """Free text anchored at a data coordinate."""
 
@@ -100,6 +116,7 @@ class CartesianScene:
     y_ticks: tuple[float, ...] = ()
     x_label: str = "x"
     y_label: str = "y"
+    equal_aspect: bool = False  # match x/y pixel scales (circles render round)
 
 
 # ── emitter ─────────────────────────────────────────────────────────────────
@@ -125,6 +142,17 @@ def render_scene(scene: CartesianScene, *, width: int = 300, height: int = 220) 
     ml, mr, mt, mb = 30, 16, 12, 24  # margins: left, right, top, bottom
     pw = width - ml - mr
     ph = height - mt - mb
+
+    # equal aspect: grow the roomier axis so data-units-per-pixel match on both,
+    # keeping each window centre fixed. A circle then renders round regardless of
+    # the plot area's shape (matplotlib's set_aspect('equal')).
+    if scene.equal_aspect:
+        upp = max(xspan / pw, yspan / ph)  # target units per pixel
+        new_xspan, new_yspan = upp * pw, upp * ph
+        cx0, cy0 = (x_min + x_max) / 2, (y_min + y_max) / 2
+        x_min, x_max = cx0 - new_xspan / 2, cx0 + new_xspan / 2
+        y_min, y_max = cy0 - new_yspan / 2, cy0 + new_yspan / 2
+        xspan, yspan = new_xspan, new_yspan
 
     def sx(xd: float) -> float:
         return ml + (xd - x_min) / xspan * pw
@@ -210,6 +238,8 @@ def _emit_item(item, sx, sy, clip_id, ml, mt, pw, ph, ax_x, ax_y) -> list[str]:
         return _emit_polyline(item, sx, sy, clip_id)
     if isinstance(item, ConstantLine):
         return _emit_constline(item, sx, sy, ml, mt, pw, ph)
+    if isinstance(item, Circle):
+        return _emit_circle(item, sx, sy, clip_id)
     if isinstance(item, Point):
         return _emit_point(item, sx, sy, ax_x, ax_y)
     if isinstance(item, Label):
@@ -243,6 +273,20 @@ def _emit_polyline(pl: Polyline, sx, sy, clip_id) -> list[str]:
         run.append(f"{sx(pt[0]):.1f},{sy(pt[1]):.1f}")
     flush()
     return out
+
+
+def _emit_circle(c: Circle, sx, sy, clip_id) -> list[str]:
+    # radii follow each axis scale independently → faithful to the transform;
+    # with equal_aspect the two are equal, so it looks round.
+    cx, cy = sx(c.cx), sy(c.cy)
+    rx = abs(sx(c.cx + c.r) - cx)
+    ry = abs(sy(c.cy + c.r) - cy)
+    dash = ' stroke-dasharray="5,3"' if c.dashed else ""
+    return [
+        f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{rx:.1f}" ry="{ry:.1f}"'
+        f' fill="none" stroke="{c.color}" stroke-width="{c.width}"'
+        f'{dash} clip-path="url(#{clip_id})"/>'
+    ]
 
 
 def _emit_constline(cl: ConstantLine, sx, sy, ml, mt, pw, ph) -> list[str]:
