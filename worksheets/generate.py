@@ -110,6 +110,7 @@ from content.examples.geometric_sequence import (
     nth_term_formula as geo_nth_term_formula,
 )
 from content.examples.grouped_mean_solve import grouped_mean_solve
+from content.examples.hyperbola_from_graph import hyperbola_from_graph
 from content.examples.independent_events import (
     independent_decide,
     independent_intersection,
@@ -234,6 +235,7 @@ from render.geometry import (
     render_figure,
 )
 from render.graph import render_trig_graph
+from render.hyperbola import hyperbola_scene
 from render.parabola import parabola_scene, parabola_vertex_scene
 
 # ── data models ───────────────────────────────────────────────────────────────
@@ -3212,6 +3214,36 @@ def template_parabola_from_turning_point(
     )
 
 
+def template_hyperbola_from_graph(params: dict, detail: str = "full") -> ProblemCard:
+    a, p, q = params["a"], params["p"], params["q"]
+    x0, y0 = params["point_x"], params["point_y"]
+    xa = -p  # vertical asymptote x = -p
+    # bare denominator "x + p" (sign normalised); no parens — the fraction bar groups
+    denom = f"x + {p}" if p > 0 else f"x - {abs(p)}"
+
+    svg = render_scene(hyperbola_scene(a, p, q, point=(x0, y0)))
+
+    steps = [
+        # 1. read the asymptotes off the sketch → form with unknown a
+        rf"\text{{asymptotes }} x = {xa},\ y = {q}"
+        rf"\;\Rightarrow\; y = \dfrac{{a}}{{{denom}}} {_signed(q)}",
+        # 2. substitute the labelled point to pin a
+        rf"\text{{sub }}({x0};\ {y0}):\quad "
+        rf"a = ({y0} {_signed(-q)})({x0} {_signed(p)}) = {a}",
+        # 3. state the equation
+        rf"y = \dfrac{{{a}}}{{{denom}}} {_signed(q)}",
+    ]
+    return ProblemCard(
+        instruction=(
+            "Determine the equation of the hyperbola $f$ from its graph, "
+            r"in the form $y = \frac{a}{x + p} + q$."
+        ),
+        display_math=r"y = \dfrac{a}{x + p} + q",
+        worked_steps=steps if detail == "full" else steps[-1:],
+        graph_svg=svg,
+    )
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
     identify_sequence_type.id: WorksheetEntry(
         problem=identify_sequence_type,
@@ -3554,6 +3586,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     parabola_from_turning_point.id: WorksheetEntry(
         problem=parabola_from_turning_point,
         template=template_parabola_from_turning_point,
+    ),
+    hyperbola_from_graph.id: WorksheetEntry(
+        problem=hyperbola_from_graph,
+        template=template_hyperbola_from_graph,
     ),
     counting_all.id: WorksheetEntry(
         problem=counting_all,
