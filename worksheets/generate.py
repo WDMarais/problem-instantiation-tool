@@ -133,6 +133,7 @@ from content.examples.nominal_effective import (
 )
 from content.examples.nonlinear_simultaneous import nonlinear_simultaneous
 from content.examples.optimisation_solve import optimisation_solve
+from content.examples.parabola_from_graph import parabola_from_graph
 from content.examples.parallelogram_angles import (
     parallelogram_alternate,
     parallelogram_cointerior,
@@ -222,6 +223,7 @@ from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.exceptions import ScopeViolationError
 from problem_instantiation_tool.registry import InMemoryRegistry
 from problem_instantiation_tool.schemas import Problem
+from render.cartesian import render_scene
 from render.geometry import (
     Angle,
     GeometryFigure,
@@ -231,6 +233,7 @@ from render.geometry import (
     render_figure,
 )
 from render.graph import render_trig_graph
+from render.parabola import parabola_scene
 
 # ── data models ───────────────────────────────────────────────────────────────
 
@@ -3130,6 +3133,48 @@ def template_exponential_equation(params: dict, detail: str = "full") -> Problem
     )
 
 
+# ── functions & graphs (W3 renderer) ──────────────────────────────────────────
+
+
+def _factor_tex(r: int) -> str:
+    """'(x - 3)' / '(x + 2)' — a linear factor with the sign normalised."""
+    return f"(x - {r})" if r >= 0 else f"(x + {abs(r)})"
+
+
+def template_parabola_from_graph(params: dict, detail: str = "full") -> ProblemCard:
+    a, r1, r2 = params["a"], params["root1"], params["root2"]
+    c = params["y_intercept"]  # = a·r1·r2
+    prod = r1 * r2  # r1·r2 = c / a
+    factors = _factor_tex(r1) + _factor_tex(r2)
+    a_tex = "" if a == 1 else "-" if a == -1 else str(a)
+    # coefficient of `a` in f(0) = (r1·r2)·a — render ±1 as (−)a, not "±1a"
+    prod_a = "a" if prod == 1 else "-a" if prod == -1 else f"{prod}a"
+    expanded = sympy.latex(params["answer"])
+
+    svg = render_scene(parabola_scene(a, r1, r2, show_intercepts=True))
+
+    steps = [
+        # 1. read the x-intercepts off the sketch → factored form with unknown a
+        rf"x\text{{-intercepts }} x = {r1},\ x = {r2}"
+        rf"\;\Rightarrow\; f(x) = a{factors}",
+        # 2. use the y-intercept (0; c) to pin a — always shown, so a = 1 is a
+        #    value the student verifies here, never one assumed by reading roots
+        rf"f(0) = a({-r1})({-r2}) = {prod_a} = {c}"
+        rf"\;\Rightarrow\; a = {a}",
+        # 3. substitute a and expand
+        rf"f(x) = {a_tex}{factors} = {expanded}",
+    ]
+    return ProblemCard(
+        instruction=(
+            "Determine the equation of the parabola $f$ from its graph, "
+            "in the form $f(x) = ax^2 + bx + c$."
+        ),
+        display_math=r"f(x) = a(x - x_1)(x - x_2)",
+        worked_steps=steps if detail == "full" else steps[-1:],
+        graph_svg=svg,
+    )
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
     identify_sequence_type.id: WorksheetEntry(
         problem=identify_sequence_type,
@@ -3463,6 +3508,11 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     exponential_equation.id: WorksheetEntry(
         problem=exponential_equation,
         template=template_exponential_equation,
+    ),
+    # ── functions & graphs family (W3 renderer) ──
+    parabola_from_graph.id: WorksheetEntry(
+        problem=parabola_from_graph,
+        template=template_parabola_from_graph,
     ),
     counting_all.id: WorksheetEntry(
         problem=counting_all,
