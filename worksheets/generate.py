@@ -80,6 +80,7 @@ from content.examples.exponent_laws import (
     exponent_variable_simplify,
 )
 from content.examples.exponential_equation import exponential_equation
+from content.examples.exponential_from_graph import exponential_from_graph
 from content.examples.factorise_skills import (
     factor_pairs_for_display,
     factorise_constraints,
@@ -226,6 +227,7 @@ from problem_instantiation_tool.exceptions import ScopeViolationError
 from problem_instantiation_tool.registry import InMemoryRegistry
 from problem_instantiation_tool.schemas import Problem
 from render.cartesian import render_scene
+from render.exponential import exponential_scene
 from render.geometry import (
     Angle,
     GeometryFigure,
@@ -3244,6 +3246,37 @@ def template_hyperbola_from_graph(params: dict, detail: str = "full") -> Problem
     )
 
 
+def template_exponential_from_graph(params: dict, detail: str = "full") -> ProblemCard:
+    a, b, q = params["a"], params["b"], params["q"]
+    y0, y1 = params["y_intercept"], params["point_y"]
+    # coefficient of b in f(1) = a·b + q — render ±1·b as (−)b, never "1b"
+    a_b = "b" if a == 1 else "-b" if a == -1 else f"{a}b"
+    ans_tex = sympy.latex(params["answer"])
+
+    svg = render_scene(exponential_scene(a, b, q, points=((0, y0), (1, y1))))
+
+    steps = [
+        # 1. read the asymptote off the sketch → q, form with unknown a, b
+        rf"\text{{asymptote }} y = {q}"
+        rf"\;\Rightarrow\; y = a \cdot b^{{x}} {_signed(q)}",
+        # 2. y-intercept (0; y0) pins a, since a·b^0 = a
+        rf"f(0) = a {_signed(q)} = {y0} \;\Rightarrow\; a = {a}",
+        # 3. the neighbour (1; y1) pins b
+        rf"f(1) = {a_b} {_signed(q)} = {y1} \;\Rightarrow\; b = {b}",
+        # 4. state the equation
+        rf"y = {ans_tex}",
+    ]
+    return ProblemCard(
+        instruction=(
+            "Determine the equation of the exponential graph $f$ from its graph, "
+            r"in the form $y = a \cdot b^{x} + q$."
+        ),
+        display_math=r"y = a \cdot b^{x} + q",
+        worked_steps=steps if detail == "full" else steps[-1:],
+        graph_svg=svg,
+    )
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
     identify_sequence_type.id: WorksheetEntry(
         problem=identify_sequence_type,
@@ -3590,6 +3623,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     hyperbola_from_graph.id: WorksheetEntry(
         problem=hyperbola_from_graph,
         template=template_hyperbola_from_graph,
+    ),
+    exponential_from_graph.id: WorksheetEntry(
+        problem=exponential_from_graph,
+        template=template_exponential_from_graph,
     ),
     counting_all.id: WorksheetEntry(
         problem=counting_all,
