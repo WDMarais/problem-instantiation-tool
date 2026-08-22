@@ -118,6 +118,7 @@ from content.examples.independent_events import (
     independent_union,
 )
 from content.examples.line_equation import line_equation
+from content.examples.line_from_graph import line_from_graph
 from content.examples.linear_equation import problem as linear_add_pos_problem
 from content.examples.linear_equations import (
     linear_double_inequality,
@@ -238,6 +239,7 @@ from render.geometry import (
 )
 from render.graph import render_trig_graph
 from render.hyperbola import hyperbola_scene
+from render.line import line_scene
 from render.parabola import parabola_scene, parabola_vertex_scene
 
 # ── data models ───────────────────────────────────────────────────────────────
@@ -3277,6 +3279,34 @@ def template_exponential_from_graph(params: dict, detail: str = "full") -> Probl
     )
 
 
+def template_line_from_graph(params: dict, detail: str = "full") -> ProblemCard:
+    m, c = params["m"], params["c"]
+    x1, y1 = params["point1_x"], params["point1_y"]
+    x2, y2 = params["point2_x"], params["point2_y"]
+    ans_tex = sympy.latex(params["answer"])
+
+    svg = render_scene(line_scene(m, c, points=((x1, y1), (x2, y2))))
+
+    steps = [
+        # 1. read the two labelled points → gradient
+        rf"m = \dfrac{{{y2} - {_par(y1)}}}{{{x2} - {_par(x1)}}} = {m}",
+        # 2. substitute one point into y = mx + c to pin the y-intercept
+        rf"\text{{sub }}({x1};\ {y1}):\quad "
+        rf"{y1} = ({m})({x1}) + c \;\Rightarrow\; c = {c}",
+        # 3. state the equation
+        rf"y = {ans_tex}",
+    ]
+    return ProblemCard(
+        instruction=(
+            "Determine the equation of the straight line $f$ from its graph, "
+            r"in the form $y = mx + c$."
+        ),
+        display_math=r"y = mx + c",
+        worked_steps=steps if detail == "full" else steps[-1:],
+        graph_svg=svg,
+    )
+
+
 PROBLEMS: dict[str, WorksheetEntry] = {
     identify_sequence_type.id: WorksheetEntry(
         problem=identify_sequence_type,
@@ -3623,6 +3653,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     hyperbola_from_graph.id: WorksheetEntry(
         problem=hyperbola_from_graph,
         template=template_hyperbola_from_graph,
+    ),
+    line_from_graph.id: WorksheetEntry(
+        problem=line_from_graph,
+        template=template_line_from_graph,
     ),
     exponential_from_graph.id: WorksheetEntry(
         problem=exponential_from_graph,
