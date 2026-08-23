@@ -228,6 +228,7 @@ from content.examples.zero_product_rule import (
     zero_product_extension,
     zero_product_standard,
 )
+from content.renderers.katex_static import inline_style, prerender_body
 from content.scope_predicates import PREDICATES
 from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.exceptions import ScopeViolationError
@@ -4079,17 +4080,9 @@ def _formula_sheet_for(problem_ids: list[str]) -> list[tuple[str, str]] | None:
 # ── HTML / CSS ────────────────────────────────────────────────────────────────
 
 # $$ for display, $ for inline — works cleanly in controlled content with no
-# prose dollar signs.  List $$ first so auto-render greedily matches it before $.
-# NOTE: KaTeX is loaded from a CDN, so rendering (and --pdf) needs internet at
-# open/print time.  Self-hosting for a fully offline artifact is deferred to a
-# dedicated bundling commit.
-_KATEX = """\
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
-  onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false})">
-</script>"""
-
+# prose dollar signs.  The math is pre-rendered to static KaTeX at build time
+# (content.renderers.katex_static, via Deno) and the fonts inlined, so the
+# output is fully self-contained — no CDN, no client-side JS, offline/PDF-safe.
 _CSS = """
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4437,19 +4430,16 @@ def build_html(
         for p in range(n_pages)
     ]
     sheet = _formula_sheet_html(title, formula_sheet) if formula_sheet else ""
+    body = sheet + "".join(pages) + _answer_key_html(cards)
     return (
         "<!DOCTYPE html>\n"
         '<html lang="en">\n'
         "<head>\n"
         '<meta charset="UTF-8">\n'
         f"<title>{title}</title>\n"
-        f"{_KATEX}\n"
+        f"{inline_style()}\n"
         f"<style>{_CSS}</style>\n"
-        "</head>\n<body>\n"
-        + sheet
-        + "".join(pages)
-        + _answer_key_html(cards)
-        + "</body>\n</html>\n"
+        "</head>\n<body>\n" + prerender_body(body) + "</body>\n</html>\n"
     )
 
 
