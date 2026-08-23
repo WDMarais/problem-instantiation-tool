@@ -19,7 +19,11 @@ from content.examples.compound_periodic import (
     compound_principal,
     compound_rate,
 )
-from content.examples.finance import compound_growth, compound_reverse
+from content.examples.finance import (
+    compound_growth,
+    compound_reverse,
+    simple_interest,
+)
 from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.registry import InMemoryRegistry
 from problem_instantiation_tool.schemas import SolutionAttempt, SubmittedStep
@@ -31,6 +35,7 @@ _ALL = [
     appreciation,
     compound_growth,
     compound_reverse,
+    simple_interest,
 ]
 
 
@@ -166,3 +171,21 @@ def test_finance_compound_specs_recalibrated_to_two_marks():
         inst = eng.instantiate(prob.id, seed=1)
         r = _rate(inst, inst.params["answer"])
         assert r.is_correct and r.marks_awarded == 2, prob.id
+
+
+@pytest.mark.parametrize("seed", range(25))
+def test_simple_interest_matches_linear_formula(seed):
+    p = _eng().instantiate(simple_interest.id, seed=seed).params
+    expected = p["principal"] * (1 + p["rate"] * p["years"] / 100)
+    assert math.isclose(p["answer"], expected, rel_tol=1e-12)
+    assert p["answer"] > p["principal"]  # positive rate ⇒ genuine growth
+
+
+def test_simple_interest_round_trips_and_accepts_two_dp():
+    inst = _eng().instantiate(simple_interest.id, seed=3)
+    exact = inst.params["answer"]
+    assert _rate(inst, exact).is_correct
+    r = _rate(inst, round(exact, 2))
+    assert r.is_correct and r.marks_awarded == 1
+    # a 2-cent miss is outside the exact absolute cent-band (no rel_tol here)
+    assert not _rate(inst, round(exact, 2) + 0.02).is_correct

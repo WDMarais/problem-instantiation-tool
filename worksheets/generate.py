@@ -89,6 +89,7 @@ from content.examples.factorise_skills import (
     factorise_enumerate,
     factorise_sign_case,
 )
+from content.examples.finance import simple_interest
 from content.examples.future_value_annuity import (
     fv_annuity_amount,
     fv_annuity_deposit,
@@ -1613,6 +1614,25 @@ def _timing_phrase(timing: str, m: int) -> str:
 
 
 # ── finance / annuities: compound-interest templates ────────────────────────────
+
+
+def template_simple_interest(params: dict, detail: str = "full") -> ProblemCard:
+    p, r, t = params["principal"], params["rate"], params["years"]
+    ans = params["answer"]
+    sub = rf"A = {_zar(p, 0)}\left(1 + \frac{{{_numtex(r)} \times {t}}}{{100}}\right)"
+    full = [
+        r"A = P\left(1 + \frac{rt}{100}\right)",
+        sub,
+        rf"A = {_zar(ans)}",
+    ]
+    return ProblemCard(
+        instruction=(
+            f"{_rand(p, 0)} is invested at {_num(r)}% p.a. simple interest for "
+            f"{t} years. Determine the accumulated amount."
+        ),
+        display_math="",
+        worked_steps=full if detail == "full" else [rf"{sub} = {_zar(ans)}"],
+    )
 
 
 def template_compound_amount(params: dict, detail: str = "full") -> ProblemCard:
@@ -3659,6 +3679,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     triangle_exterior.id: WorksheetEntry(
         problem=triangle_exterior,
         template=template_triangle_exterior,
+    ),
+    simple_interest.id: WorksheetEntry(
+        problem=simple_interest,
+        template=template_simple_interest,
     ),
     compound_amount.id: WorksheetEntry(
         problem=compound_amount,
