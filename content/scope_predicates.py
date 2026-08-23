@@ -33,6 +33,7 @@ from content.examples.arithmetic_sequence import (
 )
 from content.examples.circle_equation import circle_equation
 from content.examples.circle_tangent import circle_tangent
+from content.examples.circumcentre import circumcentre
 from content.examples.cubic_stationary_points import cubic_stationary_points
 from content.examples.discriminant_nature import discriminant_nature
 from content.examples.exponential_equation import exponential_equation
@@ -59,6 +60,7 @@ from content.examples.monic_factorise import problem as monic_factorise
 from content.examples.motion_calculus import motion_calculus
 from content.examples.nonlinear_simultaneous import nonlinear_simultaneous
 from content.examples.optimisation_solve import optimisation_solve
+from content.examples.perpendicular_foot import perpendicular_foot
 from content.examples.probability_venn import (
     prob_count_intersection,
     prob_venn_intersection,
@@ -613,17 +615,27 @@ def grouped_mean_solve_in_scope(instance: ProblemInstance) -> list[str]:
 
 # ── analytic-geometry family (ladder 7) ─────────────────────────────────────────
 #
-# Of the five analytic-geo archetypes only the three that construct *toward a target
-# answer-form* carry F1 surface: a line equation y = m·x + c and a circle centre/radius
-# both fall out of scope when a draw makes that form undefined. The two forward
-# read-offs (triangle five-answers, angle-between-lines) draw raw integer points and
-# report whatever midpoint/gradient/surd/angle results — the surds and decimals ARE the
-# expected answer and every degeneracy is guarded — so they carry no F1 surface.
+# Of the eight analytic-geo archetypes five carry F1 surface. Three construct *toward a
+# target answer-form*: a line equation y = m·x + c and a circle centre/radius fall out
+# of scope when a draw makes that form undefined. Two more construct *backward toward an
+# integer lattice answer* — the foot of a perpendicular and the circumcentre are placed
+# on the integer grid by construction, but the taught method (re-solve two lines) yields
+# a lattice point only for the honest draw; a construction regression that widens a
+# range leaks an off-lattice or out-of-band answer, which the predicate re-solves out.
+#
+# The three forward read-offs (triangle five-answers, angle-between-lines, and the
+# gradient+inclination of a line through two points) draw raw integer points and report
+# whatever midpoint/gradient/surd/angle results — the surds and irrational-degree angles
+# ARE the expected answer and every degeneracy is guarded — so they carry no F1 surface.
+# (regression_line, ladder 6, is the same forward-report shape: every coefficient is a
+# calculator decimal, never clamped toward round numbers, so it too carries no gate.)
 #
 # Each predicate re-derives the answer-form from the *presented* points/coefficients and
-# flags the draw that pushes it out of the y = m·x + c (or real-circle) scope.
+# flags the draw that pushes it out of scope.
 
 _CIRCLE_RSQ_RANGE = (2, 40)  # circle_equation draws r^2 as a whole number 2..40
+_PERP_FOOT_BOUND = 6  # perpendicular_foot places the foot on the lattice in [−6, 6]
+_CIRCUMCENTRE_BOUND = 6  # circumcentre places the centre on the lattice in [−6, 6]
 
 
 def line_equation_in_scope(instance: ProblemInstance) -> list[str]:
@@ -723,6 +735,84 @@ def circle_tangent_in_scope(instance: ProblemInstance) -> list[str]:
         )
     if c != p["c"]:
         reasons.append(f"recovered intercept {c} disagrees with stored {p['c']}")
+    return reasons
+
+
+def perpendicular_foot_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: a line L: A·x + B·y + C = 0 and a point P(px, py). The foot of the
+    perpendicular is F = P − t·(A, B) with t = (A·px + B·py + C)/(A² + B²). Re-derive t
+    from the shown coefficients and demand a genuinely oblique L (A, B ≠ 0, else the
+    taught −A/B gradient step is undefined) and a foot that lands on the integer lattice
+    within band — a naive draw (P not stepped along the normal) leaves an off-lattice
+    foot the tutee cannot reach cleanly."""
+    p = instance.params
+    A, B, C = p["A"], p["B"], p["C"]
+    px, py = p["px"], p["py"]
+    reasons: list[str] = []
+
+    if A == 0 or B == 0:
+        reasons.append(
+            f"line A={A}, B={B} is not oblique: the −A/B gradient method is undefined"
+        )
+        return reasons
+
+    denom = A * A + B * B
+    num = A * px + B * py + C
+    if num % denom != 0:
+        reasons.append(
+            f"foot lands off the lattice: t = ({num})/({denom}) is not an integer"
+        )
+        return reasons
+    fx, fy = px - (num // denom) * A, py - (num // denom) * B
+    if abs(fx) > _PERP_FOOT_BOUND or abs(fy) > _PERP_FOOT_BOUND:
+        reasons.append(f"foot ({fx}, {fy}) exceeds magnitude band {_PERP_FOOT_BOUND}")
+    if fx != p["foot_x"] or fy != p["foot_y"]:
+        reasons.append(
+            f"recovered foot ({fx}, {fy}) disagrees with stored "
+            f"({p['foot_x']}, {p['foot_y']})"
+        )
+    return reasons
+
+
+def circumcentre_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: three points A, B, C. The circumcentre P solves the two perpendicular
+    bisectors from |PA|² = |PB|² and |PB|² = |PC|² — a 2×2 linear system whose x² and y²
+    terms cancel. Re-solve it from the shown coordinates and demand non-collinear points
+    (non-zero determinant) and an integer centre in band — a naive lattice triangle
+    generally has a *rational* (off-lattice) circumcentre, which this rejects."""
+    p = instance.params
+    ax, ay = p["ax"], p["ay"]
+    bx, by = p["bx"], p["by"]
+    cx, cy = p["cx"], p["cy"]
+    reasons: list[str] = []
+
+    a1, b1 = 2 * (bx - ax), 2 * (by - ay)
+    c1 = (bx * bx + by * by) - (ax * ax + ay * ay)
+    a2, b2 = 2 * (cx - bx), 2 * (cy - by)
+    c2 = (cx * cx + cy * cy) - (bx * bx + by * by)
+
+    det = a1 * b2 - b1 * a2
+    if det == 0:
+        reasons.append("points A, B, C are collinear: no unique circumcentre")
+        return reasons
+
+    hnum = c1 * b2 - b1 * c2
+    knum = a1 * c2 - c1 * a2
+    if hnum % det != 0 or knum % det != 0:
+        reasons.append(
+            f"circumcentre ({hnum}/{det}, {knum}/{det}) is not a lattice point"
+        )
+        return reasons
+    h, k = hnum // det, knum // det
+    if abs(h) > _CIRCUMCENTRE_BOUND or abs(k) > _CIRCUMCENTRE_BOUND:
+        reasons.append(
+            f"centre ({h}, {k}) exceeds magnitude band {_CIRCUMCENTRE_BOUND}"
+        )
+    if h != p["centre_x"] or k != p["centre_y"]:
+        reasons.append(
+            f"recovered centre ({h}, {k}) disagrees with stored "
+            f"({p['centre_x']}, {p['centre_y']})"
+        )
     return reasons
 
 
@@ -1316,6 +1406,8 @@ PROBLEMS = {
     line_equation.id: line_equation,
     circle_equation.id: circle_equation,
     circle_tangent.id: circle_tangent,
+    perpendicular_foot.id: perpendicular_foot,
+    circumcentre.id: circumcentre,
     cubic_stationary_points.id: cubic_stationary_points,
     motion_calculus.id: motion_calculus,
     optimisation_solve.id: optimisation_solve,
@@ -1354,6 +1446,8 @@ PREDICATES = {
     line_equation.id: line_equation_in_scope,
     circle_equation.id: circle_equation_in_scope,
     circle_tangent.id: circle_tangent_in_scope,
+    perpendicular_foot.id: perpendicular_foot_in_scope,
+    circumcentre.id: circumcentre_in_scope,
     cubic_stationary_points.id: cubic_stationary_points_in_scope,
     motion_calculus.id: motion_calculus_in_scope,
     optimisation_solve.id: optimisation_solve_in_scope,

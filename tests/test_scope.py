@@ -23,6 +23,7 @@ from content.scope_predicates import (
     arith_series_find_n_in_scope,
     circle_equation_in_scope,
     circle_tangent_in_scope,
+    circumcentre_in_scope,
     cubic_stationary_points_in_scope,
     discriminant_nature_in_scope,
     exponential_equation_in_scope,
@@ -40,6 +41,7 @@ from content.scope_predicates import (
     motion_calculus_in_scope,
     nonlinear_simultaneous_in_scope,
     optimisation_solve_in_scope,
+    perpendicular_foot_in_scope,
     prob_count_intersection_in_scope,
     prob_venn_intersection_in_scope,
     quad_seq_find_n_in_scope,
@@ -448,6 +450,64 @@ def test_circle_tangent_predicate_has_teeth(
     gradient undefined — the taught method divides by px-h)."""
     instance = types.SimpleNamespace(params=out_of_scope_params)
     reasons = circle_tangent_in_scope(instance)
+    assert any(needle in r for r in reasons), (
+        f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
+    )
+
+
+@pytest.mark.scope
+@pytest.mark.parametrize(
+    "out_of_scope_params, needle",
+    [
+        # L: x+y=0, P(1,0): t = (1+0+0)/(1+1) = 1/2 ⇒ the foot is off the lattice.
+        (
+            {"A": 1, "B": 1, "C": 0, "px": 1, "py": 0},
+            "off the lattice",
+        ),
+        # A=0 (line y=3) ⇒ the taught −A/B gradient step is undefined.
+        (
+            {"A": 0, "B": 1, "C": -3, "px": 2, "py": 0},
+            "not oblique",
+        ),
+    ],
+)
+def test_perpendicular_foot_predicate_has_teeth(
+    out_of_scope_params: dict, needle: str
+) -> None:
+    """Non-tautological control for perpendicular_foot: re-derives the foot from the
+    presented line + point and flags an off-lattice foot (P not on the normal) or a
+    non-oblique line (the −A/B method undefined)."""
+    instance = types.SimpleNamespace(params=out_of_scope_params)
+    reasons = perpendicular_foot_in_scope(instance)
+    assert any(needle in r for r in reasons), (
+        f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
+    )
+
+
+@pytest.mark.scope
+@pytest.mark.parametrize(
+    "out_of_scope_params, needle",
+    [
+        # Right triangle (0,0),(1,0),(0,1): circumcentre (1/2, 1/2) — off the lattice.
+        (
+            {"ax": 0, "ay": 0, "bx": 1, "by": 0, "cx": 0, "cy": 1},
+            "not a lattice point",
+        ),
+        # Collinear points on y=x ⇒ the perpendicular bisectors never meet.
+        (
+            {"ax": 0, "ay": 0, "bx": 1, "by": 1, "cx": 2, "cy": 2},
+            "collinear",
+        ),
+    ],
+)
+def test_circumcentre_predicate_has_teeth(
+    out_of_scope_params: dict, needle: str
+) -> None:
+    """Non-tautological control for circumcentre: re-solves the two perpendicular
+    bisectors from the presented vertices and flags a rational (off-lattice) centre or a
+    collinear (no-solution) draw."""
+    instance = types.SimpleNamespace(params=out_of_scope_params)
+    reasons = circumcentre_in_scope(instance)
     assert any(needle in r for r in reasons), (
         f"predicate missed the out-of-scope draw {out_of_scope_params}: {reasons}"
     )

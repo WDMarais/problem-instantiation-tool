@@ -55,6 +55,7 @@ from content.examples.arithmetic_sequence import (
 from content.examples.circle_equation import circle_equation
 from content.examples.circle_from_graph import circle_from_graph
 from content.examples.circle_tangent import circle_tangent
+from content.examples.circumcentre import circumcentre
 from content.examples.compound_periodic import (
     appreciation,
     compound_amount,
@@ -113,6 +114,7 @@ from content.examples.geometric_sequence import (
 )
 from content.examples.grouped_mean_solve import grouped_mean_solve
 from content.examples.hyperbola_from_graph import hyperbola_from_graph
+from content.examples.inclination_angle import inclination_angle
 from content.examples.independent_events import (
     independent_decide,
     independent_intersection,
@@ -144,6 +146,7 @@ from content.examples.parallelogram_angles import (
     parallelogram_cointerior,
     parallelogram_opposite,
 )
+from content.examples.perpendicular_foot import perpendicular_foot
 from content.examples.present_value_annuity import (
     pv_annuity_amount,
     pv_annuity_n,
@@ -168,6 +171,7 @@ from content.examples.quadratic_sequence import (
 from content.examples.quadratic_sequence import (
     nth_term_formula as quad_nth_term_formula,
 )
+from content.examples.regression_line import regression_line
 from content.examples.rform_skills import (
     rform_find_phi,
     rform_find_R,
@@ -2677,6 +2681,32 @@ def template_stats_grouped(params: dict, detail: str = "full") -> ProblemCard:
     )
 
 
+def template_regression_line(params: dict, detail: str = "full") -> ProblemCard:
+    b = round(float(params["gradient"]), 2)
+    a = round(float(params["intercept"]), 2)
+    r = params["correlation"]
+    x_pred = params["x_pred"]
+    pred = round(float(params["prediction"]), 2)
+    full = [
+        r"\text{enter the }(x,y)\text{ pairs in STAT mode and read off the "
+        r"regression coefficients}",
+        rf"B = \frac{{\sum(x-\bar{{x}})(y-\bar{{y}})}}{{\sum(x-\bar{{x}})^2}} = {b}"
+        rf",\quad A = \bar{{y}} - B\bar{{x}} = {a}",
+        rf"\hat{{y}} = {a} {_signed(b)}x,\qquad r = {r}",
+        rf"\hat{{y}}({x_pred}) = {a} {_signed(b)}({x_pred}) = {pred}",
+    ]
+    return ProblemCard(
+        instruction=(
+            r"For the bivariate data below, find the equation of the least-squares "
+            r"regression line $\hat{y} = A + Bx$ and the correlation coefficient "
+            rf"$r$, then use the line to predict $\hat{{y}}$ when $x = {x_pred}$. "
+            r"Round to two decimals."
+        ),
+        display_math=params["table_latex"],
+        worked_steps=full if detail == "full" else full[-2:],
+    )
+
+
 # ── analytic geometry (ladder 7) ──────────────────────────────────────────────
 def template_analytic_geometry_triangle(
     params: dict, detail: str = "full"
@@ -2802,6 +2832,87 @@ def template_angle_between_lines(params: dict, detail: str = "full") -> ProblemC
         display_math=(
             rf"AB:\ {params['line_ab_latex']} \\ CD:\ {params['line_cd_latex']}"
         ),
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_inclination_angle(params: dict, detail: str = "full") -> ProblemCard:
+    x1, y1 = params["x1"], params["y1"]
+    x2, y2 = params["x2"], params["y2"]
+    m = params["gradient"]
+    m_tex = params["gradient_latex"]
+    theta = params["inclination"]
+    grad_step = rf"m = \frac{{{y2} - ({y1})}}{{{x2} - ({x1})}} = {m_tex}"
+    if m >= 0:
+        angle_steps = [
+            rf"\tan\theta = m = {m_tex}",
+            rf"\theta = \tan^{{-1}}({m_tex}) = {theta}^\circ",
+        ]
+    else:
+        raw = round(theta - 180, 2)
+        angle_steps = [
+            rf"\tan\theta = m = {m_tex}\quad(m<0 \Rightarrow \theta\text{{ obtuse}})",
+            rf"\theta = 180^\circ + \tan^{{-1}}({m_tex}) = "
+            rf"180^\circ {_signed(raw)}^\circ = {theta}^\circ",
+        ]
+    full = [grad_step, *angle_steps]
+    return ProblemCard(
+        instruction=(
+            r"Find the gradient of line $AB$ and its angle of inclination $\theta$ "
+            r"(the angle $AB$ makes with the positive $x$-axis, "
+            r"$0^\circ \le \theta < 180^\circ$). Round the angle to two decimals."
+        ),
+        display_math=params["points_latex"],
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_perpendicular_foot(params: dict, detail: str = "full") -> ProblemCard:
+    A, B = params["A"], params["B"]
+    px, py = params["px"], params["py"]
+    fx, fy = params["foot_x"], params["foot_y"]
+    m_l = params["gradient"]
+    m_perp = sympy.Rational(B, A)
+    full = [
+        rf"L:\ {params['line_latex']}\ \Rightarrow\ "
+        rf"m_L = -\frac{{{A}}}{{{B}}} = {sympy.latex(m_l)}",
+        rf"m_\perp = -\frac{{1}}{{m_L}} = {sympy.latex(m_perp)}",
+        rf"\text{{perpendicular through }} P:\ y - ({py}) = "
+        rf"{sympy.latex(m_perp)}\,(x - ({px}))",
+        rf"\text{{solve with }} L\ \Rightarrow\ F = ({fx},\ {fy})",
+    ]
+    return ProblemCard(
+        instruction=(
+            rf"The point ${params['point_latex']}$ and the line $L$ are given. Find "
+            rf"the coordinates of the foot of the perpendicular from $P$ to $L$ (the "
+            rf"point on $L$ closest to $P$)."
+        ),
+        display_math=rf"L:\ {params['line_latex']},\quad {params['point_latex']}",
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_circumcentre(params: dict, detail: str = "full") -> ProblemCard:
+    ax, ay = params["ax"], params["ay"]
+    bx, by = params["bx"], params["by"]
+    cx, cy = params["cx"], params["cy"]
+    h, k = params["centre_x"], params["centre_y"]
+    a1, b1 = 2 * (bx - ax), 2 * (by - ay)
+    c1 = (bx**2 + by**2) - (ax**2 + ay**2)
+    a2, b2 = 2 * (cx - bx), 2 * (cy - by)
+    c2 = (cx**2 + cy**2) - (bx**2 + by**2)
+    full = [
+        r"\text{let } P(x, y),\ \text{ then } |PA|^2 = |PB|^2 = |PC|^2",
+        rf"|PA|^2 = |PB|^2:\quad {a1}x {_signed(b1)}y = {c1}\quad(1)",
+        rf"|PB|^2 = |PC|^2:\quad {a2}x {_signed(b2)}y = {c2}\quad(2)",
+        rf"\text{{solve (1) and (2)}}\ \Rightarrow\ P = ({h},\ {k})",
+    ]
+    return ProblemCard(
+        instruction=(
+            r"Find the coordinates of the point $P$ that is equidistant from the "
+            r"three points $A$, $B$ and $C$ (the circumcentre of $\triangle ABC$)."
+        ),
+        display_math=params["points_latex"],
         worked_steps=full if detail == "full" else full[1:],
     )
 
@@ -3758,6 +3869,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
         problem=stats_grouped,
         template=template_stats_grouped,
     ),
+    regression_line.id: WorksheetEntry(
+        problem=regression_line,
+        template=template_regression_line,
+    ),
     # ── analytic geometry family (ladder 7) ──
     analytic_geometry_triangle.id: WorksheetEntry(
         problem=analytic_geometry_triangle,
@@ -3778,6 +3893,18 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     circle_tangent.id: WorksheetEntry(
         problem=circle_tangent,
         template=template_circle_tangent,
+    ),
+    inclination_angle.id: WorksheetEntry(
+        problem=inclination_angle,
+        template=template_inclination_angle,
+    ),
+    perpendicular_foot.id: WorksheetEntry(
+        problem=perpendicular_foot,
+        template=template_perpendicular_foot,
+    ),
+    circumcentre.id: WorksheetEntry(
+        problem=circumcentre,
+        template=template_circumcentre,
     ),
     # ── calculus family (ladder 8) ──
     derivative_first_principles.id: WorksheetEntry(
