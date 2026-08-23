@@ -7,6 +7,7 @@ Section B accepts an optional note for renderer-level label annotations.
 
 from __future__ import annotations
 
+from content.renderers.katex_static import inline_style, prerender_body
 from content.sheet import (
     CollapsedEx,
     FiveStep,
@@ -16,13 +17,6 @@ from content.sheet import (
     SixStep,
     ThreeStep,
 )
-
-_KATEX = """\
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
-  onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false})">
-</script>"""
 
 _CSS = """
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -340,16 +334,14 @@ def _page2(data: SheetData) -> str:
 
 
 def build_html(data: SheetData, *, section_b_note: str = "") -> str:
+    body = _page1(data, section_b_note) + _page2(data)
     return (
         "<!DOCTYPE html>\n"
         '<html lang="en">\n'
         "<head>\n"
         '<meta charset="UTF-8">\n'
         f"<title>{data.title}</title>\n"
-        f"{_KATEX}\n"
+        f"{inline_style()}\n"
         f"<style>{_CSS}</style>\n"
-        "</head>\n<body>\n"
-        + _page1(data, section_b_note)
-        + _page2(data)
-        + "</body>\n</html>\n"
+        "</head>\n<body>\n" + prerender_body(body) + "</body>\n</html>\n"
     )
