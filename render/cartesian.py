@@ -98,6 +98,21 @@ class Label:
     text: str
     color: str = _AXIS_COLOR
     anchor: str = "middle"  # SVG text-anchor: start | middle | end
+    italic: bool = False
+
+
+@dataclass(frozen=True)
+class Band:
+    """A translucent strip spanning the plot: horizontal ('h', between two y values,
+    full width) or vertical ('v', between two x values, full height). Used for a
+    range band or a highlighted x-interval. `edges` draws dashed lines at lo/hi."""
+
+    orient: str  # 'h' | 'v'
+    lo: float
+    hi: float
+    color: str = _CURVE_COLOR
+    opacity: float = 0.1
+    edges: bool = False
 
 
 @dataclass(frozen=True)
@@ -117,6 +132,10 @@ class CartesianScene:
     x_label: str = "x"
     y_label: str = "y"
     equal_aspect: bool = False  # match x/y pixel scales (circles render round)
+    x_tick_suffix: str = ""  # appended to each x label (e.g. "°" for degrees)
+    y_tick_suffix: str = ""
+    edge_ticks: bool = False  # labels at the plot edges + axis tick marks, and
+    # keep the 0 label (for graphs whose axis sits mid-plot, e.g. a sinusoid)
 
 
 # ── emitter ─────────────────────────────────────────────────────────────────
@@ -127,9 +146,17 @@ def _fmt(v: float) -> str:
     return f"{int(round(v))}" if abs(v - round(v)) < 1e-9 else f"{v:.1f}"
 
 
-def render_scene(scene: CartesianScene, *, width: int = 300, height: int = 220) -> str:
+def render_scene(
+    scene: CartesianScene,
+    *,
+    width: int = 300,
+    height: int = 220,
+    margins: tuple[int, int, int, int] | None = None,
+) -> str:
     """Return an inline SVG string for `scene`. Pure data → pixels; no maths
-    beyond the linear window→viewport transform."""
+    beyond the linear window→viewport transform. `margins` is (left, right, top,
+    bottom) in pixels; a consumer that labels the plot edges (e.g. the trig graph)
+    passes roomier margins."""
     global _counter
     _counter += 1
     clip_id = f"csc{_counter}"
@@ -139,7 +166,7 @@ def render_scene(scene: CartesianScene, *, width: int = 300, height: int = 220) 
     xspan = x_max - x_min or 1.0
     yspan = y_max - y_min or 1.0
 
-    ml, mr, mt, mb = 30, 16, 12, 24  # margins: left, right, top, bottom
+    ml, mr, mt, mb = margins or (30, 16, 12, 24)  # left, right, top, bottom
     pw = width - ml - mr
     ph = height - mt - mb
 
@@ -198,32 +225,59 @@ def render_scene(scene: CartesianScene, *, width: int = 300, height: int = 220) 
         f'<line x1="{ax_x:.1f}" y1="{mt}" x2="{ax_x:.1f}" y2="{mt + ph}"'
         f' stroke="{_AXIS_COLOR}" stroke-width="1.5"/>'
     )
-    out.append(
-        f'<text x="{ml + pw - 2:.1f}" y="{ax_y - 4:.1f}" font-size="10"'
-        f' text-anchor="end" font-style="italic" fill="{_AXIS_COLOR}"'
-        f' font-family="serif">{scene.x_label}</text>'
-    )
-    out.append(
-        f'<text x="{ax_x + 4:.1f}" y="{mt + 8:.1f}" font-size="10"'
-        f' font-style="italic" fill="{_AXIS_COLOR}"'
-        f' font-family="serif">{scene.y_label}</text>'
-    )
+    if scene.x_label:
+        out.append(
+            f'<text x="{ml + pw - 2:.1f}" y="{ax_y - 4:.1f}" font-size="10"'
+            f' text-anchor="end" font-style="italic" fill="{_AXIS_COLOR}"'
+            f' font-family="serif">{scene.x_label}</text>'
+        )
+    if scene.y_label:
+        out.append(
+            f'<text x="{ax_x + 4:.1f}" y="{mt + 8:.1f}" font-size="10"'
+            f' font-style="italic" fill="{_AXIS_COLOR}"'
+            f' font-family="serif">{scene.y_label}</text>'
+        )
 
-    # axis tick labels (numeric, skipping 0 to avoid clutter at the origin)
+    # axis tick labels. Default: near the axis, skipping 0. `edge_ticks`: at the
+    # plot edges (bottom / left) with a short tick mark on the axis, 0 kept — for
+    # graphs whose axis runs mid-plot (a sinusoid), where on-axis labels collide.
+    edge = scene.edge_ticks
     for xt in scene.x_ticks:
-        if x_min <= xt <= x_max and abs(xt) > 1e-9:
+        if not (x_min <= xt <= x_max) or (abs(xt) <= 1e-9 and not edge):
+            continue
+        xi = sx(xt)
+        text = f"{_fmt(xt)}{scene.x_tick_suffix}"
+        if edge:
             out.append(
-                f'<text x="{sx(xt):.1f}" y="{ax_y + 13:.1f}" font-size="9"'
+                f'<line x1="{xi:.1f}" y1="{ax_y - 3:.1f}" x2="{xi:.1f}"'
+                f' y2="{ax_y + 3:.1f}" stroke="{_AXIS_COLOR}" stroke-width="1"/>'
+            )
+            out.append(
+                f'<text x="{xi:.1f}" y="{mt + ph + 15:.1f}" font-size="9"'
                 f' text-anchor="middle" fill="#555"'
-                f' font-family="sans-serif">{_fmt(xt)}</text>'
+                f' font-family="sans-serif">{text}</text>'
+            )
+        else:
+            out.append(
+                f'<text x="{xi:.1f}" y="{ax_y + 13:.1f}" font-size="9"'
+                f' text-anchor="middle" fill="#555"'
+                f' font-family="sans-serif">{text}</text>'
             )
     for yt in scene.y_ticks:
-        if y_min <= yt <= y_max and abs(yt) > 1e-9:
+        if not (y_min <= yt <= y_max) or (abs(yt) <= 1e-9 and not edge):
+            continue
+        yi = sy(yt)
+        text = f"{_fmt(yt)}{scene.y_tick_suffix}"
+        if edge:
             out.append(
-                f'<text x="{ax_x - 5:.1f}" y="{sy(yt) + 3:.1f}" font-size="9"'
-                f' text-anchor="end" fill="#555"'
-                f' font-family="sans-serif">{_fmt(yt)}</text>'
+                f'<line x1="{ax_x - 3:.1f}" y1="{yi:.1f}" x2="{ax_x + 3:.1f}"'
+                f' y2="{yi:.1f}" stroke="{_AXIS_COLOR}" stroke-width="1"/>'
             )
+        out.append(
+            f'<text x="{ax_x - (6 if edge else 5):.1f}" y="{yi + 3:.1f}"'
+            f' font-size="9" text-anchor="end" fill="#555"'
+            f' font-family="sans-serif">{text}</text>'
+        )
 
     # primitives, in declared order (later ones draw on top)
     for item in scene.items:
@@ -240,15 +294,49 @@ def _emit_item(item, sx, sy, clip_id, ml, mt, pw, ph, ax_x, ax_y) -> list[str]:
         return _emit_constline(item, sx, sy, ml, mt, pw, ph)
     if isinstance(item, Circle):
         return _emit_circle(item, sx, sy, clip_id)
+    if isinstance(item, Band):
+        return _emit_band(item, sx, sy, ml, mt, pw, ph)
     if isinstance(item, Point):
         return _emit_point(item, sx, sy, ax_x, ax_y)
     if isinstance(item, Label):
+        style = ' font-style="italic"' if item.italic else ""
         return [
             f'<text x="{sx(item.x):.1f}" y="{sy(item.y):.1f}" font-size="10"'
             f' text-anchor="{item.anchor}" fill="{item.color}"'
-            f' font-family="sans-serif">{item.text}</text>'
+            f'{style} font-family="sans-serif">{item.text}</text>'
         ]
     raise TypeError(f"CartesianScene cannot emit primitive of type {type(item)!r}")
+
+
+def _emit_band(b: Band, sx, sy, ml, mt, pw, ph) -> list[str]:
+    edge = ' stroke-dasharray="4,3"'
+    if b.orient == "h":
+        y_hi, y_lo = sy(b.hi), sy(b.lo)  # hi maps to the smaller pixel y (top)
+        out = [
+            f'<rect x="{ml}" y="{y_hi:.1f}" width="{pw}" height="{y_lo - y_hi:.1f}"'
+            f' fill="{b.color}" opacity="{b.opacity}"/>'
+        ]
+        if b.edges:
+            for py in (y_hi, y_lo):
+                out.append(
+                    f'<line x1="{ml}" y1="{py:.1f}" x2="{ml + pw}" y2="{py:.1f}"'
+                    f' stroke="{b.color}" stroke-width="1.2"{edge} opacity="0.6"/>'
+                )
+        return out
+    if b.orient == "v":
+        x_lo, x_hi = sx(b.lo), sx(b.hi)
+        out = [
+            f'<rect x="{x_lo:.1f}" y="{mt}" width="{x_hi - x_lo:.1f}" height="{ph}"'
+            f' fill="{b.color}" opacity="{b.opacity}"/>'
+        ]
+        if b.edges:
+            for px in (x_lo, x_hi):
+                out.append(
+                    f'<line x1="{px:.1f}" y1="{mt}" x2="{px:.1f}" y2="{mt + ph}"'
+                    f' stroke="{b.color}" stroke-width="1.2"{edge} opacity="0.6"/>'
+                )
+        return out
+    raise ValueError(f"Band.orient must be 'h' or 'v', got {b.orient!r}")
 
 
 def _emit_polyline(pl: Polyline, sx, sy, clip_id) -> list[str]:
