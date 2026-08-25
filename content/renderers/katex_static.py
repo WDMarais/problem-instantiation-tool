@@ -27,6 +27,7 @@ import re
 import shutil
 import subprocess
 from functools import lru_cache
+from html import unescape as _unescape
 from pathlib import Path
 
 _TOOL = Path(__file__).resolve().parents[2] / "tools" / "katex"
@@ -80,10 +81,14 @@ def prerender_body(html: str) -> str:
     jobs: list[dict] = []
 
     def _collect(m: re.Match[str]) -> str:
+        # Content is authored with HTML-escaped math bodies (``<``/``>``/``&`` →
+        # entities, so a raw ``<`` isn't eaten by the HTML parser). KaTeX wants the
+        # real characters (``<`` is a relation, ``&`` an array separator), so decode
+        # the entities back before rendering. KaTeX's own output is proper HTML.
         if m.group(1) is not None:
-            jobs.append({"tex": m.group(1), "display": True})
+            jobs.append({"tex": _unescape(m.group(1)), "display": True})
         else:
-            jobs.append({"tex": m.group(2), "display": False})
+            jobs.append({"tex": _unescape(m.group(2)), "display": False})
         return m.group(0)
 
     _MATH.sub(_collect, html)
