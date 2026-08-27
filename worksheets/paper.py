@@ -20,9 +20,10 @@ rendered paper carries a "not an official DBE/NSC paper" disclaimer, and the
 mathematical skeleton (topics, mark allocation) is the only thing mirrored — never
 the paper's text or figures.
 
-This is the Q1 spine: it proves the whole pipeline (manifest → instantiate →
-NSC-numbered render + margin marks + self-checked memo, incl. one resistant
-passthrough) on render-free algebra, before breadth and the plotter builders.
+The paper is built up one question at a time: the pipeline (manifest →
+instantiate → NSC-numbered render + margin marks + self-checked memo, incl.
+resistant passthroughs) runs over every render-free question before the plotter
+builders unlock the graph-dependent ones.
 """
 
 from __future__ import annotations
@@ -166,10 +167,11 @@ def build_paper(spec: PaperSpec, *, seed: int | None = None) -> list[RenderedSlo
 _PAPER_CSS = """
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a;
-       background: #f4f4f4; padding: 12mm 0; }
-.paper, .memo {
-    width: 210mm; min-height: 297mm; margin: 0 auto 10mm; padding: 18mm 16mm;
-    background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+       background: #e8e8e8; }
+
+/* screen: a readable centred column — not a fake A4 sheet */
+.doc { max-width: 210mm; margin: 8mm auto 24mm; padding: 14mm 16mm 20mm;
+       background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
 .paper-header { text-align: center; border-bottom: 2px solid #1a1a1a;
                 padding-bottom: 6px; margin-bottom: 4mm; }
 .paper-title { font-size: 15pt; font-weight: bold; letter-spacing: .3px; }
@@ -177,36 +179,95 @@ body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a;
 .disclaimer { font-size: 8pt; font-style: italic; color: #666; text-align: center;
               border: 1px solid #ddd; background: #fafafa; padding: 4px 8px;
               margin-bottom: 6mm; }
-.question { margin-bottom: 7mm; }
+
+/* notebook tabs (screen only); with JS off the tabs are plain jump links and
+   every question stays visible — i.e. it degrades to continuous scroll */
+.qnav { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap;
+        gap: 4px; padding: 6px 10px; background: #fff; border-bottom: 1px solid #ccc; }
+.qnav a { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 9.5pt;
+          text-decoration: none; color: #333; padding: 3px 10px;
+          border: 1px solid #ccc; border-radius: 4px; }
+.qnav a.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+body.tabbed .qsection { display: none; }
+body.tabbed .qsection.active { display: block; }
+
+.qsection { margin-bottom: 8mm; }
 .q-head { display: flex; justify-content: space-between; align-items: baseline;
-          border-bottom: 1px solid #999; padding-bottom: 2px; margin-bottom: 3mm; }
+          border-bottom: 1px solid #999; padding-bottom: 2px; margin-bottom: 4mm; }
 .q-title { font-size: 12pt; font-weight: bold; letter-spacing: .5px; }
 .q-marks { font-size: 10pt; font-weight: bold; }
-.slot { display: grid; grid-template-columns: 16mm 1fr 14mm; column-gap: 3mm;
-        margin-bottom: 3mm; align-items: start; }
-.slot.depth-2 { padding-left: 0; }
-.slot.depth-3 { padding-left: 8mm; }
-.slot-num { font-weight: bold; font-size: 10.5pt; white-space: nowrap; }
-.slot-content { min-width: 0; }
+
+/* slots: number/marks absolutely placed so the block is a clean fragmentation
+   unit (grid/flex children are unreliable across page breaks in Chrome) */
+.slot { position: relative; padding: 3mm 14mm 3mm 17mm; }
+.slot + .slot { border-top: 1px solid #e3e3e3; }
+.slot.depth-3 { margin-left: 7mm; }
+.slot-num { position: absolute; left: 0; top: 3mm; font-weight: bold;
+            font-size: 10.5pt; white-space: nowrap; }
+.slot-marks { position: absolute; right: 0; top: 3mm; font-size: 10pt;
+              white-space: nowrap; }
 .slot-instruction { font-size: 10.5pt; line-height: 1.35; }
 .slot-eq { margin: 1.5mm 0; }
 .slot-graph { margin: 1.5mm 0; }
 .work-space { border-bottom: 1px dotted #ccc; }
-.slot-marks { text-align: right; font-size: 10pt; white-space: nowrap; }
+
 .memo h2 { font-size: 13pt; border-bottom: 2px solid #1a1a1a; padding-bottom: 3px;
            margin-bottom: 4mm; }
-.memo-row { display: grid; grid-template-columns: 16mm 1fr auto auto; column-gap: 3mm;
-            align-items: baseline; padding: 1.5mm 0; border-bottom: 1px solid #eee; }
-.memo-num { font-weight: bold; font-size: 10pt; }
+.memo-row { position: relative; padding: 1.5mm 22mm 1.5mm 17mm;
+            border-bottom: 1px solid #eee; }
+.memo-num { position: absolute; left: 0; top: 1.5mm; font-weight: bold;
+            font-size: 10pt; }
 .memo-steps { font-size: 10pt; line-height: 1.5; }
 .memo-steps > div { margin: .5mm 0; }
+.memo-meta { position: absolute; right: 0; top: 1.5mm; white-space: nowrap; }
 .memo-marks { font-weight: bold; font-size: 9.5pt; }
 .memo-badge { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .5px;
-              padding: 1px 5px; border-radius: 3px; margin-left: 4mm; }
+              padding: 1px 5px; border-radius: 3px; margin-left: 3mm; }
 .memo-badge.auto { background: #dcfce7; color: #166534; }
 .memo-badge.static { background: #fef3c7; color: #92400e; }
-@media print { body { background: #fff; padding: 0; }
-    .paper, .memo { box-shadow: none; margin: 0; page-break-after: always; } }
+
+/* print / PDF: native paged media owns the breaks — one question per page,
+   slots kept whole. No height estimation, no clipping. */
+@media print {
+    body { background: #fff; }
+    .qnav { display: none; }
+    .doc { max-width: none; margin: 0; padding: 0; box-shadow: none; }
+    body.tabbed .qsection { display: block; }
+    .qsection { margin-bottom: 0; break-before: page; }
+    .qsection:first-of-type { break-before: avoid; }
+    .slot, .memo-row { break-inside: avoid; }
+    @page { size: A4; margin: 18mm 16mm; }
+}
+"""
+
+# Screen-only progressive enhancement: turn the question list into notebook tabs.
+# With JS disabled (or under a CSP that blocks it) the body never gets `.tabbed`,
+# so every .qsection stays visible and the page is a plain vertical scroll.
+_TABS_JS = """
+<script>
+(function () {
+  var nav = document.querySelector('.qnav');
+  var secs = Array.prototype.slice.call(document.querySelectorAll('.qsection'));
+  if (!nav || !secs.length) return;
+  var links = Array.prototype.slice.call(nav.querySelectorAll('a'));
+  document.body.classList.add('tabbed');
+  function show(id) {
+    if (!secs.some(function (s) { return s.id === id; })) id = secs[0].id;
+    secs.forEach(function (s) { s.classList.toggle('active', s.id === id); });
+    links.forEach(function (a) {
+      a.classList.toggle('active', a.getAttribute('data-target') === id);
+    });
+    window.scrollTo(0, 0);
+  }
+  links.forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      show(a.getAttribute('data-target'));
+    });
+  });
+  show((location.hash || '').replace('#', '') || secs[0].id);
+})();
+</script>
 """
 
 
@@ -239,8 +300,19 @@ def _memo_row_html(rs: RenderedSlot) -> str:
         f'<div class="memo-row">'
         f'<span class="memo-num">{rs.slot.number}</span>'
         f'<div class="memo-steps">{steps}</div>'
+        f'<span class="memo-meta">'
         f'<span class="memo-marks">[{rs.slot.marks}]</span>'
         f'<span class="memo-badge {badge}">{badge}</span>'
+        f"</span>"
+        f"</div>"
+    )
+
+
+def _qhead_html(head: str, q_marks: int) -> str:
+    return (
+        f'<div class="q-head">'
+        f'<span class="q-title">QUESTION {head}</span>'
+        f'<span class="q-marks">[{q_marks}]</span>'
         f"</div>"
     )
 
@@ -254,56 +326,68 @@ def render_paper_html(spec: PaperSpec, rendered: list[RenderedSlot]) -> str:
             groups.append((head, []))
         groups[-1][1].append(rs)
 
-    questions = []
-    for head, slots in groups:
-        q_marks = sum(rs.slot.marks for rs in slots)
-        body = "".join(_slot_html(rs) for rs in slots)
-        questions.append(
-            f'<div class="question">'
-            f'<div class="q-head">'
-            f'<span class="q-title">QUESTION {head}</span>'
-            f'<span class="q-marks">[{q_marks}]</span>'
-            f"</div>"
-            f'<div class="q-body">{body}</div>'
-            f"</div>"
-        )
-
-    memo = "".join(_memo_row_html(rs) for rs in rendered)
-    paper = (
-        '<section class="paper">'
+    masthead = (
         '<div class="paper-header">'
         f'<div class="paper-title">{spec.title}</div>'
         f'<div class="paper-sub">Variable instantiation of {spec.source} '
         f"· {spec.total_marks} marks</div>"
         "</div>"
         f'<p class="disclaimer">{spec.disclaimer}</p>'
-        + "".join(questions)
-        + "</section>\n"
-        '<section class="memo">'
-        "<h2>Marking Memorandum</h2>"
-        f"{memo}"
-        "</section>\n"
     )
+
+    # One continuous document: masthead, then a section per question, then the
+    # memo. Native paged media (print) or the notebook tabs (screen) decide how
+    # this flow is chunked — the renderer never estimates a single height.
+    nav_links: list[str] = []
+    sections: list[str] = []
+    for head, slots in groups:
+        q_marks = sum(rs.slot.marks for rs in slots)
+        nav_links.append(f'<a href="#q{head}" data-target="q{head}">Q{head}</a>')
+        body = "".join(_slot_html(rs) for rs in slots)
+        sections.append(
+            f'<section class="qsection" id="q{head}">'
+            f"{_qhead_html(head, q_marks)}{body}</section>"
+        )
+
+    nav_links.append('<a href="#memo" data-target="memo">Memo</a>')
+    memo_rows = "".join(_memo_row_html(rs) for rs in rendered)
+    sections.append(
+        '<section class="qsection" id="memo">'
+        '<div class="memo"><h2>Marking Memorandum</h2>'
+        f"{memo_rows}</div></section>"
+    )
+
+    nav = f'<nav class="qnav">{"".join(nav_links)}</nav>'
+    doc = f'<div class="doc">{masthead}{"".join(sections)}</div>'
     return (
         "<!DOCTYPE html>\n"
         '<html lang="en">\n<head>\n<meta charset="UTF-8">\n'
         f"<title>{spec.title}</title>\n"
         f"{inline_style()}\n"
         f"<style>{_PAPER_CSS}</style>\n"
-        "</head>\n<body>\n" + prerender_body(paper) + "</body>\n</html>\n"
+        "</head>\n<body>\n"
+        + prerender_body(nav + doc)
+        + _TABS_JS
+        + "</body>\n</html>\n"
     )
 
 
-# ── the first spine: 2025 May/June P1, Question 1 ─────────────────────────────
+# ── 2025 May/June P1 (accumulating, render-free questions) ────────────────────
 
-# Q1 is all render-free algebra: it proves the pipeline (numbering, margin marks,
-# memo, and one resistant passthrough at 1.3) without waiting on the plotter.
-# Mark allocations follow the paper skeleton (corpus-crosswalk.md). Where a
-# generator's own marks differ, build_paper() emits a loud calibration warning.
-_MJ2025_P1_Q1 = PaperSpec(
+# The P1 paper is built up one question at a time; the renderer groups slots by
+# their leading number, so each question becomes its own block. Mark allocations
+# follow the paper skeleton (corpus-crosswalk.md). Where a generator's own marks
+# differ, build_paper() emits a loud calibration warning — a real gap for a
+# scoring-identical product, never silently reconciled.
+#
+# Q1 — render-free algebra (numbering, margin marks, memo, one resistant
+# passthrough at 1.3). Q2 — Sequences & Series, fully addressable (class a/b),
+# no plotter needed.
+_MJ2025_P1 = PaperSpec(
     title="Mathematics P1 — Practice",
     source="2025 May/June P1",
     slots=(
+        # Question 1 — equations & inequalities
         PaperSlot("1.1.1", 3, "quadratic — factorise", problem_id="quadratic_factor"),
         # TODO(1.1.2): needs a non-monic quadratic-formula (2-dp) variant; the
         # factorise generator stands in for now so the spine renders end-to-end.
@@ -336,11 +420,36 @@ _MJ2025_P1_Q1 = PaperSpec(
                 ),
             ),
         ),
+        # Question 2 — sequences & series (arithmetic 2.1, geometric 2.2)
+        PaperSlot(
+            "2.1.1",
+            2,
+            "arithmetic — nth-term formula",
+            problem_id="arith_seq_nth_term_formula",
+        ),
+        PaperSlot("2.1.2", 2, "arithmetic — find n", problem_id="arith_seq_find_n"),
+        PaperSlot("2.1.3", 3, "arithmetic — series sum", problem_id="arith_series_sum"),
+        PaperSlot(
+            "2.2.1",
+            2,
+            "geometric — nth-term formula",
+            problem_id="geo_seq_nth_term_formula",
+        ),
+        PaperSlot("2.2.2", 3, "geometric — find n", problem_id="geo_seq_find_n"),
+        PaperSlot(
+            "2.2.3", 3, "geometric — finite series", problem_id="geo_series_finite"
+        ),
+        PaperSlot(
+            "2.2.4",
+            3,
+            "geometric — infinite series",
+            problem_id="geo_series_infinite",
+        ),
     ),
 )
 
 PAPERS: dict[str, PaperSpec] = {
-    "2025_mj_p1_q1": _MJ2025_P1_Q1,
+    "2025_mj_p1": _MJ2025_P1,
 }
 
 
@@ -349,7 +458,7 @@ PAPERS: dict[str, PaperSpec] = {
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Render a variable NSC-style paper.")
-    ap.add_argument("--paper", default="2025_mj_p1_q1", choices=list(PAPERS))
+    ap.add_argument("--paper", default="2025_mj_p1", choices=list(PAPERS))
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--output", default="paper.html")
     ap.add_argument("--pdf", action="store_true", help="Also render a PDF")
