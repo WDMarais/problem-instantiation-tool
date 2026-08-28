@@ -69,7 +69,22 @@ class StaticContent:
 
 @dataclass(frozen=True)
 class PaperSlot:
-    """One numbered exam item. Exactly one of ``problem_id`` / ``static`` is set."""
+    """One numbered exam item. Exactly one of ``problem_id`` / ``static`` is set.
+
+    ``marks`` is the paper's headline part-mark — the number the page prints. The
+    generator's own ``verifier_spec`` total is the *canonical* marking scheme: the
+    answer-value marks a verifier step actually covers. When a paper allots more
+    than that (an NSC slot's method/setup lines with no verifier behind them — our
+    generators grade answer-values only, so those fall outside verifier coverage
+    and are marked by hand), the author declares the covered portion via
+    ``auto_marks``; the remainder (``marks − auto_marks``) is manual marks, rendered
+    honestly as such. A declared ``auto_marks`` must equal the generator's canonical
+    total (it's a checkable claim about verifier coverage) and cannot exceed
+    ``marks`` — build_paper enforces both. Leaving it ``None`` on a slot whose marks
+    match the generator is the common, fully-covered case; leaving it ``None`` on a
+    *divergent* slot is a loud, unacknowledged calibration gap (project house rule:
+    never silently reconciled).
+    """
 
     number: str  # NSC dotted number, e.g. "1.1.1", "1.2", "1.3"
     marks: int  # the paper's part-mark — authoritative for what the page prints
@@ -78,12 +93,23 @@ class PaperSlot:
         None  # generated slot → key in worksheets.generate.PROBLEMS
     )
     static: StaticContent | None = None  # resistant passthrough
+    auto_marks: int | None = None  # engine-graded portion; None → = generator total
 
     def __post_init__(self) -> None:
         if (self.problem_id is None) == (self.static is None):
             raise ValueError(
                 f"slot {self.number}: set exactly one of problem_id / static"
             )
+        if self.auto_marks is not None:
+            if self.static is not None:
+                raise ValueError(
+                    f"slot {self.number}: auto_marks is meaningless on a static slot"
+                )
+            if not 0 <= self.auto_marks <= self.marks:
+                raise ValueError(
+                    f"slot {self.number}: auto_marks {self.auto_marks} must be in "
+                    f"0..{self.marks} (a slot can't auto-grade more than it is worth)"
+                )
 
 
 @dataclass(frozen=True)
@@ -111,16 +137,37 @@ class RenderedSlot:
     memo_steps: list[str]
     graph_svg: str | None = None
     generated: bool = False
-    mark_warning: str | None = None  # loud when paper marks ≠ generator marks
+    auto_marks: int | None = None  # resolved engine-graded marks (None for static)
+    mark_warning: str | None = None  # loud when a divergence is left unacknowledged
     warnings: list[str] = field(default_factory=list)
+
+    @property
+    def manual_marks(self) -> int:
+        """Paper marks with no verifier step behind them — marked by hand. These are
+        typically NSC method/setup lines (e.g. 'squared both sides'); our generators
+        grade answer-values only, so these fall outside verifier coverage."""
+        if self.auto_marks is None:
+            return 0
+        return self.slot.marks - self.auto_marks
 
 
 def build_paper(spec: PaperSpec, *, seed: int | None = None) -> list[RenderedSlot]:
     """Instantiate every slot of *spec*. Generated slots are drawn from the engine
-    (fresh per seed); static slots pass through. The paper's declared marks are
-    what the page prints; a mismatch with the generator's own ``marks_possible`` is
-    recorded as a loud warning — a real calibration gap for a scoring-identical
-    product, never silently reconciled (project house rule)."""
+    (fresh per seed); static slots pass through.
+
+    The paper's declared ``marks`` are what the page prints; the generator's own
+    ``verifier_spec`` total is the canonical marking scheme — the answer-value marks
+    a verifier step covers. A slot reconciles the two via ``auto_marks``:
+
+    - ``auto_marks`` set → it must equal the generator total (a checkable claim
+      about verifier coverage); the gap ``marks − auto_marks`` is manual marks (no
+      verifier behind them; marked by hand). A wrong claim is a misconfiguration and
+      raises (project house rule: loud, never silently reconciled).
+    - ``auto_marks`` unset and the generator total already equals ``marks`` → the
+      common fully-covered case.
+    - ``auto_marks`` unset but the generator total diverges from ``marks`` → an
+      *unacknowledged* calibration gap, surfaced as a loud warning for the author
+      to resolve (declare ``auto_marks``, or remap the slot)."""
     engine = Engine(registry=InMemoryRegistry(REGISTRY))
     rng = random.Random(seed)
     out: list[RenderedSlot] = []
@@ -130,11 +177,24 @@ def build_paper(spec: PaperSpec, *, seed: int | None = None) -> list[RenderedSlo
             card = _generate_cards(engine, entry, rng, 1, 1)[0]
             gen_marks = _problem_marks(entry.problem)
             warn = None
-            if gen_marks is not None and gen_marks != slot.marks:
-                warn = (
-                    f"slot {slot.number}: paper marks {slot.marks} ≠ generator "
-                    f"marks {gen_marks} ({slot.problem_id})"
-                )
+            if slot.auto_marks is not None:
+                if gen_marks is not None and slot.auto_marks != gen_marks:
+                    raise ValueError(
+                        f"slot {slot.number}: auto_marks {slot.auto_marks} ≠ "
+                        f"generator's canonical total {gen_marks} "
+                        f"({slot.problem_id}) — auto_marks is a claim about what the "
+                        f"engine grades and must match it; fix the declaration or "
+                        f"recalibrate the generator"
+                    )
+                resolved_auto = slot.auto_marks
+            else:
+                resolved_auto = gen_marks
+                if gen_marks is not None and gen_marks != slot.marks:
+                    warn = (
+                        f"slot {slot.number}: paper marks {slot.marks} ≠ generator "
+                        f"marks {gen_marks} ({slot.problem_id}) — declare auto_marks "
+                        f"to acknowledge the method-mark gap, or remap the slot"
+                    )
             out.append(
                 RenderedSlot(
                     slot=slot,
@@ -143,6 +203,7 @@ def build_paper(spec: PaperSpec, *, seed: int | None = None) -> list[RenderedSlo
                     memo_steps=list(card.worked_steps),
                     graph_svg=card.graph_svg,
                     generated=True,
+                    auto_marks=resolved_auto,
                     mark_warning=warn,
                     warnings=[warn] if warn else [],
                 )
@@ -224,6 +285,7 @@ body.tabbed .qsection.active { display: block; }
 .memo-badge { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .5px;
               padding: 1px 5px; border-radius: 3px; margin-left: 3mm; }
 .memo-badge.auto { background: #dcfce7; color: #166534; }
+.memo-badge.manual { background: #e0e7ff; color: #3730a3; }
 .memo-badge.static { background: #fef3c7; color: #92400e; }
 
 /* print / PDF: native paged media owns the breaks — one question per page,
@@ -295,14 +357,24 @@ def _slot_html(rs: RenderedSlot) -> str:
 
 def _memo_row_html(rs: RenderedSlot) -> str:
     steps = "".join(f"<div>${_tex_html(s)}$</div>" for s in rs.memo_steps)
-    badge = "auto" if rs.generated else "static"
+    if not rs.generated:
+        badges = '<span class="memo-badge static">static</span>'
+    elif rs.manual_marks > 0:
+        # honest split: a verifier step backs the value marks; the rest have no
+        # verifier behind them (NSC method/setup lines) and are marked by hand.
+        badges = (
+            f'<span class="memo-badge auto">{rs.auto_marks} auto</span>'
+            f'<span class="memo-badge manual">{rs.manual_marks} manual</span>'
+        )
+    else:
+        badges = '<span class="memo-badge auto">auto</span>'
     return (
         f'<div class="memo-row">'
         f'<span class="memo-num">{rs.slot.number}</span>'
         f'<div class="memo-steps">{steps}</div>'
         f'<span class="memo-meta">'
         f'<span class="memo-marks">[{rs.slot.marks}]</span>'
-        f'<span class="memo-badge {badge}">{badge}</span>'
+        f"{badges}"
         f"</span>"
         f"</div>"
     )
@@ -388,19 +460,52 @@ _MJ2025_P1 = PaperSpec(
     source="2025 May/June P1",
     slots=(
         # Question 1 — equations & inequalities
-        PaperSlot("1.1.1", 3, "quadratic — factorise", problem_id="quadratic_factor"),
+        # auto_marks = the two roots a verifier step covers; the 3rd is the
+        # factorising method line, marked by hand (no verifier behind it).
+        PaperSlot(
+            "1.1.1",
+            3,
+            "quadratic — factorise",
+            problem_id="quadratic_factor",
+            auto_marks=2,
+        ),
         # TODO(1.1.2): needs a non-monic quadratic-formula (2-dp) variant; the
         # factorise generator stands in for now so the spine renders end-to-end.
-        PaperSlot("1.1.2", 3, "quadratic — formula", problem_id="quadratic_factor"),
         PaperSlot(
-            "1.1.3", 3, "exponential equation", problem_id="exponential_equation"
+            "1.1.2",
+            3,
+            "quadratic — formula",
+            problem_id="quadratic_factor",
+            auto_marks=2,
+        ),
+        # auto_marks = simplified power a^x = a^n (1) + exponent x = n (1); the 3rd
+        # is the factoring line a^x(a^k+1), marked by hand. (The real 1.1.3 is a
+        # common-base factoring solve, not the harder quadratic-in-u substitution —
+        # that is exponential_equation, a 1.1.4-type slot; see audit.)
+        PaperSlot(
+            "1.1.3",
+            3,
+            "exponential — common-base solve",
+            problem_id="exponential_common_base",
+            auto_marks=2,
         ),
         PaperSlot(
             "1.1.4", 3, "quadratic inequality", problem_id="quadratic_inequality"
         ),
-        PaperSlot("1.1.5", 4, "surd equation", problem_id="surd_equation"),
+        # auto_marks = candidates (2) + valid (1); the 4th is the squaring-setup
+        # method line, marked by hand (documented in surd_equation.py).
         PaperSlot(
-            "1.2", 6, "nonlinear simultaneous", problem_id="nonlinear_simultaneous"
+            "1.1.5", 4, "surd equation", problem_id="surd_equation", auto_marks=3
+        ),
+        # auto_marks = x-values (2) + complete pairs (2); the 5th/6th are the
+        # substitution-setup method lines, marked by hand (documented in
+        # nonlinear_simultaneous.py).
+        PaperSlot(
+            "1.2",
+            6,
+            "nonlinear simultaneous",
+            problem_id="nonlinear_simultaneous",
+            auto_marks=4,
         ),
         PaperSlot(
             "1.3",

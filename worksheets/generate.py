@@ -81,6 +81,7 @@ from content.examples.exponent_laws import (
     exponent_algebraic_simplify,
     exponent_variable_simplify,
 )
+from content.examples.exponential_common_base import exponential_common_base
 from content.examples.exponential_equation import exponential_equation
 from content.examples.exponential_from_graph import exponential_from_graph
 from content.examples.factorise_skills import (
@@ -3274,6 +3275,26 @@ def template_exponential_equation(params: dict, detail: str = "full") -> Problem
     )
 
 
+def template_exponential_common_base(params: dict, detail: str = "full") -> ProblemCard:
+    a = params["base"]
+    k, n = params["k"], params["n"]
+    coeff, power, total = params["coeff"], params["power"], params["total"]
+    steps = [
+        # 1. factor out the shared power (the by-hand method line)
+        rf"{a}^{{x + {k}}} + {a}^{{x}} = {a}^{{x}}\left({a}^{{{k}}} + 1\right)"
+        rf" = {total}",
+        # 2. divide by the constant → isolate the power
+        rf"{coeff} \cdot {a}^{{x}} = {total} \;\Rightarrow\; {a}^{{x}} = {power}",
+        # 3. write as a like power and equate exponents
+        rf"{a}^{{x}} = {a}^{{{n}}} \;\Rightarrow\; x = {n}",
+    ]
+    return ProblemCard(
+        instruction=r"Solve for $x$:",
+        display_math=params["equation_latex"],
+        worked_steps=steps if detail == "full" else steps[1:],
+    )
+
+
 # ── functions & graphs (W3 renderer) ──────────────────────────────────────────
 
 
@@ -3803,6 +3824,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     exponent_algebraic_simplify.id: WorksheetEntry(
         problem=exponent_algebraic_simplify,
         template=template_exponent_algebraic_simplify,
+    ),
+    exponential_common_base.id: WorksheetEntry(
+        problem=exponential_common_base,
+        template=template_exponential_common_base,
     ),
     exponential_equation.id: WorksheetEntry(
         problem=exponential_equation,
