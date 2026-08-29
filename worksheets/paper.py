@@ -469,13 +469,14 @@ _MJ2025_P1 = PaperSpec(
             problem_id="quadratic_factor",
             auto_marks=2,
         ),
-        # TODO(1.1.2): needs a non-monic quadratic-formula (2-dp) variant; the
-        # factorise generator stands in for now so the spine renders end-to-end.
+        # auto_marks = the two roots (to 2 dp); the 3rd is the formula-substitution
+        # method line, marked by hand. Non-factorisable discriminant forces the
+        # formula — a different skill from 1.1.1's factorise (see quadratic_formula).
         PaperSlot(
             "1.1.2",
             3,
             "quadratic — formula",
-            problem_id="quadratic_factor",
+            problem_id="quadratic_formula",
             auto_marks=2,
         ),
         # auto_marks = simplified power a^x = a^n (1) + exponent x = n (1); the 3rd

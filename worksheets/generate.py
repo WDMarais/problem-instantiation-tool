@@ -159,6 +159,7 @@ from content.examples.probability_venn import (
     prob_count_intersection,
     prob_venn_intersection,
 )
+from content.examples.quadratic_formula import quadratic_formula
 from content.examples.quadratic_inequality import quadratic_inequality
 from content.examples.quadratic_roots import problem as quadratic_factor_problem
 from content.examples.quadratic_sequence import (
@@ -3295,6 +3296,25 @@ def template_exponential_common_base(params: dict, detail: str = "full") -> Prob
     )
 
 
+def template_quadratic_formula(params: dict, detail: str = "full") -> ProblemCard:
+    a, b = params["a"], params["b"]
+    disc = params["discriminant"]
+    rs, rl = params["root_small"], params["root_large"]
+    two_a = 2 * a
+    steps = [
+        # 1. substitute a, b, c into the quadratic formula (the by-hand method line)
+        r"x = \dfrac{-b \pm \sqrt{b^2 - 4ac}}{2a}"
+        rf" = \dfrac{{{-b} \pm \sqrt{{{disc}}}}}{{{two_a}}}",
+        # 2. the two roots, correct to two decimal places
+        rf"x = {rs:.2f} \text{{ or }} x = {rl:.2f}",
+    ]
+    return ProblemCard(
+        instruction=r"Solve for $x$ (correct to two decimal places):",
+        display_math=params["equation_latex"],
+        worked_steps=steps if detail == "full" else steps[1:],
+    )
+
+
 # ── functions & graphs (W3 renderer) ──────────────────────────────────────────
 
 
@@ -3828,6 +3848,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     exponential_common_base.id: WorksheetEntry(
         problem=exponential_common_base,
         template=template_exponential_common_base,
+    ),
+    quadratic_formula.id: WorksheetEntry(
+        problem=quadratic_formula,
+        template=template_quadratic_formula,
     ),
     exponential_equation.id: WorksheetEntry(
         problem=exponential_equation,
