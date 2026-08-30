@@ -163,6 +163,9 @@ from content.examples.quadratic_formula import quadratic_formula
 from content.examples.quadratic_inequality import quadratic_inequality
 from content.examples.quadratic_roots import problem as quadratic_factor_problem
 from content.examples.quadratic_sequence import (
+    consecutive_diff as quad_consecutive_diff,
+)
+from content.examples.quadratic_sequence import (
     find_n as quad_find_n,
 )
 from content.examples.quadratic_sequence import (
@@ -1174,6 +1177,35 @@ def template_quad_find_term(
             f"of {_seq_noun('quadratic', labeled)}:"
         ),
         display_math=_seq_display([t1, t2, t3]),
+        worked_steps=steps,
+    )
+
+
+def template_quad_consecutive_diff(params: dict, detail: str = "full") -> ProblemCard:
+    a, b = params["a"], params["b"]
+    shown = params["terms_shown"]
+    d, n, larger = params["diff"], params["n_index"], params["larger_term"]
+    f_l = _quad_formula_latex(a, b, params["c"])
+    ab = a + b
+    ab_str = f"+ {ab}" if ab >= 0 else f"- {-ab}"
+    if detail == "full":
+        steps = [
+            rf"T_n = {f_l}",
+            rf"T_{{n+1}} - T_n = 2an + (a+b) = {2 * a}n {ab_str}",
+            rf"{2 * a}n {ab_str} = {d} \;\Rightarrow\; n = {n}",
+            rf"\text{{larger term}} = T_{{{n + 1}}} = {larger}",
+        ]
+    else:
+        steps = [
+            rf"{2 * a}n {ab_str} = {d} \;\Rightarrow\; n = {n}",
+            rf"T_{{{n + 1}}} = {larger}",
+        ]
+    return ProblemCard(
+        instruction=(
+            rf"Two consecutive terms of the quadratic sequence differ by ${d}$. "
+            r"Calculate the value of the larger term."
+        ),
+        display_math=_seq_display(shown),
         worked_steps=steps,
     )
 
@@ -3616,6 +3648,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
         problem=quad_find_n,
         template=template_quad_find_n,
     ),
+    quad_consecutive_diff.id: WorksheetEntry(
+        problem=quad_consecutive_diff,
+        template=template_quad_consecutive_diff,
+    ),
     arith_series_find_n.id: WorksheetEntry(
         problem=arith_series_find_n,
         template=template_arith_series_find_n,
@@ -4059,6 +4095,7 @@ BUNDLES: dict[str, list[tuple[str, int]]] = {
         ("quad_seq_nth_term_formula", 1),
         ("quad_seq_find_term", 1),
         ("quad_seq_find_n", 1),
+        ("quad_seq_consecutive_diff", 1),
         ("arith_series_sum", 1),
         ("arith_series_find_n", 1),
         ("arith_series_sigma", 1),
@@ -4074,6 +4111,7 @@ BUNDLES: dict[str, list[tuple[str, int]]] = {
         ("quad_seq_nth_term_formula", 2),
         ("quad_seq_find_term", 1),
         ("quad_seq_find_n", 1),
+        ("quad_seq_consecutive_diff", 1),
     ],
     # Gr12 finance & annuities revision spanning all five archetypes: compound
     # growth (+ solve-rate), nominal→effective, future- and present-value

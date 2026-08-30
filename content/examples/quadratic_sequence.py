@@ -6,7 +6,7 @@ per exam sub-competency, symbolic_equality throughout). The defining property is
 *constant, non-zero second difference* equal to 2a; every method below is that fact
 applied.
 
-Four archetypes:
+Five archetypes:
 - next_terms: extend the pattern using the constant second difference alone — the
   introductory skill, needs no closed form.
 - nth_term_formula: the load-bearing one. From four terms recover a, b, c via
@@ -19,6 +19,9 @@ Four archetypes:
   constrained (a > 0, b ≥ 0) so the sequence is strictly increasing for n ≥ 1;
   the parabola's other root is then negative and the positive integer term index
   is unique (no ± ambiguity for the student to adjudicate).
+- consecutive_diff: two consecutive terms differ by a given D — set the (linear)
+  first-difference 2an + (a+b) = D, solve the single index n, then evaluate the
+  larger term T_{n+1}. The 2025 M/J P1 Q3.2 archetype.
 """
 
 from __future__ import annotations
@@ -27,7 +30,7 @@ import random
 
 import sympy
 
-from problem_instantiation_tool.schemas import Problem
+from problem_instantiation_tool.schemas import CorpusAnchor, Problem
 
 _n = sympy.Symbol("n")
 
@@ -112,7 +115,10 @@ nth_term_formula = Problem(
     name="Write the general term Tₙ for a quadratic sequence",
     artifact_type="practice",
     problem_spec=_gen_nth_term_formula,
-    verifier_spec={"kind": "symbolic_equality", "marks_possible": 4},
+    # 3 marks matches the NSC allocation for a "determine Tₙ" item (e.g. 2025 M/J
+    # P1 Q3.1); the earlier 4 was an ad-hoc single-answer weight (no corpus anchor
+    # pinned it) — recalibrated down, like arith_seq's nth-term.
+    verifier_spec={"kind": "symbolic_equality", "marks_possible": 3},
 )
 
 
@@ -193,6 +199,64 @@ find_n = Problem(
 
 
 # ---------------------------------------------------------------------------
+# 5. consecutive_diff — two consecutive terms differ by D; find the larger term
+# ---------------------------------------------------------------------------
+
+
+def _gen_consecutive_diff(rng: random.Random) -> dict:
+    """The first difference T_{n+1} − T_n = 2a·n + (a + b) is *linear* and, for
+    a > 0, strictly increasing in n — so a given positive difference D fixes a
+    single index n, and the larger of the two consecutive terms is T_{n+1}. Draw
+    a > 0 and an index far enough along that D is clearly positive while the terms
+    stay exam-sized."""
+    a = rng.choice([1, 2, 3])
+    b = rng.randint(-6, 6)
+    c = rng.randint(-6, 6)
+    n = rng.randint(8, 16)  # the smaller index; T_{n+1} is the larger term
+    diff = 2 * a * n + a + b  # T_{n+1} − T_n, strictly positive here
+    larger = a * (n + 1) ** 2 + b * (n + 1) + c
+    shown = _terms(a, b, c, 4)
+    return {
+        "a": a,
+        "b": b,
+        "c": c,
+        "t1": shown[0],
+        "t2": shown[1],
+        "t3": shown[2],
+        "t4": shown[3],
+        "terms_shown": shown,
+        "second_diff": 2 * a,
+        "diff": diff,
+        "n_index": n,
+        "larger_term": larger,
+        "variant": f"quaddiff:{a}:{b}:{c}:{n}",
+    }
+
+
+consecutive_diff = Problem(
+    id="quad_seq_consecutive_diff",
+    type_id="quadratic_sequence",
+    name=(
+        "Find the larger of two consecutive quadratic-sequence terms "
+        "given their difference"
+    ),
+    artifact_type="practice",
+    problem_spec=_gen_consecutive_diff,
+    # Mirrors the NSC 3-mark split: the index n from the first-difference equation
+    # (1) and the larger term itself (2).
+    verifier_spec=[
+        {"kind": "symbolic_equality", "marks_possible": 1, "param_key": "n_index"},
+        {"kind": "symbolic_equality", "marks_possible": 2, "param_key": "larger_term"},
+    ],
+    corpus_anchor=CorpusAnchor(
+        paper="2025 May/June P1",
+        question="3.2",
+        marks=3,
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
 # Demo
 # ---------------------------------------------------------------------------
 
@@ -201,7 +265,10 @@ if __name__ == "__main__":
     from problem_instantiation_tool.registry import InMemoryRegistry
     from problem_instantiation_tool.schemas import SolutionAttempt, SubmittedStep
 
-    all_problems = {p.id: p for p in [next_terms, nth_term_formula, find_term, find_n]}
+    all_problems = {
+        p.id: p
+        for p in [next_terms, nth_term_formula, find_term, find_n, consecutive_diff]
+    }
     engine = Engine(registry=InMemoryRegistry(all_problems))
 
     def show_result(label, instance, *answers):

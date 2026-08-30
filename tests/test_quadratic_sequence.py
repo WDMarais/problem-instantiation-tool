@@ -1,5 +1,5 @@
 """
-Quadratic sequences (Tₙ = an² + bn + c): the four solving archetypes.
+Quadratic sequences (Tₙ = an² + bn + c): the five solving archetypes.
 
 Each generator is checked by *re-deriving* the answer independently of the
 generator's own arithmetic — recovering a, b, c from the presented terms via the
@@ -11,6 +11,7 @@ scope property (unique positive-integer term index) that its F1 predicate enforc
 import sympy
 
 from content.examples.quadratic_sequence import (
+    consecutive_diff,
     find_n,
     find_term,
     next_terms,
@@ -22,13 +23,14 @@ from problem_instantiation_tool.schemas import SolutionAttempt, SubmittedStep
 from worksheets.generate import (
     BUNDLES,
     PROBLEMS,
+    template_quad_consecutive_diff,
     template_quad_find_n,
     template_quad_find_term,
     template_quad_next_terms,
     template_quad_nth_term_formula,
 )
 
-_ALL = [next_terms, nth_term_formula, find_term, find_n]
+_ALL = [next_terms, nth_term_formula, find_term, find_n, consecutive_diff]
 _n = sympy.Symbol("n")
 
 
@@ -131,6 +133,52 @@ def test_single_answer_problems_reject_wrong():
         assert not _rate(inst, int(inst.params["answer"]) + 1).is_correct
 
 
+# --- consecutive_diff (first-difference → larger term) ----------------------
+
+
+def test_consecutive_diff_answer_is_the_larger_consecutive_term():
+    eng = _eng()
+    for seed in range(200):
+        p = eng.instantiate(consecutive_diff.id, seed=seed).params
+        # re-derive a, b, c from the presented terms, independent of the generator
+        a, b, c = _abc_from_terms(p["t1"], p["t2"], p["t3"])
+
+        def term(k):
+            return a * k * k + b * k + c
+
+        n = p["n_index"]
+        # the stored difference really is T_{n+1} − T_n, and it is positive so the
+        # larger of the two consecutive terms is indeed T_{n+1}
+        assert p["diff"] == term(n + 1) - term(n)
+        assert p["diff"] > 0
+        assert p["larger_term"] == term(n + 1) > term(n)
+
+
+def test_consecutive_diff_index_is_the_unique_solution():
+    # the first difference 2an + (a+b) is strictly increasing (a > 0), so no other
+    # index yields the same difference — the item is unambiguous
+    eng = _eng()
+    for seed in range(120):
+        p = eng.instantiate(consecutive_diff.id, seed=seed).params
+        a, b = p["a"], p["b"]
+        n = p["n_index"]
+        for other in range(1, 30):
+            if other != n:
+                assert 2 * a * other + a + b != p["diff"]
+
+
+def test_consecutive_diff_verifier_splits_one_plus_two():
+    inst = _eng().instantiate(consecutive_diff.id, seed=7)
+    p = inst.params
+    assert _rate(inst, p["n_index"], p["larger_term"]).marks_awarded == 3
+    # index right, term wrong → 1 of 3
+    only_n = _rate(inst, p["n_index"], p["larger_term"] + 1)
+    assert only_n.marks_awarded == 1 and not only_n.is_correct
+    # index wrong, term right → 2 of 3
+    only_term = _rate(inst, p["n_index"] + 1, p["larger_term"])
+    assert only_term.marks_awarded == 2 and not only_term.is_correct
+
+
 # --- templates + wiring -----------------------------------------------------
 
 
@@ -141,6 +189,7 @@ def test_templates_render_full_and_short():
         (nth_term_formula.id, template_quad_nth_term_formula),
         (find_term.id, template_quad_find_term),
         (find_n.id, template_quad_find_n),
+        (consecutive_diff.id, template_quad_consecutive_diff),
     ]
     for pid, tmpl in cases:
         params = eng.instantiate(pid, seed=4).params
@@ -163,6 +212,7 @@ def test_types_registered_and_in_bundles():
         "quad_seq_nth_term_formula",
         "quad_seq_find_term",
         "quad_seq_find_n",
+        "quad_seq_consecutive_diff",
     }
     assert ids <= set(PROBLEMS)
     assert "quad_seq_nth_term_unlabeled" in PROBLEMS
