@@ -8,22 +8,23 @@ decomposed into the two decisions a marker actually rewards:
 
   1. the **critical values** — the roots of a·x² + b·x + c = 0
      (``set_equality``, 2 marks, partial credit: one root right is half the skill), and
-  2. the **region** — "between" the critical values (a bounded interval) or
-     "outside" them (a union of two rays) (``exact_equality``, 1 mark).
+  2. the **solution set** — a bounded interval ("between" the critical values) or
+     a union of two rays ("outside" them), with endpoint openness fixed by ≤/≥
+     vs </> (``set_solution``, 1 mark).
 
 Two distinct sub-skills, two verifier steps, 3 marks total — matching the DBE
 Q1.1.x quadratic-inequality item.
 
-**Why "region" and not the interval itself.** The honest answer is a solution
-*set* — an ``Interval`` or a ``Union`` of them. The engine has no set-answer
-verifier, and ``symbolic_equality`` mis-handles SymPy ``Set`` objects
-(``simplify(Interval(2,3) - Interval(2,3))`` is ``EmptySet``, and
-``EmptySet == 0`` is ``False`` → a false negative on a *correct* answer). So the
-region is captured as a categorical label — the exact sign-analysis decision —
-while the memo still renders the full interval notation for the tutee. This
-value-plus-categorical-reason shape is the ``value_and_reason`` verifier in
-embryo: the region is a *structural reason* a plain value verifier can't express.
-See memory ``project-quadratic-inequality-region-signal``.
+**Now grading the real set (was a categorical proxy).** The honest answer is a
+solution *set* — an ``Interval`` or a ``Union`` of them. ``symbolic_equality``
+mis-handles SymPy ``Set`` objects (``simplify(Interval(2,3) - Interval(2,3))`` is
+``EmptySet``, and ``EmptySet == 0`` is ``False`` → a false negative on a *correct*
+answer), so this used to grade a categorical ``region`` label ("between"/"outside")
+as a stand-in. The ``set_solution`` kind now compares the actual set by mutual
+subset, so the student submits the real interval and endpoint openness is graded.
+``region``/``solution_latex`` are retained purely for the rendered memo. See
+memory ``project-set-solution-verifier-backlog`` and
+``project-quadratic-inequality-region-signal``.
 
 **The sign-analysis guard — the whole point of the family.** The region does not
 follow from the critical values alone: it flips with both the inequality
@@ -78,10 +79,19 @@ def _gen(rng: random.Random) -> dict:
     if region == "between":
         rel = r"\le" if closed else "<"
         solution_latex = rf"{lo} {rel} x {rel} {hi}"
+        # the true solution set — a bounded interval, endpoints closed iff ≤/≥
+        solution_set = sympy.Interval(
+            lo, hi, left_open=not closed, right_open=not closed
+        )
     else:  # outside: two rays
         left = r"\le" if closed else "<"
         right = r"\ge" if closed else ">"
         solution_latex = rf"x {left} {lo} \;\text{{ or }}\; x {right} {hi}"
+        # the true solution set — a union of two rays (±∞ ends always open)
+        solution_set = sympy.Union(
+            sympy.Interval(-sympy.oo, lo, left_open=True, right_open=not closed),
+            sympy.Interval(hi, sympy.oo, left_open=not closed, right_open=True),
+        )
 
     return {
         "a": a,
@@ -95,6 +105,7 @@ def _gen(rng: random.Random) -> dict:
         "region": region,
         "closed": closed,
         "solution_latex": solution_latex,
+        "solution_set": solution_set,
     }
 
 
@@ -106,7 +117,7 @@ quadratic_inequality = Problem(
     problem_spec=_gen,
     verifier_spec=[
         {"kind": "set_equality", "marks_possible": 2, "param_key": "critical_values"},
-        {"kind": "exact_equality", "marks_possible": 1, "param_key": "region"},
+        {"kind": "set_solution", "marks_possible": 1, "param_key": "solution_set"},
     ],
     corpus_anchor=CorpusAnchor(
         paper="2025 May/June P1",
@@ -140,8 +151,9 @@ if __name__ == "__main__":
         print(f"  Solve    : {p['polynomial_latex']}")
         print(f"  Criticals: {sorted(p['critical_values'])}   Region: {p['region']}")
         print(f"  Solution : {p['solution_latex']}")
-        show("Fully correct       ", inst, p["critical_values"], p["region"])
-        show("One critical value  ", inst, frozenset({p["root1"]}), p["region"])
-        wrong_region = "between" if p["region"] == "outside" else "outside"
-        show("Right roots, region✗", inst, p["critical_values"], wrong_region)
-        show("All wrong           ", inst, frozenset({99, 100}), wrong_region)
+        sol = p["solution_set"]
+        wrong_sol = sympy.Interval(p["root1"] - 5, p["root2"] + 5)
+        show("Fully correct       ", inst, p["critical_values"], sol)
+        show("One critical value  ", inst, frozenset({p["root1"]}), sol)
+        show("Right roots, set  ✗ ", inst, p["critical_values"], wrong_sol)
+        show("All wrong           ", inst, frozenset({99, 100}), wrong_sol)

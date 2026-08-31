@@ -177,6 +177,9 @@ from content.examples.quadratic_sequence import (
 from content.examples.quadratic_sequence import (
     nth_term_formula as quad_nth_term_formula,
 )
+from content.examples.quadratic_sequence import (
+    shift_negative as quad_shift_negative,
+)
 from content.examples.regression_line import regression_line
 from content.examples.rform_skills import (
     rform_find_phi,
@@ -1204,6 +1207,33 @@ def template_quad_consecutive_diff(params: dict, detail: str = "full") -> Proble
         instruction=(
             rf"Two consecutive terms of the quadratic sequence differ by ${d}$. "
             r"Calculate the value of the larger term."
+        ),
+        display_math=_seq_display(shown),
+        worked_steps=steps,
+    )
+
+
+def template_quad_shift_negative(params: dict, detail: str = "full") -> ProblemCard:
+    shown = params["terms_shown"]
+    gt = params["general_term_latex"]
+    last = params["last"]
+    ti, tb = params["t_interior"], params["t_boundary"]
+    m_lo, m_hi = params["m_low"], params["m_high"]
+    if detail == "full":
+        steps = [
+            rf"T_2 = T_{{{last - 1}}} = {ti}\ \text{{(largest interior term)}};\ "
+            rf"{ti} + m < 0 \;\Rightarrow\; m < {m_hi}",
+            rf"T_1 = T_{{{last}}} = {tb}\ \text{{must stay}} \ge 0;\ "
+            rf"{tb} + m \ge 0 \;\Rightarrow\; m \ge {m_lo}",
+            rf"\therefore\ {m_lo} \le m < {m_hi}",
+        ]
+    else:
+        steps = [rf"{m_lo} \le m < {m_hi}"]
+    return ProblemCard(
+        instruction=(
+            rf"The value of $m$ is added to each term of the quadratic sequence "
+            rf"(general term $T_n = {gt}$). Determine the values of $m$ for which "
+            rf"only the terms between $T_1$ and $T_{{{last}}}$ will be negative."
         ),
         display_math=_seq_display(shown),
         worked_steps=steps,
@@ -3652,6 +3682,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
         problem=quad_consecutive_diff,
         template=template_quad_consecutive_diff,
     ),
+    quad_shift_negative.id: WorksheetEntry(
+        problem=quad_shift_negative,
+        template=template_quad_shift_negative,
+    ),
     arith_series_find_n.id: WorksheetEntry(
         problem=arith_series_find_n,
         template=template_arith_series_find_n,
@@ -4096,6 +4130,7 @@ BUNDLES: dict[str, list[tuple[str, int]]] = {
         ("quad_seq_find_term", 1),
         ("quad_seq_find_n", 1),
         ("quad_seq_consecutive_diff", 1),
+        ("quad_seq_shift_negative", 1),
         ("arith_series_sum", 1),
         ("arith_series_find_n", 1),
         ("arith_series_sigma", 1),
@@ -4112,6 +4147,7 @@ BUNDLES: dict[str, list[tuple[str, int]]] = {
         ("quad_seq_find_term", 1),
         ("quad_seq_find_n", 1),
         ("quad_seq_consecutive_diff", 1),
+        ("quad_seq_shift_negative", 1),
     ],
     # Gr12 finance & annuities revision spanning all five archetypes: compound
     # growth (+ solve-rate), nominal→effective, future- and present-value

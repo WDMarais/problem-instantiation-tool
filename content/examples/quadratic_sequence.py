@@ -6,7 +6,7 @@ per exam sub-competency, symbolic_equality throughout). The defining property is
 *constant, non-zero second difference* equal to 2a; every method below is that fact
 applied.
 
-Five archetypes:
+Six archetypes:
 - next_terms: extend the pattern using the constant second difference alone — the
   introductory skill, needs no closed form.
 - nth_term_formula: the load-bearing one. From four terms recover a, b, c via
@@ -22,6 +22,9 @@ Five archetypes:
 - consecutive_diff: two consecutive terms differ by a given D — set the (linear)
   first-difference 2an + (a+b) = D, solve the single index n, then evaluate the
   larger term T_{n+1}. The 2025 M/J P1 Q3.2 archetype.
+- shift_negative: add m to every term; find the m-range that makes only the
+  interior window negative. Answer is a half-open interval, graded by the
+  set_solution kind. The 2025 M/J P1 Q3.3 archetype.
 """
 
 from __future__ import annotations
@@ -257,6 +260,79 @@ consecutive_diff = Problem(
 
 
 # ---------------------------------------------------------------------------
+# 6. shift_negative — add m to every term; find m so only the interior window is
+#    negative. Answer is a half-open interval (needs the set_solution kind).
+# ---------------------------------------------------------------------------
+
+
+def _gen_shift_negative(rng: random.Random) -> dict:
+    """Vertex form T_n = a(n − h)² + d (a > 0, integer axis h, min term d > 0), so
+    the sequence is symmetric about n = h: T_1 = T_{2h−1} are the window boundary
+    and T_2 = T_{2h−2} the largest interior term. Adding m, "only the terms
+    between T_1 and T_{2h−1} are negative" needs the interior max negative and the
+    boundary non-negative:  −T_1 ≤ m < −T_2. The two thresholds are the graded
+    values; the interval (closed at −T_1, open at −T_2) is the graded set."""
+    a = rng.choice([1, 2])
+    h = rng.choice([3, 4])  # window T_1..T_{2h-1}: T_1..T_5 or T_1..T_7
+    d = rng.randint(1, 6)  # the minimum term T_h, kept positive
+    last = 2 * h - 1
+
+    def term(n: int) -> int:
+        return a * (n - h) ** 2 + d
+
+    t_boundary = term(1)  # = T_1 = T_{last}
+    t_interior = term(2)  # = T_2 = T_{last-1}, the largest interior term
+    m_low = -t_boundary  # m ≥ m_low keeps the boundary non-negative
+    m_high = -t_interior  # m < m_high pushes the interior negative
+
+    b = -2 * a * h
+    c = a * h * h + d
+    n_sym = sympy.Symbol("n")
+    general_term = sympy.Integer(a) * n_sym**2 + sympy.Integer(b) * n_sym + c
+
+    return {
+        "a": a,
+        "h": h,
+        "d": d,
+        "b": b,
+        "c": c,
+        "last": last,
+        "terms_shown": [term(k) for k in range(1, 5)],
+        "t_boundary": t_boundary,
+        "t_interior": t_interior,
+        "m_low": m_low,
+        "m_high": m_high,
+        "boundary_values": frozenset({m_low, m_high}),
+        "solution_set": sympy.Interval(m_low, m_high, left_open=False, right_open=True),
+        "general_term_latex": sympy.latex(general_term),
+        "variant": f"quadshift:{a}:{h}:{d}",
+    }
+
+
+shift_negative = Problem(
+    id="quad_seq_shift_negative",
+    type_id="quadratic_sequence",
+    name=(
+        "Find the m-range that makes only a quadratic sequence's "
+        "interior terms negative"
+    ),
+    artifact_type="practice",
+    problem_spec=_gen_shift_negative,
+    # NSC 3-mark split: the two m-thresholds (2, partial) + the interval itself,
+    # endpoint openness graded (1). The interval answer is why set_solution exists.
+    verifier_spec=[
+        {"kind": "set_equality", "marks_possible": 2, "param_key": "boundary_values"},
+        {"kind": "set_solution", "marks_possible": 1, "param_key": "solution_set"},
+    ],
+    corpus_anchor=CorpusAnchor(
+        paper="2025 May/June P1",
+        question="3.3",
+        marks=3,
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
 # Demo
 # ---------------------------------------------------------------------------
 
@@ -267,7 +343,14 @@ if __name__ == "__main__":
 
     all_problems = {
         p.id: p
-        for p in [next_terms, nth_term_formula, find_term, find_n, consecutive_diff]
+        for p in [
+            next_terms,
+            nth_term_formula,
+            find_term,
+            find_n,
+            consecutive_diff,
+            shift_negative,
+        ]
     }
     engine = Engine(registry=InMemoryRegistry(all_problems))
 

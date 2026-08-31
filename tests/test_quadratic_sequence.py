@@ -1,5 +1,5 @@
 """
-Quadratic sequences (Tₙ = an² + bn + c): the five solving archetypes.
+Quadratic sequences (Tₙ = an² + bn + c): the six solving archetypes.
 
 Each generator is checked by *re-deriving* the answer independently of the
 generator's own arithmetic — recovering a, b, c from the presented terms via the
@@ -16,6 +16,7 @@ from content.examples.quadratic_sequence import (
     find_term,
     next_terms,
     nth_term_formula,
+    shift_negative,
 )
 from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.registry import InMemoryRegistry
@@ -28,9 +29,17 @@ from worksheets.generate import (
     template_quad_find_term,
     template_quad_next_terms,
     template_quad_nth_term_formula,
+    template_quad_shift_negative,
 )
 
-_ALL = [next_terms, nth_term_formula, find_term, find_n, consecutive_diff]
+_ALL = [
+    next_terms,
+    nth_term_formula,
+    find_term,
+    find_n,
+    consecutive_diff,
+    shift_negative,
+]
 _n = sympy.Symbol("n")
 
 
@@ -179,6 +188,55 @@ def test_consecutive_diff_verifier_splits_one_plus_two():
     assert only_term.marks_awarded == 2 and not only_term.is_correct
 
 
+# --- shift_negative (add m; only interior window negative → interval answer) --
+
+
+def test_shift_negative_answer_matches_an_independent_derivation():
+    eng = _eng()
+    for seed in range(200):
+        p = eng.instantiate(shift_negative.id, seed=seed).params
+        a, h, d = p["a"], p["h"], p["d"]
+
+        def term(n):
+            return a * (n - h) ** 2 + d
+
+        # boundary T_1 = T_last, interior max T_2; answer −T_1 ≤ m < −T_2
+        assert p["m_low"] == -term(1) and p["m_high"] == -term(2)
+        assert p["m_low"] < p["m_high"]  # non-empty
+        assert p["solution_set"] == sympy.Interval(
+            p["m_low"], p["m_high"], left_open=False, right_open=True
+        )
+        assert p["last"] == 2 * h - 1
+
+
+def test_shift_negative_is_a_genuine_quadratic_sequence():
+    eng = _eng()
+    for seed in range(80):
+        p = eng.instantiate(shift_negative.id, seed=seed).params
+        t = p["terms_shown"]
+        second_diff = (t[2] - t[1]) - (t[1] - t[0])
+        assert second_diff == 2 * p["a"] and second_diff != 0
+
+
+def test_shift_negative_verifier_two_plus_one_split():
+    inst = _eng().instantiate(shift_negative.id, seed=4)
+    p = inst.params
+    assert _rate(inst, p["boundary_values"], p["solution_set"]).marks_awarded == 3
+    # one threshold right (1 of 2) + interval right (1) = 2
+    one_thresh = _rate(inst, frozenset({p["m_low"]}), p["solution_set"])
+    assert one_thresh.marks_awarded == 2 and not one_thresh.is_correct
+
+
+def test_shift_negative_endpoint_openness_is_graded():
+    # the interval is closed at −T_1 but OPEN at −T_2 (strict <). Submitting a
+    # fully-closed interval must lose the set mark.
+    inst = _eng().instantiate(shift_negative.id, seed=4)
+    p = inst.params
+    closed = sympy.Interval(p["m_low"], p["m_high"], left_open=False, right_open=False)
+    r = _rate(inst, p["boundary_values"], closed)
+    assert r.marks_awarded == 2 and not r.is_correct  # thresholds ok, set wrong
+
+
 # --- templates + wiring -----------------------------------------------------
 
 
@@ -190,6 +248,7 @@ def test_templates_render_full_and_short():
         (find_term.id, template_quad_find_term),
         (find_n.id, template_quad_find_n),
         (consecutive_diff.id, template_quad_consecutive_diff),
+        (shift_negative.id, template_quad_shift_negative),
     ]
     for pid, tmpl in cases:
         params = eng.instantiate(pid, seed=4).params
@@ -213,6 +272,7 @@ def test_types_registered_and_in_bundles():
         "quad_seq_find_term",
         "quad_seq_find_n",
         "quad_seq_consecutive_diff",
+        "quad_seq_shift_negative",
     }
     assert ids <= set(PROBLEMS)
     assert "quad_seq_nth_term_unlabeled" in PROBLEMS

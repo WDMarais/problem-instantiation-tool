@@ -3,9 +3,10 @@ Q1 Algebra Extensions, archetype 1 — ``quadratic_inequality``.
 
 The generator's own arithmetic is never trusted: each instance is re-solved
 *independently* with ``sympy.solveset`` over the reals, and both the critical
-values and the categorical region are checked against that solution set. The
-verifier chain is round-tripped for full marks, partial credit on one critical
-value, and the sign-analysis region mark in isolation.
+values and the actual solution set (graded by the ``set_solution`` kind) are
+checked against it. The verifier chain is round-tripped for full marks, partial
+credit on one critical value, and the sign-analysis set mark in isolation —
+including the proof that an independently-constructed correct set is accepted.
 """
 
 import sympy
@@ -80,6 +81,12 @@ def test_critical_values_and_region_match_an_independent_solve():
             p["region"],
         )
 
+        # the graded param itself is the independent solve (openness and all)
+        assert p["solution_set"] == _independent_solution(p), (
+            seed,
+            p["polynomial_latex"],
+        )
+
 
 def test_two_distinct_integer_critical_values():
     eng = _eng()
@@ -107,7 +114,16 @@ def test_draws_exercise_both_openings_and_both_regions():
 def test_full_marks_on_exact_answer():
     inst = _eng().instantiate(quadratic_inequality.id, seed=1)
     p = inst.params
-    r = _rate(inst, p["critical_values"], p["region"])
+    r = _rate(inst, p["critical_values"], p["solution_set"])
+    assert r.is_correct and r.marks_awarded == 3
+
+
+def test_independently_solved_set_is_accepted():
+    # a student who solves the inequality from scratch (a differently-constructed
+    # but equal set) earns the sign-analysis mark — the point of set_solution
+    inst = _eng().instantiate(quadratic_inequality.id, seed=1)
+    p = inst.params
+    r = _rate(inst, p["critical_values"], _independent_solution(p))
     assert r.is_correct and r.marks_awarded == 3
 
 
@@ -115,29 +131,46 @@ def test_partial_credit_on_one_critical_value():
     inst = _eng().instantiate(quadratic_inequality.id, seed=1)
     p = inst.params
     lo, _ = sorted(p["critical_values"])
-    # one root right (1 of 2) + correct region (1) = 2/3, not fully correct
-    r = _rate(inst, frozenset({lo}), p["region"])
+    # one root right (1 of 2) + correct set (1) = 2/3, not fully correct
+    r = _rate(inst, frozenset({lo}), p["solution_set"])
     assert r.marks_awarded == 2 and not r.is_correct
 
 
-def test_wrong_region_loses_exactly_the_sign_analysis_mark():
+def test_wrong_solution_set_loses_exactly_the_sign_analysis_mark():
     inst = _eng().instantiate(quadratic_inequality.id, seed=1)
     p = inst.params
-    wrong = "between" if p["region"] == "outside" else "outside"
+    lo, hi = sorted(p["critical_values"])
+    # complement region (between↔outside) — right criticals, wrong set
+    if p["region"] == "between":
+        wrong = sympy.Union(
+            sympy.Interval.open(-sympy.oo, lo), sympy.Interval.open(hi, sympy.oo)
+        )
+    else:
+        wrong = sympy.Interval.open(lo, hi)
     r = _rate(inst, p["critical_values"], wrong)
     assert r.marks_awarded == 2 and not r.is_correct
 
 
-def test_region_label_is_case_insensitive():
+def test_wrong_endpoint_openness_loses_the_set_mark():
+    # a ≤/< slip is a real error the set kind must catch: flip the openness
     inst = _eng().instantiate(quadratic_inequality.id, seed=1)
     p = inst.params
-    r = _rate(inst, p["critical_values"], p["region"].upper())
-    assert r.is_correct
+    lo, hi = sorted(p["critical_values"])
+    if p["region"] == "between":
+        flipped = sympy.Interval(lo, hi, left_open=p["closed"], right_open=p["closed"])
+    else:
+        flipped = sympy.Union(
+            sympy.Interval(-sympy.oo, lo, True, p["closed"]),
+            sympy.Interval(hi, sympy.oo, p["closed"], True),
+        )
+    r = _rate(inst, p["critical_values"], flipped)
+    assert r.marks_awarded == 2 and not r.is_correct
 
 
 def test_all_wrong_scores_zero():
     inst = _eng().instantiate(quadratic_inequality.id, seed=1)
     p = inst.params
-    wrong = "between" if p["region"] == "outside" else "outside"
-    r = _rate(inst, frozenset({99, 100}), wrong)
+    lo, hi = sorted(p["critical_values"])
+    wrong_set = sympy.Interval(lo - 5, hi + 5)
+    r = _rate(inst, frozenset({99, 100}), wrong_set)
     assert r.marks_awarded == 0

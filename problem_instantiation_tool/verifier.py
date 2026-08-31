@@ -191,6 +191,8 @@ def _compute_canonicals(specs: list[dict], params: dict) -> list[Any]:
             canonical = True
         elif kind == "set_equality":
             canonical = _set_canonical(params)
+        elif kind == "set_solution":
+            canonical = _answer_param(params, kind, "solution")
         elif kind == "value_and_reason":
             canonical = _value_and_reason_canonical(spec, params)
         elif not params:
@@ -213,6 +215,39 @@ def _extract_student_set(value: Any) -> frozenset:
                 return frozenset(v)
         return frozenset(value.values())
     return frozenset({value})
+
+
+def _as_solution_set(value: Any) -> sympy.Set:
+    """Coerce an answer into a SymPy ``Set`` for ``set_solution`` grading.
+
+    Accepts a SymPy set directly (``Interval``/``Union``/``FiniteSet`` — an
+    inequality's true solution), a string that sympifies to one, or a finite
+    collection / scalar (→ ``FiniteSet``). Unlike ``_extract_student_set`` this
+    keeps interval structure and endpoint openness, which are the whole point.
+    """
+    if isinstance(value, sympy.Set):
+        return value
+    if isinstance(value, str):
+        parsed = sympy.sympify(value)
+        if isinstance(parsed, sympy.Set):
+            return parsed
+        return sympy.FiniteSet(parsed)
+    if isinstance(value, (set, frozenset, list, tuple)):
+        return sympy.FiniteSet(*value)
+    return sympy.FiniteSet(value)
+
+
+def _solution_sets_equal(a: sympy.Set, b: sympy.Set) -> bool:
+    """Robust set equality that sidesteps the ``symbolic_equality`` trap the
+    ``quadratic_inequality`` docstring warns about: ``simplify(A - A)`` is
+    ``EmptySet`` and ``EmptySet == 0`` is ``False`` → a false negative on a
+    *correct* set. Compare by mutual subset (decidable for real intervals),
+    falling back to structural equality when SymPy can't decide."""
+    left = a.is_subset(b)
+    right = b.is_subset(a)
+    if left is None or right is None:
+        return bool(a == b)
+    return bool(left and right)
 
 
 def _normalize_string(value: str, normalize: list[str]) -> str:
@@ -329,6 +364,16 @@ def _rate_submitted_step(
             matched = len(student_set & canonical_set)
             if matched > 0:
                 return MistakeType.computation_error, min(matched, spec.marks_possible)
+        return MistakeType.computation_error, 0
+
+    if kind == "set_solution":
+        canonical_set = _as_solution_set(spec.canonical)
+        try:
+            student_set = _as_solution_set(student_value)
+        except (TypeError, ValueError, sympy.SympifyError):
+            return MistakeType.computation_error, 0
+        if _solution_sets_equal(student_set, canonical_set):
+            return MistakeType.correct, spec.marks_possible
         return MistakeType.computation_error, 0
 
     if kind == "value_and_reason":

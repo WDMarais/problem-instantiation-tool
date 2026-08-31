@@ -553,9 +553,9 @@ _MJ2025_P1 = PaperSpec(
         ),
         # Question 3 — quadratic sequences. 3.1 derive Tₙ (generator recalibrated
         # to the NSC 3-mark allocation, fully covered). 3.2 the first-difference →
-        # larger-term skill (new generator, 1 + 2 = 3, fully covered). 3.3 is an
-        # interval-valued answer (−a ≤ m < −b) with no set_solution verifier kind
-        # yet — a resistant passthrough, like 1.3, until that kind lands.
+        # larger-term skill (new generator, 1 + 2 = 3). 3.3 the shift-to-negative
+        # range — a half-open interval answer, now graded by the set_solution kind
+        # (2 thresholds + interval), so it is live rather than a static passthrough.
         PaperSlot(
             "3.1",
             3,
@@ -571,22 +571,8 @@ _MJ2025_P1 = PaperSpec(
         PaperSlot(
             "3.3",
             3,
-            "quadratic sequence — shift-to-negative range (resistant)",
-            static=StaticContent(
-                instruction=(
-                    "The value of $m$ is added to each term of the quadratic "
-                    r"sequence $23;\ 18;\ 15;\ 14;\ \dots$ (general term "
-                    r"$T_n = n^2 - 8n + 30$). Determine the values of $m$ for which "
-                    "only the terms between $T_1$ and $T_7$ will be negative."
-                ),
-                memo_steps=(
-                    r"T_2 = T_6 = 18 \text{ is the largest of } T_2,\dots,T_6;\ "
-                    r"\text{need } 18 + m < 0 \;\Rightarrow\; m < -18",
-                    r"T_1 = T_7 = 23 \text{ must stay non-negative};\ "
-                    r"23 + m \ge 0 \;\Rightarrow\; m \ge -23",
-                    r"\therefore\ -23 \le m < -18",
-                ),
-            ),
+            "quadratic sequence — shift-to-negative range",
+            problem_id="quad_seq_shift_negative",
         ),
     ),
 )
