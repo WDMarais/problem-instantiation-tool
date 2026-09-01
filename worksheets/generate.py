@@ -116,6 +116,7 @@ from content.examples.geometric_sequence import (
 )
 from content.examples.grouped_mean_solve import grouped_mean_solve
 from content.examples.hyperbola_from_graph import hyperbola_from_graph
+from content.examples.hyperbola_properties import hyperbola_properties
 from content.examples.inclination_angle import inclination_angle
 from content.examples.independent_events import (
     independent_decide,
@@ -242,6 +243,7 @@ from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.exceptions import ScopeViolationError
 from problem_instantiation_tool.registry import InMemoryRegistry
 from problem_instantiation_tool.schemas import Problem
+from render.cartesian import Point as ScenePoint
 from render.cartesian import render_scene
 from render.circle import circle_scene
 from render.exponential import exponential_scene
@@ -269,6 +271,26 @@ class WorksheetEntry:
 
 
 @dataclass
+class SubPart:
+    """One sub-question of a *compound* problem (e.g. 4.1 of a shared-stem Q4).
+
+    The parent ``ProblemCard`` carries the shared stem (instruction, display_math,
+    graph_svg — rendered once); each ``SubPart`` is a numbered item beneath it with
+    its own instruction, headline ``marks`` and memo. ``auto_marks`` is the
+    engine-graded portion (the verifier steps behind this sub-part's answer); the
+    remainder ``marks − auto_marks`` are hand-marked method lines. The sum of every
+    sub-part's ``auto_marks`` must equal the generator's canonical verifier total —
+    the paper layer enforces that, the same honest split it applies per slot."""
+
+    suffix: str  # dotted tail, e.g. "1" → renders as 4.1 under a parent numbered "4"
+    instruction: str  # plain text; inline math in $...$
+    marks: int  # headline part-mark for this sub-question
+    memo_steps: list[str]  # LaTeX bodies (no $ delimiters)
+    auto_marks: int  # engine-graded portion (0..marks)
+    display_math: str = ""  # optional per-sub-part givens (LaTeX body)
+
+
+@dataclass
 class ProblemCard:
     instruction: str  # plain text; inline math in $...$
     display_math: str  # LaTeX body for the display equation (without $$ delimiters)
@@ -277,6 +299,7 @@ class ProblemCard:
     ]  # LaTeX bodies for each solution step (without $ delimiters)
     graph_svg: str | None = None  # inline SVG string; None if no graph
     marks: int | None = None  # total marks; set by _generate_cards from the spec
+    subparts: list[SubPart] | None = None  # set → this is a compound (shared-stem)
 
 
 # ── problem templates ─────────────────────────────────────────────────────────
@@ -3485,6 +3508,117 @@ def template_hyperbola_from_graph(params: dict, detail: str = "full") -> Problem
     )
 
 
+def template_hyperbola_properties(params: dict, detail: str = "full") -> ProblemCard:
+    """Compound (shared-stem) card for the NSC Q4 hyperbola. The stem draws f once
+    with M, C, D, A marked (positions given, coordinates asked); the six sub-parts
+    read/compute the coupled properties off it. Marks split per sub-part into an
+    engine-graded portion (auto) + hand-marked method lines; the auto totals sum to
+    the generator's canonical 9 (paper layer enforces it)."""
+    a, p, q = params["a"], params["p"], params["q"]
+    mx, my = params["m_x"], params["m_y"]
+    cx, dy, t = params["c_x"], params["d_y"], params["t"]
+    ax, ay, aap = params["a_x"], params["a_y"], params["aa_prime"]
+    denom = f"x - {mx}" if mx >= 0 else f"x + {-mx}"
+
+    # stem diagram: curve + asymptotes, then the four named points (no coordinates)
+    scene = hyperbola_scene(a, p, q)
+    marks_pts = [
+        ScenePoint(float(mx), float(my), label="M", color="#2563EB"),
+        ScenePoint(float(cx), 0.0, label="C", color="#059669"),
+        ScenePoint(0.0, float(dy), label="D", color="#059669"),
+        ScenePoint(float(ax), float(ay), label="A", droplines=True, color="#DC2626"),
+    ]
+    scene = scene.__class__(
+        **{**scene.__dict__, "items": scene.items + tuple(marks_pts)}
+    )
+    svg = render_scene(scene)
+
+    dy_tex, cx_tex = sympy.latex(dy), sympy.latex(cx)
+    subparts = [
+        SubPart(
+            "1",
+            "Write down the coordinates of M.",
+            2,
+            [
+                rf"\text{{asymptotes }} x = {mx},\ y = {my}\;\Rightarrow\; "
+                rf"M = ({mx};\ {my})"
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "2",
+            "Calculate the coordinates of D, the $y$-intercept of $f$.",
+            2,
+            [
+                rf"x = 0:\quad f(0) = \dfrac{{{a}}}{{0 {_signed(p)}}} + {q} = {dy_tex}",
+                rf"D = (0;\ {dy_tex})",
+            ],
+            auto_marks=1,
+        ),
+        SubPart(
+            "3",
+            "If $y = x + t$ is an axis of symmetry of $f$, calculate the value of $t$.",
+            2,
+            [
+                rf"\text{{through }} M({mx};\ {my}):\quad "
+                rf"{my} = {mx} + t \;\Rightarrow\; t = {t}"
+            ],
+            auto_marks=1,
+        ),
+        SubPart(
+            "4",
+            r"Determine the values of $x$ for which $f(x) \le 0$.",
+            4,
+            [
+                rf"\dfrac{{{a}}}{{{denom}}} + {q} \le 0 \;\Rightarrow\; "
+                rf"x\text{{-intercept }} C = {cx_tex}",
+                rf"\therefore\; {cx_tex} \le x < {mx}",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "5",
+            "Calculate the coordinates of A, the point on $f$ closest to M.",
+            3,
+            [
+                rf"\text{{minimise }} D^2 = (x-{mx})^2 + "
+                rf"\left(\dfrac{{{a}}}{{{denom}}}\right)^2",
+                rf"u^4 = {a}^2 \;\Rightarrow\; u = {params['sqrt_a']},"
+                rf"\quad A = ({ax};\ {ay})",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "6",
+            rf"A single transformation maps $f$ to "
+            rf"$h(x) = \dfrac{{-{a}}}{{{denom}}} + {q}$. "
+            r"If $A'$ is the image of A, calculate the length of $AA'$.",
+            2,
+            [
+                r"h(x) = f(-x):\ \text{reflection in the }y\text{-axis}",
+                rf"A' = ({-ax};\ {ay}) \;\Rightarrow\; "
+                rf"AA' = 2\lvert {ax} \rvert = {aap}",
+            ],
+            auto_marks=1,
+        ),
+    ]
+    if detail != "full":
+        for sp in subparts:
+            sp.memo_steps = sp.memo_steps[-1:]
+
+    return ProblemCard(
+        instruction=(
+            "The graph of $f$ is drawn below. M is the intersection of the "
+            "asymptotes; C and D are the $x$- and $y$-intercepts; A is the point "
+            "on $f$ closest to M."
+        ),
+        display_math=rf"f(x) = \dfrac{{{a}}}{{{denom}}} + {q}",
+        worked_steps=[],
+        graph_svg=svg,
+        subparts=subparts,
+    )
+
+
 def template_exponential_from_graph(params: dict, detail: str = "full") -> ProblemCard:
     a, b, q = params["a"], params["b"], params["q"]
     y0, y1 = params["y_intercept"], params["point_y"]
@@ -3939,6 +4073,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     hyperbola_from_graph.id: WorksheetEntry(
         problem=hyperbola_from_graph,
         template=template_hyperbola_from_graph,
+    ),
+    hyperbola_properties.id: WorksheetEntry(
+        problem=hyperbola_properties,
+        template=template_hyperbola_properties,
     ),
     line_from_graph.id: WorksheetEntry(
         problem=line_from_graph,

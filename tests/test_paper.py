@@ -14,11 +14,13 @@ the paper's headline part-marks.
 
 import pytest
 
+from worksheets.generate import ProblemCard, SubPart
 from worksheets.paper import (
     _MJ2025_P1,
     PaperSlot,
     PaperSpec,
     StaticContent,
+    _expand_compound,
     build_paper,
 )
 
@@ -139,7 +141,10 @@ def test_shipped_mj_p1_builds_without_calibration_warnings():
 
 def test_shipped_mj_p1_marks_reconcile_per_slot():
     for rs in build_paper(_MJ2025_P1, seed=0):
-        if rs.generated:
+        if rs.is_stem:
+            # a compound's shared stem carries no marks of its own
+            assert rs.slot.marks == 0 and rs.auto_marks is None
+        elif rs.generated:
             # every generated slot's marks fully split into auto + manual
             assert rs.auto_marks is not None
             assert rs.auto_marks + rs.manual_marks == rs.slot.marks
@@ -151,3 +156,70 @@ def test_shipped_mj_p1_is_deterministic_per_seed():
     a = build_paper(_MJ2025_P1, seed=11)
     b = build_paper(_MJ2025_P1, seed=11)
     assert [rs.instruction for rs in a] == [rs.instruction for rs in b]
+
+
+# --- compound (shared-stem) slots -------------------------------------------
+
+
+def _compound_card(subparts, *, graph="<svg/>"):
+    return ProblemCard(
+        instruction="shared stem",
+        display_math="f(x)=...",
+        worked_steps=[],
+        graph_svg=graph,
+        subparts=subparts,
+    )
+
+
+def _sp(suffix, marks, auto):
+    return SubPart(suffix, f"do {suffix}", marks, [f"memo {suffix}"], auto_marks=auto)
+
+
+def test_expand_emits_stem_plus_one_slot_per_subpart():
+    slot = PaperSlot("4", 5, "compound", problem_id="x")
+    card = _compound_card([_sp("1", 2, 2), _sp("2", 3, 1)])
+    out = _expand_compound(slot, card, gen_marks=3)
+    assert [rs.slot.number for rs in out] == ["4", "4.1", "4.2"]
+    stem = out[0]
+    assert stem.is_stem and stem.slot.marks == 0 and stem.graph_svg == "<svg/>"
+    # only the stem carries the diagram; sub-parts inherit none of it
+    assert all(rs.graph_svg is None for rs in out[1:])
+    # each sub-part carries its own headline + auto split and its memo
+    assert (out[1].slot.marks, out[1].auto_marks) == (2, 2)
+    assert (out[2].slot.marks, out[2].auto_marks) == (3, 1)
+    assert out[2].memo_steps == ["memo 2"]
+
+
+def test_expand_rejects_auto_sum_not_matching_canonical():
+    slot = PaperSlot("4", 5, "compound", problem_id="x")
+    card = _compound_card([_sp("1", 2, 2), _sp("2", 3, 2)])  # auto 4, canonical 3
+    with pytest.raises(ValueError, match="auto_marks sum 4 ≠"):
+        _expand_compound(slot, card, gen_marks=3)
+
+
+def test_expand_rejects_headline_sum_not_matching_slot():
+    slot = PaperSlot("4", 6, "compound", problem_id="x")  # slot says 6
+    card = _compound_card([_sp("1", 2, 2), _sp("2", 3, 1)])  # sub-parts sum 5
+    with pytest.raises(ValueError, match="marks sum 5 ≠ slot marks 6"):
+        _expand_compound(slot, card, gen_marks=3)
+
+
+def test_shipped_q4_is_one_shared_hyperbola_across_subparts():
+    # the whole point of the compound: 4.6's AA' is built from 4.5's A, so the
+    # sub-parts must come from ONE instantiation. Re-derive the link from the memos.
+    built = build_paper(_MJ2025_P1, seed=3)
+    q4 = {rs.slot.number: rs for rs in built if rs.slot.number.split(".")[0] == "4"}
+    assert set(q4) == {"4", "4.1", "4.2", "4.3", "4.4", "4.5", "4.6"}
+    assert q4["4"].is_stem and q4["4"].graph_svg  # diagram shown once, on the stem
+    # A appears in 4.5's memo and its reflection drives 4.6 — a shared-f coupling
+    assert any("A = (" in s for s in q4["4.5"].memo_steps)
+    assert any("AA'" in s for s in q4["4.6"].memo_steps)
+    # header marks are counted once (stem is 0): 2+2+2+4+3+2 = 15
+    assert sum(rs.slot.marks for rs in built if rs.slot.number.startswith("4")) == 15
+
+
+def test_shipped_q4_auto_manual_split():
+    built = build_paper(_MJ2025_P1, seed=3)
+    q4 = [rs for rs in built if rs.slot.number.startswith("4.")]
+    assert sum(rs.auto_marks for rs in q4) == 9  # engine-graded (canonical)
+    assert sum(rs.manual_marks for rs in q4) == 6  # hand-marked method lines

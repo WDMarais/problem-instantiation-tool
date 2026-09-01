@@ -140,6 +140,7 @@ class RenderedSlot:
     auto_marks: int | None = None  # resolved engine-graded marks (None for static)
     mark_warning: str | None = None  # loud when a divergence is left unacknowledged
     warnings: list[str] = field(default_factory=list)
+    is_stem: bool = False  # compound shared stem: instruction + diagram, no marks/memo
 
     @property
     def manual_marks(self) -> int:
@@ -149,6 +150,56 @@ class RenderedSlot:
         if self.auto_marks is None:
             return 0
         return self.slot.marks - self.auto_marks
+
+
+def _expand_compound(slot, card, gen_marks: int | None) -> list[RenderedSlot]:
+    """Expand one compound (shared-stem) slot into a stem RenderedSlot (instruction +
+    diagram, no marks) followed by one RenderedSlot per sub-part, all from the single
+    instantiation ``card``. The honest mark split is enforced across the sub-parts:
+    every sub-part's ``auto_marks`` sums to the generator's canonical verifier total
+    (a checkable claim about what the engine grades), and the headline ``marks`` sum
+    to the slot's declared total — the compound analogue of the per-slot check."""
+    auto_sum = sum(sp.auto_marks for sp in card.subparts)
+    marks_sum = sum(sp.marks for sp in card.subparts)
+    if gen_marks is not None and auto_sum != gen_marks:
+        raise ValueError(
+            f"slot {slot.number}: sub-part auto_marks sum {auto_sum} ≠ generator's "
+            f"canonical total {gen_marks} ({slot.problem_id}) — the sub-part split is "
+            f"a claim about what the engine grades and must match it"
+        )
+    if marks_sum != slot.marks:
+        raise ValueError(
+            f"slot {slot.number}: sub-part marks sum {marks_sum} ≠ slot marks "
+            f"{slot.marks} ({slot.problem_id}) — the headline total must reconcile"
+        )
+    stem = RenderedSlot(
+        slot=PaperSlot(slot.number, 0, slot.topic, problem_id=slot.problem_id),
+        instruction=card.instruction,
+        display_math=card.display_math,
+        memo_steps=[],
+        graph_svg=card.graph_svg,
+        generated=True,
+        is_stem=True,
+    )
+    rendered = [stem]
+    for sp in card.subparts:
+        rendered.append(
+            RenderedSlot(
+                slot=PaperSlot(
+                    f"{slot.number}.{sp.suffix}",
+                    sp.marks,
+                    slot.topic,
+                    problem_id=slot.problem_id,
+                    auto_marks=sp.auto_marks,
+                ),
+                instruction=sp.instruction,
+                display_math=sp.display_math,
+                memo_steps=list(sp.memo_steps),
+                generated=True,
+                auto_marks=sp.auto_marks,
+            )
+        )
+    return rendered
 
 
 def build_paper(spec: PaperSpec, *, seed: int | None = None) -> list[RenderedSlot]:
@@ -176,6 +227,9 @@ def build_paper(spec: PaperSpec, *, seed: int | None = None) -> list[RenderedSlo
             entry = PROBLEMS[slot.problem_id]
             card = _generate_cards(engine, entry, rng, 1, 1)[0]
             gen_marks = _problem_marks(entry.problem)
+            if card.subparts:  # compound (shared stem) → expand into stem + sub-slots
+                out.extend(_expand_compound(slot, card, gen_marks))
+                continue
             warn = None
             if slot.auto_marks is not None:
                 if gen_marks is not None and slot.auto_marks != gen_marks:
@@ -341,6 +395,16 @@ def _slot_html(rs: RenderedSlot) -> str:
         else ""
     )
     graph = f'<div class="slot-graph">{rs.graph_svg}</div>' if rs.graph_svg else ""
+    if rs.is_stem:
+        # shared stem of a compound question: the narrative + f + diagram, shown once
+        # above the sub-parts. No mark allocation and no answer space of its own.
+        return (
+            f'<div class="slot stem depth-{depth}">'
+            f'<div class="slot-content">'
+            f'<div class="slot-instruction">{rs.instruction}</div>'
+            f"{eq}{graph}"
+            f"</div></div>"
+        )
     h = _working_height_mm(rs.slot.marks)
     return (
         f'<div class="slot depth-{depth}">'
@@ -422,7 +486,7 @@ def render_paper_html(spec: PaperSpec, rendered: list[RenderedSlot]) -> str:
         )
 
     nav_links.append('<a href="#memo" data-target="memo">Memo</a>')
-    memo_rows = "".join(_memo_row_html(rs) for rs in rendered)
+    memo_rows = "".join(_memo_row_html(rs) for rs in rendered if not rs.is_stem)
     sections.append(
         '<section class="qsection" id="memo">'
         '<div class="memo"><h2>Marking Memorandum</h2>'
@@ -573,6 +637,18 @@ _MJ2025_P1 = PaperSpec(
             3,
             "quadratic sequence — shift-to-negative range",
             problem_id="quad_seq_shift_negative",
+        ),
+        # Question 4 — hyperbola. The tool's first COMPOUND slot: one f is
+        # instantiated once and its six coupled sub-parts (4.1–4.6) are read off a
+        # single shared stem + diagram, so 4.6 genuinely uses 4.5's A. The paper
+        # layer expands this into a stem slot + six sub-slots; the 15 headline marks
+        # split into 9 engine-graded (M, D, t, f≤0 via set_solution, A, AA′) + 6
+        # hand-marked method lines.
+        PaperSlot(
+            "4",
+            15,
+            "hyperbola — read coupled properties off the equation",
+            problem_id="hyperbola_properties",
         ),
     ),
 )

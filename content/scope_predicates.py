@@ -47,6 +47,7 @@ from content.examples.geometric_sequence import (
     from_two_terms as geo_seq_from_two_terms,
 )
 from content.examples.grouped_mean_solve import grouped_mean_solve
+from content.examples.hyperbola_properties import hyperbola_properties
 from content.examples.line_equation import line_equation
 from content.examples.linear_equation import problem as linear_add_pos
 from content.examples.linear_equations import (
@@ -1387,6 +1388,46 @@ def exponential_equation_in_scope(instance: ProblemInstance) -> list[str]:
     return reasons
 
 
+def hyperbola_properties_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: the equation ``f(x) = a/(x - m) + q`` (m = -p). Every sub-part is
+    well-posed only if, re-derived from ``a, p, q`` alone (not the stored answers):
+
+    - ``a`` is a positive perfect square — the closest point A = (-p+√a, q+√a) is a
+      lattice point (4.5), and A is a genuine distance-minimiser (``u⁴ = a²`` gives
+      the real ``u = √a`` iff ``a`` is a square);
+    - ``q > 0`` and ``q | a`` — the ``f ≤ 0`` region (4.4) is the non-empty half-open
+      interval ``[C, m)`` with an *integer* x-intercept ``C = -a/q - p``;
+    - ``p ≠ 0`` — M = (m, q) is off the y-axis (4.1);
+    - ``A_x = -p + √a ≠ 0`` — A is off the y-axis, so under the y-axis reflection
+      (4.6) A′ ≠ A and ``AA′ = 2|A_x| ≠ 0``, and A does not collide with D;
+    - ``C ≠ 0`` — the x-intercept is off the y-axis (distinct from the y-intercept D).
+    """
+    p = instance.params
+    a, pp, q = p["a"], p["p"], p["q"]
+    reasons: list[str] = []
+
+    if a <= 0:
+        reasons.append(f"a = {a} ≤ 0: hyperbola opens the wrong way for this archetype")
+        return reasons
+    r = int(math.isqrt(a))
+    if r * r != a:
+        reasons.append(f"a = {a} is not a perfect square: A is not a lattice point")
+    if q <= 0:
+        reasons.append(f"q = {q} ≤ 0: f ≤ 0 region is not the archetype's interval")
+    elif a % q != 0:
+        reasons.append(f"q = {q} does not divide a = {a}: x-intercept is non-integer")
+    if pp == 0:
+        reasons.append("p = 0: asymptote intersection M lies on the y-axis")
+    a_x = -pp + r
+    if a_x == 0:
+        reasons.append(f"A_x = -p+√a = {a_x}: A on the y-axis ⇒ AA′ = 0 and A = D")
+    if q != 0:
+        c_x = sympy.Rational(-a, q) - pp
+        if c_x == 0:
+            reasons.append("x-intercept C = 0: C coincides with the y-axis / D")
+    return reasons
+
+
 # problem_id → its Problem object (drives the sweep registry)
 PROBLEMS = {
     monic_factorise.id: monic_factorise,
@@ -1403,6 +1444,7 @@ PROBLEMS = {
     prob_venn_intersection.id: prob_venn_intersection,
     prob_count_intersection.id: prob_count_intersection,
     grouped_mean_solve.id: grouped_mean_solve,
+    hyperbola_properties.id: hyperbola_properties,
     line_equation.id: line_equation,
     circle_equation.id: circle_equation,
     circle_tangent.id: circle_tangent,
@@ -1465,4 +1507,5 @@ PREDICATES = {
     surd_equation.id: surd_equation_in_scope,
     nonlinear_simultaneous.id: nonlinear_simultaneous_in_scope,
     exponential_equation.id: exponential_equation_in_scope,
+    hyperbola_properties.id: hyperbola_properties_in_scope,
 }
