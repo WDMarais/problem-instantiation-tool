@@ -662,6 +662,18 @@ _MJ2025_P1 = PaperSpec(
             "parabola — determine the equation, then reflect and sketch",
             problem_id="parabola_properties",
         ),
+        # Question 6 — exponential & inverse. A third COMPOUND slot, and the first
+        # with TWO functions on one shared stem: an exponential f = p^x + q and a
+        # line g = mx + c meeting at A, coupled through the g⁻¹ hook (6.3 reads B off
+        # f). All four sub-parts are engine-gradable (no sketch): the 11 headline
+        # marks split into 6 engine-graded (p, q, range via set_solution, g's slope +
+        # equation, g⁻¹'s equation) + 5 hand-marked method lines.
+        PaperSlot(
+            "6",
+            11,
+            "exponential + line + inverse off one shared stem",
+            problem_id="exponential_inverse",
+        ),
     ),
 )
 

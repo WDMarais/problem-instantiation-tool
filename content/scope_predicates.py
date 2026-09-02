@@ -37,6 +37,7 @@ from content.examples.circumcentre import circumcentre
 from content.examples.cubic_stationary_points import cubic_stationary_points
 from content.examples.discriminant_nature import discriminant_nature
 from content.examples.exponential_equation import exponential_equation
+from content.examples.exponential_inverse import exponential_inverse
 from content.examples.geometric_sequence import (
     find_missing as geo_seq_find_missing,
 )
@@ -1429,6 +1430,40 @@ def hyperbola_properties_in_scope(instance: ProblemInstance) -> list[str]:
     return reasons
 
 
+def exponential_inverse_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: A(ax, ay), the f–g intersection, and B(0, by), the y-intercept of
+    ``f(x) = p^x + q``. Re-deriving from those two points alone, the archetype is
+    well-posed only when:
+
+    - ``q = by - 1`` and ``p^ax = ay - q`` give an integer base ``p ≥ 2`` that is a
+      genuine ``ax``-th power — a valid *increasing* exponential, so 6.1 has an
+      integer answer and 6.2's range is the clean ``y > q``;
+    - ``ay ≠ 0`` — g = mx + c is not horizontal, so g⁻¹ exists (6.3/6.4);
+    - ``ax ≠ by`` — g's two points, A and the swapped B(by, 0), have distinct x, so
+      the slope ``m = ay/(ax - by)`` is defined.
+    """
+    p = instance.params
+    ax, ay, by = p["ax"], p["ay"], p["by"]
+    reasons: list[str] = []
+
+    if ay == 0:
+        reasons.append("ay = 0: g is horizontal, so g⁻¹ does not exist")
+    if ax == by:
+        reasons.append(f"ax = by = {ax}: g's two points share an x, slope undefined")
+
+    q = by - 1
+    power = ay - q  # must equal p^ax for an integer base p ≥ 2
+    if power < 2:
+        reasons.append(f"p^ax = ay - q = {power} < 2: no valid exponential base")
+    elif ax >= 1:
+        base = round(power ** (1.0 / ax))
+        if not any(b**ax == power for b in (base - 1, base, base + 1) if b >= 2):
+            reasons.append(
+                f"p^ax = {power} is not a perfect {ax}-th power: p non-integer"
+            )
+    return reasons
+
+
 def parabola_properties_in_scope(instance: ProblemInstance) -> list[str]:
     """Presented: the turning point ``C(h, q)`` and a point ``B(bx, by)`` on a
     parabola ``f(x) = a(x + p)^2 + q`` (p = -h). Re-deriving the stretch from the
@@ -1483,6 +1518,7 @@ PROBLEMS = {
     grouped_mean_solve.id: grouped_mean_solve,
     hyperbola_properties.id: hyperbola_properties,
     parabola_properties.id: parabola_properties,
+    exponential_inverse.id: exponential_inverse,
     line_equation.id: line_equation,
     circle_equation.id: circle_equation,
     circle_tangent.id: circle_tangent,
@@ -1547,4 +1583,5 @@ PREDICATES = {
     exponential_equation.id: exponential_equation_in_scope,
     hyperbola_properties.id: hyperbola_properties_in_scope,
     parabola_properties.id: parabola_properties_in_scope,
+    exponential_inverse.id: exponential_inverse_in_scope,
 }

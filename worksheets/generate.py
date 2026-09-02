@@ -84,6 +84,7 @@ from content.examples.exponent_laws import (
 from content.examples.exponential_common_base import exponential_common_base
 from content.examples.exponential_equation import exponential_equation
 from content.examples.exponential_from_graph import exponential_from_graph
+from content.examples.exponential_inverse import exponential_inverse
 from content.examples.factorise_skills import (
     factor_pairs_for_display,
     factorise_constraints,
@@ -244,7 +245,7 @@ from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.exceptions import ScopeViolationError
 from problem_instantiation_tool.registry import InMemoryRegistry
 from problem_instantiation_tool.schemas import Problem
-from render.cartesian import CartesianScene, Polyline, render_scene
+from render.cartesian import CartesianScene, ConstantLine, Polyline, render_scene
 from render.cartesian import Point as ScenePoint
 from render.circle import circle_scene
 from render.exponential import exponential_scene
@@ -3723,6 +3724,124 @@ def template_parabola_properties(params: dict, detail: str = "full") -> ProblemC
     )
 
 
+def template_exponential_inverse(params: dict, detail: str = "full") -> ProblemCard:
+    """Compound (shared-stem) card for the NSC Q6 exponential + inverse. The stem
+    draws both f (exponential) and g (line) once, meeting at A, with B (f's
+    y-intercept) and E (g's x-intercept) marked; the four sub-parts read/compute off
+    that single picture. All four have engine-graded answers (canonical 6 of the 11
+    headline marks); the paper layer splits the rest into hand-marked method lines."""
+    p, q = params["p"], params["q"]
+    ax, ay, by = params["ax"], params["ay"], params["by"]
+    m, c = params["g_slope"], params["g_intercept"]
+    g_tex, ginv_tex = sympy.latex(params["g_expr"]), sympy.latex(params["ginv_expr"])
+    m_tex, c_tex = sympy.latex(m), sympy.latex(c)
+
+    # stem diagram: both curves in one window that holds A, B, E, the asymptote y=q
+    # and the origin. Built inline — two curves plus three named points need a
+    # shared frame no single per-family scene builder sizes.
+    def f(x: float) -> float:
+        return p**x + q
+
+    ex = float(-c / m)  # E, the x-intercept of g
+    x_lo, x_hi = min(0.0, float(ax), ex) - 1.0, max(0.0, float(ax), ex) + 1.0
+    y_feat = [0.0, float(q), float(by), float(ay)]
+    y_lo, y_hi = min(y_feat) - 1.0, max(y_feat) + 1.0
+    yspan = y_hi - y_lo
+    clamp_lo, clamp_hi = y_lo - yspan, y_hi + yspan  # tame the exponential tail
+
+    def _xs(i: int) -> float:
+        return x_lo + (x_hi - x_lo) * i / 120
+
+    fpts = tuple((_xs(i), min(max(f(_xs(i)), clamp_lo), clamp_hi)) for i in range(121))
+    mf, cf = float(m), float(c)
+    scene = CartesianScene(
+        x_min=x_lo,
+        x_max=x_hi,
+        y_min=y_lo,
+        y_max=y_hi,
+        items=(
+            Polyline(points=fpts),  # f, the exponential
+            Polyline(
+                points=((x_lo, mf * x_lo + cf), (x_hi, mf * x_hi + cf)),
+                color="#16A34A",
+            ),  # g, the line
+            ConstantLine("h", float(q), label=f"y = {q}"),  # asymptote of f
+            ScenePoint(
+                float(ax), float(ay), label="A", droplines=True, color="#2563EB"
+            ),
+            ScenePoint(0.0, float(by), label="B", color="#DC2626"),
+            ScenePoint(ex, 0.0, label="E", color="#16A34A"),
+        ),
+        x_ticks=tuple(float(t) for t in sorted({0, ax})),
+        y_ticks=tuple(float(t) for t in sorted({0, int(q), int(by), int(ay)})),
+    )
+    svg = render_scene(scene)
+
+    subparts = [
+        SubPart(
+            "1",
+            "Calculate the values of $p$ and $q$.",
+            4,
+            [
+                rf"f(0) = 1 + q = {by} \;\Rightarrow\; q = {q}",
+                rf"f({ax}) = p^{{{ax}}} + {q} = {ay} \;\Rightarrow\; "
+                rf"p^{{{ax}}} = {ay - q} \;\Rightarrow\; p = {p}",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "2",
+            "Write down the range of $f$.",
+            1,
+            [
+                rf"p > 1 \Rightarrow f \text{{ increases from the asymptote }} "
+                rf"y = {q}: \quad y > {q}"
+            ],
+            auto_marks=1,
+        ),
+        SubPart(
+            "3",
+            r"The graph of $g^{-1}$, the inverse of $g$, also passes through B. "
+            r"Determine the equation of $g$ in the form $y = \ldots$",
+            4,
+            [
+                rf"g^{{-1}} \text{{ through }} B(0;\ {by}) \;\Rightarrow\; "
+                rf"g \text{{ through }} ({by};\ 0)",
+                rf"m = \dfrac{{{ay} - 0}}{{{ax} - ({by})}} = {m_tex}",
+                rf"0 = {m_tex}({by}) + c \;\Rightarrow\; c = {c_tex}",
+                rf"g(x) = {g_tex}",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "4",
+            r"Write down the equation of $g^{-1}$ in the form $y = \ldots$",
+            2,
+            [
+                r"\text{swap } x \leftrightarrow y \text{ in } "
+                rf"y = {g_tex}, \text{{ solve for }} y",
+                rf"g^{{-1}}(x) = {ginv_tex}",
+            ],
+            auto_marks=1,
+        ),
+    ]
+    if detail != "full":
+        for sp in subparts:
+            sp.memo_steps = sp.memo_steps[-1:]
+
+    return ProblemCard(
+        instruction=(
+            rf"The graphs of $f(x) = p^x + q$ and $g(x) = mx + c$ are drawn below. "
+            rf"A$({ax};\ {ay})$ is their point of intersection, B$(0;\ {by})$ is the "
+            rf"$y$-intercept of $f$, and E is the $x$-intercept of $g$."
+        ),
+        display_math=r"f(x) = p^x + q \qquad g(x) = mx + c",
+        worked_steps=[],
+        graph_svg=svg,
+        subparts=subparts,
+    )
+
+
 def template_exponential_from_graph(params: dict, detail: str = "full") -> ProblemCard:
     a, b, q = params["a"], params["b"], params["q"]
     y0, y1 = params["y_intercept"], params["point_y"]
@@ -4185,6 +4304,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     parabola_properties.id: WorksheetEntry(
         problem=parabola_properties,
         template=template_parabola_properties,
+    ),
+    exponential_inverse.id: WorksheetEntry(
+        problem=exponential_inverse,
+        template=template_exponential_inverse,
     ),
     line_from_graph.id: WorksheetEntry(
         problem=line_from_graph,

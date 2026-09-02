@@ -241,3 +241,20 @@ def test_shipped_q5_auto_manual_split():
     q5 = [rs for rs in built if rs.slot.number.startswith("5.")]
     assert sum(rs.auto_marks for rs in q5) == 3  # engine-graded (canonical)
     assert sum(rs.manual_marks for rs in q5) == 6  # hand-marked (incl. 5.3 sketch)
+
+
+def test_shipped_q6_is_two_functions_on_one_shared_stem():
+    # the third compound, and the first with TWO curves: f (exponential) and g
+    # (line) meeting at A, coupled through the g⁻¹-through-B hook (6.3 reads B off f).
+    built = build_paper(_MJ2025_P1, seed=3)
+    q6 = {rs.slot.number: rs for rs in built if rs.slot.number.split(".")[0] == "6"}
+    assert set(q6) == {"6", "6.1", "6.2", "6.3", "6.4"}
+    assert q6["6"].is_stem and q6["6"].graph_svg  # both curves drawn once, on the stem
+    assert sum(rs.slot.marks for rs in built if rs.slot.number.startswith("6")) == 11
+
+
+def test_shipped_q6_auto_manual_split():
+    built = build_paper(_MJ2025_P1, seed=3)
+    q6 = [rs for rs in built if rs.slot.number.startswith("6.")]
+    assert sum(rs.auto_marks for rs in q6) == 6  # engine-graded (canonical)
+    assert sum(rs.manual_marks for rs in q6) == 5  # hand-marked method lines
