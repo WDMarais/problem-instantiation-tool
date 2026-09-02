@@ -650,6 +650,18 @@ _MJ2025_P1 = PaperSpec(
             "hyperbola — read coupled properties off the equation",
             problem_id="hyperbola_properties",
         ),
+        # Question 5 — parabola. A second COMPOUND slot (shared stem: one f, three
+        # coupled sub-parts). 5.1 finds f from the turning point + a point; 5.2 the
+        # no-real-roots k region; 5.3 reflects f and asks for a *sketch* of the cubic
+        # g — a hand-drawn deliverable. The 9 headline marks split into 3 engine-
+        # graded (a + expansion via 5.1, the k-set via 5.2) + 6 hand-marked (the
+        # show-that setup, the discriminant line, and the whole 5.3 sketch).
+        PaperSlot(
+            "5",
+            9,
+            "parabola — determine the equation, then reflect and sketch",
+            problem_id="parabola_properties",
+        ),
     ),
 )
 

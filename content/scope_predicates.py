@@ -61,6 +61,7 @@ from content.examples.monic_factorise import problem as monic_factorise
 from content.examples.motion_calculus import motion_calculus
 from content.examples.nonlinear_simultaneous import nonlinear_simultaneous
 from content.examples.optimisation_solve import optimisation_solve
+from content.examples.parabola_properties import parabola_properties
 from content.examples.perpendicular_foot import perpendicular_foot
 from content.examples.probability_venn import (
     prob_count_intersection,
@@ -1428,6 +1429,42 @@ def hyperbola_properties_in_scope(instance: ProblemInstance) -> list[str]:
     return reasons
 
 
+def parabola_properties_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: the turning point ``C(h, q)`` and a point ``B(bx, by)`` on a
+    parabola ``f(x) = a(x + p)^2 + q`` (p = -h). Re-deriving the stretch from the
+    two presented points alone, ``a = (by - q)/(bx - h)^2``, the archetype is
+    well-posed only when:
+
+    - ``bx ≠ h`` — B is a genuine *second* point, so the stretch is determined (5.1);
+    - ``a`` is a negative integer — the parabola is downward (5.2's "no real roots ⇔
+      max < 0 ⇔ k < -q" reasoning, and 5.3's "g' > 0 everywhere ⇒ g strictly
+      increasing" conclusion both need a max, not a min), and 5.1 expands to integer
+      coefficients (``(bx - h)^2 | (by - q)`` and the quotient is negative);
+    - ``q > 0`` — the no-real-roots bound ``k < -q`` is a real negative and the
+      reflected g' = 2q - f has a positive minimum (so g never turns).
+    """
+    p = instance.params
+    h, q, bx, by = p["h"], p["q"], p["bx"], p["by"]
+    reasons: list[str] = []
+
+    if bx == h:
+        reasons.append(f"bx = h = {h}: B is the turning point, not a second point")
+        return reasons
+    if q <= 0:
+        reasons.append(f"q = {q} ≤ 0: no-real-roots bound k < -q is not a negative")
+
+    dx2 = (bx - h) ** 2
+    if (by - q) % dx2 != 0:
+        reasons.append(
+            f"(bx - h)^2 = {dx2} does not divide by - q = {by - q}: a is non-integer"
+        )
+    else:
+        a = (by - q) // dx2
+        if a >= 0:
+            reasons.append(f"a = {a} ≥ 0: parabola is not downward for this archetype")
+    return reasons
+
+
 # problem_id → its Problem object (drives the sweep registry)
 PROBLEMS = {
     monic_factorise.id: monic_factorise,
@@ -1445,6 +1482,7 @@ PROBLEMS = {
     prob_count_intersection.id: prob_count_intersection,
     grouped_mean_solve.id: grouped_mean_solve,
     hyperbola_properties.id: hyperbola_properties,
+    parabola_properties.id: parabola_properties,
     line_equation.id: line_equation,
     circle_equation.id: circle_equation,
     circle_tangent.id: circle_tangent,
@@ -1508,4 +1546,5 @@ PREDICATES = {
     nonlinear_simultaneous.id: nonlinear_simultaneous_in_scope,
     exponential_equation.id: exponential_equation_in_scope,
     hyperbola_properties.id: hyperbola_properties_in_scope,
+    parabola_properties.id: parabola_properties_in_scope,
 }

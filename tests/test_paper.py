@@ -223,3 +223,21 @@ def test_shipped_q4_auto_manual_split():
     q4 = [rs for rs in built if rs.slot.number.startswith("4.")]
     assert sum(rs.auto_marks for rs in q4) == 9  # engine-graded (canonical)
     assert sum(rs.manual_marks for rs in q4) == 6  # hand-marked method lines
+
+
+def test_shipped_q5_is_one_shared_parabola_across_subparts():
+    # the second compound: one downward f is instantiated once; 5.1 finds it, 5.2
+    # reads its no-real-roots k region, 5.3 reflects it — all off a single stem.
+    built = build_paper(_MJ2025_P1, seed=3)
+    q5 = {rs.slot.number: rs for rs in built if rs.slot.number.split(".")[0] == "5"}
+    assert set(q5) == {"5", "5.1", "5.2", "5.3"}
+    assert q5["5"].is_stem and q5["5"].graph_svg  # diagram shown once, on the stem
+    # header marks are counted once (stem is 0): 3 + 2 + 4 = 9
+    assert sum(rs.slot.marks for rs in built if rs.slot.number.startswith("5")) == 9
+
+
+def test_shipped_q5_auto_manual_split():
+    built = build_paper(_MJ2025_P1, seed=3)
+    q5 = [rs for rs in built if rs.slot.number.startswith("5.")]
+    assert sum(rs.auto_marks for rs in q5) == 3  # engine-graded (canonical)
+    assert sum(rs.manual_marks for rs in q5) == 6  # hand-marked (incl. 5.3 sketch)

@@ -144,6 +144,7 @@ from content.examples.nonlinear_simultaneous import nonlinear_simultaneous
 from content.examples.optimisation_solve import optimisation_solve
 from content.examples.parabola_from_graph import parabola_from_graph
 from content.examples.parabola_from_turning_point import parabola_from_turning_point
+from content.examples.parabola_properties import parabola_properties
 from content.examples.parallelogram_angles import (
     parallelogram_alternate,
     parallelogram_cointerior,
@@ -243,8 +244,8 @@ from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.exceptions import ScopeViolationError
 from problem_instantiation_tool.registry import InMemoryRegistry
 from problem_instantiation_tool.schemas import Problem
+from render.cartesian import CartesianScene, Polyline, render_scene
 from render.cartesian import Point as ScenePoint
-from render.cartesian import render_scene
 from render.circle import circle_scene
 from render.exponential import exponential_scene
 from render.geometry import (
@@ -3619,6 +3620,109 @@ def template_hyperbola_properties(params: dict, detail: str = "full") -> Problem
     )
 
 
+def template_parabola_properties(params: dict, detail: str = "full") -> ProblemCard:
+    """Compound (shared-stem) card for the NSC Q5 parabola. The stem draws the
+    downward parabola once with the turning point C and a second point B marked;
+    the three sub-parts read/compute off it (find the equation, the no-real-roots
+    ``k`` region, and the reflected cubic's sketch). 5.1/5.2 are engine-graded (auto
+    2 + 1 = the canonical 3); 5.3's sketch is hand-marked in full."""
+    a, h, q = params["a"], params["h"], params["q"]
+    bx, by = params["bx"], params["by"]
+    p = params["p"]  # (x + p) form coefficient, = -h
+    f_tex = sympy.latex(params["f_expanded"])
+    gp_tex = sympy.latex(params["g_prime"])
+
+    # stem diagram: the downward parabola, with C (turning point) and B marked.
+    # Built inline (not via parabola_vertex_scene) so the window is guaranteed to
+    # hold B, which need not sit inside a vertex-centred window.
+    def f(x: float) -> float:
+        return a * (x - h) ** 2 + q
+
+    x_lo, x_hi = min(h, bx, 0) - 1.5, max(h, bx, 0) + 1.5
+    curve = tuple(
+        (x_lo + (x_hi - x_lo) * i / 120, f(x_lo + (x_hi - x_lo) * i / 120))
+        for i in range(121)
+    )
+    ys = [float(q), float(by), 0.0]
+    scene = CartesianScene(
+        x_min=x_lo,
+        x_max=x_hi,
+        y_min=min(ys) - 1.0,
+        y_max=max(ys) + 1.0,
+        items=(
+            Polyline(points=curve),
+            ScenePoint(float(h), float(q), label="C", droplines=True, color="#2563EB"),
+            ScenePoint(
+                float(bx), float(by), label="B", droplines=True, color="#DC2626"
+            ),
+        ),
+        x_ticks=tuple(float(t) for t in sorted({0, h, bx})),
+        y_ticks=tuple(float(t) for t in sorted({0, int(q), int(by)})),
+    )
+    svg = render_scene(scene)
+
+    subparts = [
+        SubPart(
+            "1",
+            rf"Show that $f(x) = {f_tex}$.",
+            3,
+            [
+                rf"\text{{turning point }} C({h};\ {q})"
+                rf"\;\Rightarrow\; f(x) = a(x {_signed(p)})^2 + {q}",
+                rf"\text{{sub }} B({bx};\ {by}):\quad {by} = a({bx} {_signed(p)})^2"
+                rf" + {q} \;\Rightarrow\; a = {a}",
+                rf"f(x) = {a}(x {_signed(p)})^2 + {q} = {f_tex}",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "2",
+            r"Determine the value(s) of $k$ for which $h(x) = f(x) + k$ "
+            r"will have no real roots.",
+            2,
+            [
+                rf"h(x) = {f_tex} + k;\quad "
+                rf"\text{{maximum value }} = {q} + k \ (\text{{at }} x = {h})",
+                rf"\text{{downward, no real roots}} \Rightarrow {q} + k < 0"
+                rf" \;\Rightarrow\; k < {-q}",
+            ],
+            auto_marks=1,
+        ),
+        SubPart(
+            "3",
+            rf"The graph of $y = g'(x)$, the derivative of $g$, is obtained by "
+            rf"reflecting $f$ in the line $y = {q}$. Draw a sketch graph of $g$ if "
+            rf"$g(0) < 0$, clearly indicating any stationary points.",
+            4,
+            [
+                rf"\text{{reflect in }} y = {q}:\quad "
+                rf"g'(x) = 2({q}) - f(x) = {gp_tex}",
+                rf"g'(x) = {gp_tex} > 0 \text{{ for all }} x"
+                rf"\ (\text{{minimum }} = {q} > 0)",
+                rf"\therefore\; g \text{{ is strictly increasing: no stationary "
+                rf"points, inflection at }} x = {h}",
+                r"\text{sketch: an always-increasing cubic with } g(0) < 0",
+            ],
+            auto_marks=0,
+        ),
+    ]
+    if detail != "full":
+        for sp in subparts:
+            sp.memo_steps = sp.memo_steps[-1:]
+
+    return ProblemCard(
+        instruction=(
+            rf"The graph of $f(x) = a(x + p)^2 + q$ is drawn below. "
+            rf"C$({h};\ {q})$ is the turning point of $f$ and "
+            rf"B$({bx};\ {by})$ is a point on $f$."
+        ),
+        display_math=r"f(x) = a(x + p)^2 + q",
+        worked_steps=[],
+        graph_svg=svg,
+        subparts=subparts,
+    )
+
+
 def template_exponential_from_graph(params: dict, detail: str = "full") -> ProblemCard:
     a, b, q = params["a"], params["b"], params["q"]
     y0, y1 = params["y_intercept"], params["point_y"]
@@ -4077,6 +4181,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     hyperbola_properties.id: WorksheetEntry(
         problem=hyperbola_properties,
         template=template_hyperbola_properties,
+    ),
+    parabola_properties.id: WorksheetEntry(
+        problem=parabola_properties,
+        template=template_parabola_properties,
     ),
     line_from_graph.id: WorksheetEntry(
         problem=line_from_graph,
