@@ -91,7 +91,11 @@ from content.examples.factorise_skills import (
     factorise_enumerate,
     factorise_sign_case,
 )
-from content.examples.finance import simple_interest
+from content.examples.finance import (
+    effective_rate,
+    lump_plus_annuity,
+    simple_interest,
+)
 from content.examples.future_value_annuity import (
     fv_annuity_amount,
     fv_annuity_deposit,
@@ -1693,8 +1697,8 @@ def _numtex(x) -> str:
     return f"{x}".replace(".", "{,}")
 
 
-_COMP_WORD = {1: "annually", 4: "quarterly", 12: "monthly"}
-_PERIOD_WORD = {1: "year", 4: "quarter", 12: "month"}
+_COMP_WORD = {1: "annually", 2: "semi-annually", 4: "quarterly", 12: "monthly"}
+_PERIOD_WORD = {1: "year", 2: "half-year", 4: "quarter", 12: "month"}
 
 
 def _timing_phrase(timing: str, m: int) -> str:
@@ -2028,6 +2032,51 @@ def template_pv_annuity_total_interest(
         ),
         display_math="",
         worked_steps=full if detail == "full" else [full[0], rf"= {_zar(ans)}"],
+    )
+
+
+def template_effective_rate(params: dict, detail: str = "full") -> ProblemCard:
+    r, m = params["nominal_rate"], params["compounding"]
+    i, ans = params["per_period_rate"], params["answer"]
+    full = [
+        r"1 + i_{\text{eff}} = \left(1 + \frac{i^{(m)}}{m}\right)^{m}",
+        rf"i_{{\text{{eff}}}} = \left(1 + {_dec(i)}\right)^{{{m}}} - 1",
+        rf"i_{{\text{{eff}}}} = {_numtex(f'{ans:.2f}')}\%",
+    ]
+    return ProblemCard(
+        instruction=(
+            f"An investment earns {_num(r)}% p.a. compounded {_COMP_WORD[m]}. "
+            f"Calculate the annual effective interest rate (as a percentage, correct "
+            f"to two decimal places)."
+        ),
+        display_math="",
+        worked_steps=full if detail == "full" else [full[-1]],
+    )
+
+
+def template_lump_plus_annuity(params: dict, detail: str = "full") -> ProblemCard:
+    p, x, r = params["principal"], params["deposit"], params["rate"]
+    i, n_lump, n_ann = params["per_period_rate"], params["n_lump"], params["n_ann"]
+    lump_fv, annuity_fv, ans = params["lump_fv"], params["annuity_fv"], params["answer"]
+    lump_years, deposit_years = params["lump_years"], params["deposit_years"]
+    defer_years = params["defer_years"]
+    full = [
+        rf"i = \frac{{{_numtex(r)}\%}}{{12}} = {_dec(i)}",
+        rf"\text{{lump: }} {_zar(p, 0)}(1 + {_dec(i)})^{{{n_lump}}} = {_zar(lump_fv)}",
+        rf"\text{{deposits: }} {_zar(x)}\cdot"
+        rf"\frac{{(1 + {_dec(i)})^{{{n_ann}}} - 1}}{{{_dec(i)}}} = {_zar(annuity_fv)}",
+        rf"\text{{total}} = {_zar(lump_fv)} + {_zar(annuity_fv)} = {_zar(ans)}",
+    ]
+    return ProblemCard(
+        instruction=(
+            f"{_rand(p, 0)} is invested at {_num(r)}% p.a. compounded monthly. "
+            f"After {defer_years} year(s), monthly deposits of {_rand(x)} begin and "
+            f"continue for {deposit_years} year(s), the last made on the valuation "
+            f"date. Calculate the total in the account immediately after the final "
+            f"deposit, {lump_years} years after the initial investment."
+        ),
+        display_math="",
+        worked_steps=full if detail == "full" else [full[-1]],
     )
 
 
@@ -4152,6 +4201,14 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     simple_interest.id: WorksheetEntry(
         problem=simple_interest,
         template=template_simple_interest,
+    ),
+    effective_rate.id: WorksheetEntry(
+        problem=effective_rate,
+        template=template_effective_rate,
+    ),
+    lump_plus_annuity.id: WorksheetEntry(
+        problem=lump_plus_annuity,
+        template=template_lump_plus_annuity,
     ),
     compound_amount.id: WorksheetEntry(
         problem=compound_amount,

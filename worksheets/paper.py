@@ -674,6 +674,30 @@ _MJ2025_P1 = PaperSpec(
             "exponential + line + inverse off one shared stem",
             problem_id="exponential_inverse",
         ),
+        # Question 7 — finance. Three INDEPENDENT problems (different people /
+        # accounts), so three ordinary slots, not a compound: 7.1 effective rate,
+        # 7.2 present-value annuity (how many withdrawals — reuses the purpose-built
+        # finance_pv_annuity_n), 7.3 lump sum + a deferred monthly annuity. Each is a
+        # single numeric answer graded whole (money to the cent), the finance-family
+        # convention: generator canonical total = the NSC part marks, no manual split.
+        PaperSlot(
+            "7.1",
+            2,
+            "effective annual rate from a nominal rate",
+            problem_id="finance_effective_rate",
+        ),
+        PaperSlot(
+            "7.2",
+            5,
+            "present-value annuity — number of withdrawals",
+            problem_id="finance_pv_annuity_n",
+        ),
+        PaperSlot(
+            "7.3",
+            6,
+            "lump sum + deferred monthly annuity — total at valuation date",
+            problem_id="finance_lump_plus_annuity",
+        ),
     ),
 )
 

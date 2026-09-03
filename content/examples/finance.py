@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import random
 
-from problem_instantiation_tool.schemas import Problem
+from problem_instantiation_tool.schemas import CorpusAnchor, Problem
 
 _PRINCIPALS = [500, 1000, 1500, 2000, 2500, 3000, 5000]
 _TARGETS = [5000, 8000, 10000, 15000, 20000]
@@ -137,6 +137,119 @@ compound_reverse = Problem(
         "tolerance": 0.01,
         "rel_tol": 1e-4,
     },
+)
+
+
+# ---------------------------------------------------------------------------
+# 4. effective_rate — annual effective rate from a nominal rate (NSC Q7.1)
+# ---------------------------------------------------------------------------
+
+_NOMINAL_RATES = [9, 10.5, 12, 13.5, 15, 16.5, 18]
+_EFF_COMPOUNDING = [2, 4, 12]  # m > 1 so the effective rate genuinely exceeds nominal
+
+
+def _gen_effective_rate(rng: random.Random) -> dict:
+    """Nominal r% p.a. compounded m×/yr → annual effective rate as a *percentage*:
+    ``i_eff = (1 + r/(100m))^m − 1``. m > 1, so i_eff > r (the whole point)."""
+    r = rng.choice(_NOMINAL_RATES)
+    m = rng.choice(_EFF_COMPOUNDING)
+    i = r / (100 * m)
+    return {
+        "nominal_rate": r,
+        "compounding": m,
+        "per_period_rate": i,
+        "answer": ((1 + i) ** m - 1) * 100,  # effective rate, as a percentage
+    }
+
+
+effective_rate = Problem(
+    id="finance_effective_rate",
+    type_id="financial_maths",
+    name="Effective annual rate from a nominal rate  i_eff = (1 + i/m)^m − 1",
+    artifact_type="practice",
+    problem_spec=_gen_effective_rate,
+    verifier_spec={
+        "kind": "numeric_equality",
+        "marks_possible": 2,
+        "tolerance": 0.01,
+        "rel_tol": 1e-4,
+    },
+    corpus_anchor=CorpusAnchor(
+        paper="2025 May/June P1",
+        question="7.1",
+        marks=2,
+        memo_value=16.08,  # (1 + 0,15/12)^12 − 1 ≈ 16,08%
+        inputs={"nominal_rate": 15, "compounding": 12},
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 5. lump_plus_annuity — a lump sum grows while a later regular deposit stream
+#    accumulates; total at the valuation date (NSC Q7.3)
+# ---------------------------------------------------------------------------
+
+_LUMP_PRINCIPALS = [8000, 10000, 12000, 15000, 20000]
+_MONTHLY_DEPOSITS = [300, 400, 500, 750, 1000]
+_Q7_RATES = [8, 9, 9.5, 10.5, 11]
+_LUMP_YEARS = [3, 4, 5]  # total months the lump grows
+_DEPOSIT_YEARS = [1, 2, 3]  # deposit phase (< lump phase → the stream is deferred)
+
+
+def _gen_lump_plus_annuity(rng: random.Random) -> dict:
+    """A once-off lump P grows for the full term at r% p.a. compounded monthly; a
+    monthly deposit stream of x starts partway in and accumulates to the valuation
+    date (its last deposit coincides with that date, so it is an ordinary annuity
+    of N_ann terms). Total = P(1+i)^N_lump + x·[(1+i)^N_ann − 1]/i."""
+    p = rng.choice(_LUMP_PRINCIPALS)
+    x = rng.choice(_MONTHLY_DEPOSITS)
+    r = rng.choice(_Q7_RATES)
+    lump_years = rng.choice(_LUMP_YEARS)
+    # deposit phase strictly shorter than the lump phase (a genuinely deferred
+    # stream, as in the source: 4-year lump, 2-year deposit stream).
+    deposit_years = rng.choice([d for d in _DEPOSIT_YEARS if d < lump_years])
+    i = r / (100 * 12)
+    n_lump = 12 * lump_years
+    n_ann = 12 * deposit_years
+    lump_fv = p * (1 + i) ** n_lump
+    annuity_fv = x * ((1 + i) ** n_ann - 1) / i
+    return {
+        "principal": p,
+        "deposit": x,
+        "rate": r,
+        "compounding": 12,
+        "lump_years": lump_years,
+        "deposit_years": deposit_years,
+        "defer_years": lump_years - deposit_years,
+        "per_period_rate": i,
+        "n_lump": n_lump,
+        "n_ann": n_ann,
+        "lump_fv": lump_fv,
+        "annuity_fv": annuity_fv,
+        "answer": lump_fv + annuity_fv,
+    }
+
+
+lump_plus_annuity = Problem(
+    id="finance_lump_plus_annuity",
+    type_id="financial_maths",
+    name="Lump sum + deferred monthly annuity, total at valuation date",
+    artifact_type="practice",
+    problem_spec=_gen_lump_plus_annuity,
+    verifier_spec={
+        "kind": "numeric_equality",
+        "marks_possible": 6,
+        "tolerance": 0.01,
+        "rel_tol": 1e-4,
+    },
+    corpus_anchor=CorpusAnchor(
+        paper="2025 May/June P1",
+        question="7.3",
+        marks=6,
+        memo_value=30679.83,
+        # R12 000 lump for 4 yr + R500/mo for the last 2 yr, 9,5% monthly
+        inputs={"principal": 12000, "deposit": 500, "rate": 9.5},
+    ),
 )
 
 
