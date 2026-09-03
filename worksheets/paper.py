@@ -698,6 +698,39 @@ _MJ2025_P1 = PaperSpec(
             "lump sum + deferred monthly annuity — total at valuation date",
             problem_id="finance_lump_plus_annuity",
         ),
+        # Question 8 — calculus: derivatives. Four INDEPENDENT sub-parts (different
+        # functions, no shared stem), so four ordinary slots grouped under Q8 by
+        # the leading number: 8.1 first principles (quadratic), 8.2.1 plain power
+        # rule, 8.2.2 surd × squared-binomial (expand to powers first), 8.3 common
+        # tangent to two parabolas (solve a, b). The three differentiations grade
+        # their whole answer-value (fully engine-graded); 8.3 grades only the two
+        # answers a, b (2 of its 6 marks) — the differentiation + system setup are
+        # hand-marked method (auto_marks=2).
+        PaperSlot(
+            "8.1",
+            5,
+            "differentiate a quadratic from first principles",
+            problem_id="derivative_first_principles",
+        ),
+        PaperSlot(
+            "8.2.1",
+            2,
+            "differentiate a plain polynomial (power rule)",
+            problem_id="derivative_polynomial",
+        ),
+        PaperSlot(
+            "8.2.2",
+            4,
+            "differentiate a surd × squared-binomial product",
+            problem_id="derivative_surd_product",
+        ),
+        PaperSlot(
+            "8.3",
+            6,
+            "common tangent to two parabolas — solve a and b",
+            problem_id="common_tangent_parabolas",
+            auto_marks=2,
+        ),
     ),
 )
 

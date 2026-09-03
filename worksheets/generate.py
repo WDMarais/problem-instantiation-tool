@@ -56,6 +56,7 @@ from content.examples.circle_equation import circle_equation
 from content.examples.circle_from_graph import circle_from_graph
 from content.examples.circle_tangent import circle_tangent
 from content.examples.circumcentre import circumcentre
+from content.examples.common_tangent_parabolas import common_tangent_parabolas
 from content.examples.compound_periodic import (
     appreciation,
     compound_amount,
@@ -75,7 +76,9 @@ from content.examples.depreciation import (
     depreciation_to_zero,
 )
 from content.examples.derivative_first_principles import derivative_first_principles
+from content.examples.derivative_polynomial import derivative_polynomial
 from content.examples.derivative_rules import derivative_rules
+from content.examples.derivative_surd_product import derivative_surd_product
 from content.examples.discriminant_nature import discriminant_nature
 from content.examples.exponent_laws import (
     exponent_algebraic_simplify,
@@ -3122,6 +3125,57 @@ def template_derivative_rules(params: dict, detail: str = "full") -> ProblemCard
     )
 
 
+def template_derivative_polynomial(params: dict, detail: str = "full") -> ProblemCard:
+    der = params["derivative_latex"]
+    full = [rf"f'(x) = {der}"]
+    return ProblemCard(
+        instruction=r"Determine $\dfrac{d}{dx}\left[\,f(x)\,\right]$.",
+        display_math=rf"f(x) = {params['function_latex']}",
+        worked_steps=full,
+    )
+
+
+def template_derivative_surd_product(params: dict, detail: str = "full") -> ProblemCard:
+    full = [
+        rf"g(x) = {params['expanded_latex']}",
+        rf"g'(x) = {params['derivative_latex']}",
+    ]
+    return ProblemCard(
+        instruction=(
+            r"Determine $g'(x)$. Multiply out and write each term as a power of "
+            r"$x$ first."
+        ),
+        display_math=params["function_latex"],
+        worked_steps=full if detail == "full" else full[1:],
+    )
+
+
+def template_common_tangent_parabolas(
+    params: dict, detail: str = "full"
+) -> ProblemCard:
+    x_t, m, y_t = params["x_t"], params["m"], params["y_t"]
+    c0, a, b = params["c0"], params["a"], params["b"]
+    # g is presented with a, b as literal UNKNOWNS (only the constant is given) —
+    # the whole point of the ask is to solve for them, so never print the answers.
+    g_unknown = rf"g(x) = ax^{{2}} + bx {_signed(c0)}"
+    full = [
+        rf"f'(x) = {params['f_prime_latex']}",
+        rf"f'(x) = {m} \Rightarrow x = {x_t}",
+        rf"\text{{touch point: }}\ y = f({x_t}) = {y_t}",
+        rf"g'({x_t}) = 2a({x_t}) + b = {m}",
+        rf"g({x_t}) = a({x_t})^2 + b({x_t}) {_signed(c0)} = {y_t}",
+        rf"a = {a},\quad b = {b}",
+    ]
+    return ProblemCard(
+        instruction=(
+            r"The line below is a common tangent to $f$ and $g$ (it touches both "
+            r"at the same point). Calculate the values of $a$ and $b$."
+        ),
+        display_math=(rf"{params['line_latex']} \\ {params['f_latex']} \\ {g_unknown}"),
+        worked_steps=full if detail == "full" else full[2:],
+    )
+
+
 def template_tangent_line(params: dict, detail: str = "full") -> ProblemCard:
     a, b, c, d = params["a"], params["b"], params["c"], params["d"]
     x0, y0, grad = params["x0"], params["y0"], params["gradient"]
@@ -4484,6 +4538,18 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     derivative_rules.id: WorksheetEntry(
         problem=derivative_rules,
         template=template_derivative_rules,
+    ),
+    derivative_polynomial.id: WorksheetEntry(
+        problem=derivative_polynomial,
+        template=template_derivative_polynomial,
+    ),
+    derivative_surd_product.id: WorksheetEntry(
+        problem=derivative_surd_product,
+        template=template_derivative_surd_product,
+    ),
+    common_tangent_parabolas.id: WorksheetEntry(
+        problem=common_tangent_parabolas,
+        template=template_common_tangent_parabolas,
     ),
     tangent_line.id: WorksheetEntry(
         problem=tangent_line,

@@ -258,3 +258,23 @@ def test_shipped_q6_auto_manual_split():
     q6 = [rs for rs in built if rs.slot.number.startswith("6.")]
     assert sum(rs.auto_marks for rs in q6) == 6  # engine-graded (canonical)
     assert sum(rs.manual_marks for rs in q6) == 5  # hand-marked method lines
+
+
+def test_shipped_q8_is_four_independent_derivative_slots():
+    # unlike Q4-Q6, Q8 is NOT a compound: four separate functions, no shared stem
+    built = build_paper(_MJ2025_P1, seed=2)
+    q8 = {rs.slot.number: rs for rs in built if rs.slot.number.split(".")[0] == "8"}
+    assert set(q8) == {"8.1", "8.2.1", "8.2.2", "8.3"}
+    assert not any(rs.is_stem for rs in q8.values())  # no stem → not a compound
+    assert sum(rs.slot.marks for rs in q8.values()) == 17
+
+
+def test_shipped_q8_auto_manual_split():
+    built = build_paper(_MJ2025_P1, seed=2)
+    q8 = {rs.slot.number: rs for rs in built if rs.slot.number.split(".")[0] == "8"}
+    # the three differentiations grade their whole answer-value (fully auto)
+    for n in ("8.1", "8.2.1", "8.2.2"):
+        assert q8[n].manual_marks == 0
+        assert q8[n].auto_marks == q8[n].slot.marks
+    # 8.3 grades only the two answers a, b (2 of 6); the rest is hand-marked method
+    assert q8["8.3"].auto_marks == 2 and q8["8.3"].manual_marks == 4
