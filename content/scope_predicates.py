@@ -34,6 +34,7 @@ from content.examples.arithmetic_sequence import (
 from content.examples.circle_equation import circle_equation
 from content.examples.circle_tangent import circle_tangent
 from content.examples.circumcentre import circumcentre
+from content.examples.cubic_shared_analysis import cubic_shared_analysis
 from content.examples.cubic_stationary_points import cubic_stationary_points
 from content.examples.discriminant_nature import discriminant_nature
 from content.examples.exponential_equation import exponential_equation
@@ -929,6 +930,66 @@ def optimisation_solve_in_scope(instance: ProblemInstance) -> list[str]:
     return reasons
 
 
+def cubic_shared_analysis_in_scope(instance: ProblemInstance) -> list[str]:
+    """Presented: f(x) = (x − p)(x − k)² with a single root p and a repeated root k,
+    a concavity point q, and h = −2f′ on the interval between the turning points.
+    Re-deriving from the shown p, k, q alone, the compound is well-posed only when:
+
+    - p ≠ k and 3 | (k + 2p) with x₂ = (k + 2p)/3 ≠ k — f′ = 3(x − k)(x − x₂) then
+      has two distinct integer roots, so 9.2's 'two turning points' and 9.5's clean
+      interval (k ; x₂) both exist;
+    - f″(q) = 6q − 2(p + 2k) ≠ 0 — q misses the inflection, so 9.3's concavity has a
+      definite sign; and
+    - d = h − f has exactly one interior stationary point on (k ; x₂) that attains
+      the maximum gap there — so 9.5's 'maximum vertical distance' is a single
+      well-defined value.
+    """
+    p = instance.params
+    pp, kk, qq = p["p"], p["k"], p["q"]
+    reasons: list[str] = []
+
+    if pp == kk:
+        reasons.append(f"p = k = {kk}: no repeated-root cubic (roots coincide)")
+        return reasons
+    if (kk + 2 * pp) % 3 != 0:
+        reasons.append(
+            f"k + 2p = {kk + 2 * pp} not divisible by 3: the second stationary point "
+            f"x₂ = (k+2p)/3 is not an integer, so 9.2 has no clean turning point"
+        )
+        return reasons
+    x2 = (kk + 2 * pp) // 3
+    if x2 == kk:
+        reasons.append(
+            f"x₂ = {x2} = k: f′ has a repeated root, not the two distinct turning "
+            "points 9.2 presumes"
+        )
+        return reasons
+    if 6 * qq - 2 * (pp + 2 * kk) == 0:
+        reasons.append(
+            f"f''({qq}) = 0: q is the inflection point, 9.3's concavity has no sign"
+        )
+        return reasons
+
+    xs = sympy.Symbol("x")
+    f = (xs - pp) * (xs - kk) ** 2
+    d = sympy.expand(-2 * sympy.diff(f, xs) - f)
+    lo, hi = sorted((kk, x2))
+    crit = [r for r in sympy.solve(sympy.diff(d, xs), xs) if r.is_real and lo < r < hi]
+    if len(crit) != 1:
+        reasons.append(
+            f"d = h − f has {len(crit)} interior stationary points on ({lo};{hi}): "
+            "9.5's 'maximum vertical distance' is not a single well-defined value"
+        )
+        return reasons
+
+    if x2 != p["x2"]:
+        reasons.append(f"recovered x₂={x2} disagrees with stored {p['x2']}")
+    d_max = sympy.simplify(d.subs(xs, crit[0]))
+    if sympy.simplify(d_max - p["d_max"]) != 0:
+        reasons.append(f"recovered d_max={d_max} disagrees with stored {p['d_max']}")
+    return reasons
+
+
 # ── trigonometry family (ladder 9) ──────────────────────────────────────────────
 #
 # Eleven trig archetypes; three carry F1 surface. The special-angle evaluation is
@@ -1525,6 +1586,7 @@ PROBLEMS = {
     perpendicular_foot.id: perpendicular_foot,
     circumcentre.id: circumcentre,
     cubic_stationary_points.id: cubic_stationary_points,
+    cubic_shared_analysis.id: cubic_shared_analysis,
     motion_calculus.id: motion_calculus,
     optimisation_solve.id: optimisation_solve,
     trig_special_angles.id: trig_special_angles,
@@ -1565,6 +1627,7 @@ PREDICATES = {
     perpendicular_foot.id: perpendicular_foot_in_scope,
     circumcentre.id: circumcentre_in_scope,
     cubic_stationary_points.id: cubic_stationary_points_in_scope,
+    cubic_shared_analysis.id: cubic_shared_analysis_in_scope,
     motion_calculus.id: motion_calculus_in_scope,
     optimisation_solve.id: optimisation_solve_in_scope,
     trig_special_angles.id: trig_special_angles_in_scope,

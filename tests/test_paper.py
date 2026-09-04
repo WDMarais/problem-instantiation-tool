@@ -278,3 +278,19 @@ def test_shipped_q8_auto_manual_split():
         assert q8[n].auto_marks == q8[n].slot.marks
     # 8.3 grades only the two answers a, b (2 of 6); the rest is hand-marked method
     assert q8["8.3"].auto_marks == 2 and q8["8.3"].manual_marks == 4
+
+
+def test_shipped_q9_is_one_shared_cubic_across_subparts():
+    # a compound like Q4-Q6, but with NO stem diagram (9.4 asks the student to draw)
+    built = build_paper(_MJ2025_P1, seed=2)
+    q9 = {rs.slot.number: rs for rs in built if rs.slot.number.split(".")[0] == "9"}
+    assert set(q9) == {"9", "9.1", "9.2", "9.3", "9.4", "9.5"}
+    assert q9["9"].is_stem and not q9["9"].graph_svg  # shared stem, no diagram
+    assert sum(rs.slot.marks for rs in built if rs.slot.number.startswith("9.")) == 18
+
+
+def test_shipped_q9_auto_manual_split():
+    built = build_paper(_MJ2025_P1, seed=2)
+    q9 = [rs for rs in built if rs.slot.number.startswith("9.")]
+    assert sum(rs.auto_marks for rs in q9) == 6  # engine-graded (canonical)
+    assert sum(rs.manual_marks for rs in q9) == 12  # method lines + 9.4 sketch

@@ -731,6 +731,18 @@ _MJ2025_P1 = PaperSpec(
             problem_id="common_tangent_parabolas",
             auto_marks=2,
         ),
+        # Question 9 — cubic functions. A COMPOUND (shared-stem) slot: one cubic
+        # f = (x−p)(x−k)² with a repeated root drives five coupled sub-parts (find k,
+        # the turning points, the concavity at a point, the sketch, the maximum gap
+        # to h = −2f′). No stem diagram — 9.4 asks the student to draw it. The 18
+        # headline marks split 6 engine-graded (k; x₂, y₂; concavity tag; d_max=2) +
+        # 12 hand-marked (every method line, plus 9.4's sketch in full).
+        PaperSlot(
+            "9",
+            18,
+            "cubic with a repeated root — k, turning points, concavity, max gap",
+            problem_id="cubic_shared_analysis",
+        ),
     ),
 )
 

@@ -69,6 +69,7 @@ from content.examples.counting_arrangements import (
     counting_not_together,
     counting_together,
 )
+from content.examples.cubic_shared_analysis import cubic_shared_analysis
 from content.examples.cubic_stationary_points import cubic_stationary_points
 from content.examples.depreciation import (
     depreciation_amount,
@@ -3945,6 +3946,105 @@ def template_exponential_inverse(params: dict, detail: str = "full") -> ProblemC
     )
 
 
+def template_cubic_shared_analysis(params: dict, detail: str = "full") -> ProblemCard:
+    """Compound (shared-stem) card for the NSC Q9 cubic. The stem states the cubic
+    in expanded and factored ``(x − p)(x − k)²`` form with ``k`` unknown; no diagram
+    (9.4 asks the student to draw it). Five sub-parts: find k (9.1), the turning
+    points (9.2), the concavity at a point (9.3), the sketch (9.4, hand-drawn) and
+    the maximum vertical gap to h = −2f′ (9.5). Engine-graded auto 1+2+1+0+2 = the
+    canonical 6; every method line and the sketch are hand-marked."""
+    xs = sympy.Symbol("x")
+    p, k, q = params["p"], params["k"], params["q"]
+    x2, y2 = params["x2"], params["y2"]
+    lo, hi = params["lo"], params["hi"]
+    fe = sympy.latex(params["f_expanded"])
+    fp = sympy.latex(params["f_prime"])
+    fpp = sympy.latex(params["f_double"])
+    b2 = int(params["f_expanded"].coeff(xs, 2))  # x²-coefficient = −(p + 2k)
+    conc_words = params["concavity_q"].replace("_", " ")
+    conc_sign = "<" if params["f_double_q"] < 0 else ">"
+
+    h_tex = sympy.latex(params["h"])
+    d_tex = sympy.latex(params["d"])
+    dp_tex = sympy.latex(sympy.diff(params["d"], xs))
+    xstar_tex = sympy.latex(params["x_star"])
+    dmax_tex = sympy.latex(params["d_max"])
+    dmax_approx = _numtex(round(float(params["d_max"]), 2))
+
+    subparts = [
+        SubPart(
+            "1",
+            rf"Show that $k = {k}$.",
+            2,
+            [
+                rf"x^2\text{{-coefficient}}:\ {p} + 2k = {-b2}",
+                rf"\Rightarrow\ 2k = {-b2 - p}\ \Rightarrow\ k = {k}",
+            ],
+            auto_marks=1,
+        ),
+        SubPart(
+            "2",
+            "Calculate the coordinates of the turning points of $f$.",
+            4,
+            [
+                rf"f'(x) = {fp} = 3(x {_signed(-k)})(x {_signed(-x2)})",
+                rf"f'(x) = 0\ \Rightarrow\ x = {k}\ \text{{or}}\ x = {x2}",
+                rf"f({k}) = 0,\quad f({x2}) = {y2}",
+                rf"\text{{turning points: }} ({k};\ 0)\ \text{{and}}\ ({x2};\ {y2})",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "3",
+            rf"Describe the concavity of $f$ at $x = {q}$.",
+            2,
+            [
+                rf"f''(x) = {fpp}",
+                rf"f''({q}) = {params['f_double_q']} {conc_sign} 0"
+                rf"\ \Rightarrow\ \text{{{conc_words}}}",
+            ],
+            auto_marks=1,
+        ),
+        SubPart(
+            "4",
+            "Draw the graph of $f$. Label ALL turning points and intercepts "
+            "with the axes.",
+            4,
+            [
+                rf"x\text{{-intercepts: }} x = {p}\ (\text{{single}}),\ "
+                rf"x = {k}\ (\text{{double — touches the axis}})",
+                rf"y\text{{-intercept: }} f(0) = {params['y_intercept']}",
+                rf"\text{{turning points: }} ({k};\ 0),\ ({x2};\ {y2})",
+            ],
+            auto_marks=0,
+        ),
+        SubPart(
+            "5",
+            rf"Calculate the maximum vertical distance between $f$ and $h$ for "
+            rf"${lo} < x < {hi}$, if $h(x) = -2f'(x)$.",
+            6,
+            [
+                rf"h(x) = -2f'(x) = {h_tex}",
+                rf"d(x) = h(x) - f(x) = {d_tex}",
+                rf"d'(x) = {dp_tex} = 0\ \Rightarrow\ x = {xstar_tex}"
+                rf"\in ({lo};\ {hi})",
+                rf"d({xstar_tex}) = {dmax_tex} \approx {dmax_approx}",
+            ],
+            auto_marks=2,
+        ),
+    ]
+    if detail != "full":
+        for sp in subparts:
+            sp.memo_steps = sp.memo_steps[-1:]
+
+    return ProblemCard(
+        instruction=("Given the cubic below, with $k$ a constant to be determined:"),
+        display_math=rf"f(x) = {fe} = (x {_signed(-p)})(x - k)^2",
+        worked_steps=[],
+        subparts=subparts,
+    )
+
+
 def template_exponential_from_graph(params: dict, detail: str = "full") -> ProblemCard:
     a, b, q = params["a"], params["b"], params["q"]
     y0, y1 = params["y_intercept"], params["point_y"]
@@ -4550,6 +4650,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     common_tangent_parabolas.id: WorksheetEntry(
         problem=common_tangent_parabolas,
         template=template_common_tangent_parabolas,
+    ),
+    cubic_shared_analysis.id: WorksheetEntry(
+        problem=cubic_shared_analysis,
+        template=template_cubic_shared_analysis,
     ),
     tangent_line.id: WorksheetEntry(
         problem=tangent_line,
