@@ -163,6 +163,7 @@ from content.examples.parallelogram_angles import (
     parallelogram_opposite,
 )
 from content.examples.perpendicular_foot import perpendicular_foot
+from content.examples.premium_increase_analysis import premium_increase_analysis
 from content.examples.present_value_annuity import (
     pv_annuity_amount,
     pv_annuity_n,
@@ -2906,6 +2907,93 @@ def template_mean_stddev(params: dict, detail: str = "full") -> ProblemCard:
     )
 
 
+def template_premium_increase_analysis(
+    params: dict, detail: str = "full"
+) -> ProblemCard:
+    """Compound (shared-stem) card for the P2 Q1 premium dataset. The stem lists the 15
+    premiums; four sub-parts: the mean (1.1), the standard deviation (1.2), the count
+    within one σ (1.3) and a weighted-increase inverse for k (1.4). No diagram.
+    Engine-graded auto 1+1+1+1 = the canonical 4; the method lines are hand-marked."""
+    data, n = params["data"], params["n"]
+    mean_dec = round(float(params["mean"]), 2)
+    sigma = round(float(params["stddev"]), 2)
+    within = params["within_1sd"]
+    lo = round(mean_dec - sigma, 2)
+    hi = round(mean_dec + sigma, 2)
+    thr = params["threshold"]
+    p, k = params["low_pct"], params["k"]
+    low_c, high_c = params["low_count"], params["high_count"]
+    low_s, high_s = params["low_sum"], params["high_sum"]
+    low_inc = params["low_increased"]
+    new_mean = params["new_mean_presented"]
+
+    subparts = [
+        SubPart(
+            "1",
+            "Calculate the mean of the data.",
+            2,
+            [
+                rf"\bar{{x}} = \frac{{\sum x}}{{n}} = \frac{{{sum(data)}}}{{{n}}} "
+                rf"= {_numtex(mean_dec)}",
+            ],
+            auto_marks=1,
+        ),
+        SubPart(
+            "2",
+            "Write down the standard deviation of the data.",
+            1,
+            [
+                r"\sigma = \sqrt{\frac{\sum (x - \bar{x})^2}{n}} \approx "
+                + _numtex(sigma),
+            ],
+            auto_marks=1,
+        ),
+        SubPart(
+            "3",
+            "Calculate how many of the premiums are within ONE standard deviation "
+            "of the mean.",
+            2,
+            [
+                rf"(\bar{{x}} - \sigma;\ \bar{{x}} + \sigma) "
+                rf"= ({_numtex(lo)};\ {_numtex(hi)})",
+                rf"\text{{premiums in this interval}} = {within}",
+            ],
+            auto_marks=1,
+        ),
+        SubPart(
+            "4",
+            (
+                f"The company increased the premiums: those below R{thr} by {p}%, and "
+                f"those equal to or above R{thr} by $k$%. The new mean premium was "
+                f"R{_num(new_mean)}. Calculate the value of $k$."
+            ),
+            4,
+            [
+                rf"\text{{below R{thr} ({low_c} values): }} {low_s}\times "
+                rf"(1 + \tfrac{{{p}}}{{100}}) = {_numtex(low_inc)}",
+                rf"\text{{at/above R{thr} ({high_c} values): sum }} = {high_s}",
+                rf"\frac{{{_numtex(low_inc)} + {high_s}\left(1 + "
+                rf"\tfrac{{k}}{{100}}\right)}}{{{n}}} = {_numtex(new_mean)}",
+                rf"\Rightarrow\ k = {k}",
+            ],
+            auto_marks=1,
+        ),
+    ]
+    if detail != "full":
+        for sp in subparts:
+            sp.memo_steps = sp.memo_steps[-1:]
+
+    return ProblemCard(
+        instruction=(
+            "An insurance broker signed contracts with 15 people. The monthly premium "
+            "(in rands) payable on each contract is given below."
+        ),
+        display_math=_dataset_latex(data, per_row=8),
+        worked_steps=[],
+        subparts=subparts,
+    )
+
+
 def template_stats_one_var(params: dict, detail: str = "full") -> ProblemCard:
     n = params["n"]
     mode = sympy.latex(params["mode"])
@@ -4741,6 +4829,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     mean_stddev.id: WorksheetEntry(
         problem=mean_stddev,
         template=template_mean_stddev,
+    ),
+    premium_increase_analysis.id: WorksheetEntry(
+        problem=premium_increase_analysis,
+        template=template_premium_increase_analysis,
     ),
     stats_one_var.id: WorksheetEntry(
         problem=stats_one_var,

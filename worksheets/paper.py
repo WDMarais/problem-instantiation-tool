@@ -772,8 +772,30 @@ _MJ2025_P1 = PaperSpec(
     ),
 )
 
+# Paper 2 — statistics, analytical geometry, trigonometry, Euclidean geometry.
+# Being wired render-free-first: the statistics/trig questions land now; the
+# analytical-geometry (cartesian renderer) and Euclidean-geometry (figure IS the
+# problem — a true render gate) questions follow as those surfaces are built.
+_MJ2025_P2 = PaperSpec(
+    title="Mathematics P2 — Practice",
+    source="2025 May/June P2",
+    slots=(
+        # Question 1 — statistics. A COMPOUND (shared-stem) slot: one dataset of 15
+        # monthly premiums drives all four sub-parts (mean, standard deviation, the
+        # count within one σ, and a weighted-increase inverse for k). No diagram. The
+        # 9 headline marks split 4 engine-graded (x̄; σ; the count; k) + 5 hand-marked.
+        PaperSlot(
+            "1",
+            9,
+            "premium data — mean, standard deviation, within-one-σ count, weighted k%",
+            problem_id="premium_increase_analysis",
+        ),
+    ),
+)
+
 PAPERS: dict[str, PaperSpec] = {
     "2025_mj_p1": _MJ2025_P1,
+    "2025_mj_p2": _MJ2025_P2,
 }
 
 
