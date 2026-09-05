@@ -743,6 +743,38 @@ _MJ2025_P1 = PaperSpec(
             "cubic with a repeated root — k, turning points, concavity, max gap",
             problem_id="cubic_shared_analysis",
         ),
+        # Question 10 — probability. Two INDEPENDENT sub-parts (different contexts,
+        # no shared stem) → two ordinary slots grouped under Q10 by the leading
+        # number: 10.1 the mutually-exclusive addition rule (single answer, fully
+        # engine-graded), 10.2 a fun-park game (win probability × profit target →
+        # max payout per winner). 10.2 grades two checkpoints — P(win) and the final
+        # payout (2 of its 6 marks) — the revenue/pool/expected-winner method lines
+        # are hand-marked (auto_marks=2).
+        PaperSlot(
+            "10.1",
+            2,
+            "mutually exclusive events — find P(B) from the addition rule",
+            problem_id="prob_mutually_exclusive",
+        ),
+        PaperSlot(
+            "10.2",
+            6,
+            "fun-park game — max payout per winner (win probability × profit target)",
+            problem_id="game_expected_payout",
+            auto_marks=2,
+        ),
+        # Question 11 — counting & probability. A COMPOUND (shared-stem) slot: one
+        # range of three-digit numbers drives both sub-parts (11.1 count those with
+        # exactly one given digit; 11.2 the complement probability, which reuses the
+        # 11.1 count). No diagram. The 7 headline marks split 2 engine-graded (the
+        # count; the probability) + 5 hand-marked (the casework and the complement
+        # setup).
+        PaperSlot(
+            "11",
+            7,
+            "three-digit numbers with exactly one given digit — count and complement",
+            problem_id="digit_count_exactly_one",
+        ),
     ),
 )
 

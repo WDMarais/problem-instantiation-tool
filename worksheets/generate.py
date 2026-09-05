@@ -80,6 +80,7 @@ from content.examples.derivative_first_principles import derivative_first_princi
 from content.examples.derivative_polynomial import derivative_polynomial
 from content.examples.derivative_rules import derivative_rules
 from content.examples.derivative_surd_product import derivative_surd_product
+from content.examples.digit_count_exactly_one import digit_count_exactly_one
 from content.examples.discriminant_nature import discriminant_nature
 from content.examples.exponent_laws import (
     exponent_algebraic_simplify,
@@ -105,6 +106,7 @@ from content.examples.future_value_annuity import (
     fv_annuity_deposit,
     fv_annuity_n,
 )
+from content.examples.game_expected_payout import game_expected_payout
 from content.examples.geometric_sequence import (
     find_missing as geo_find_missing,
 )
@@ -166,6 +168,7 @@ from content.examples.present_value_annuity import (
     pv_annuity_payment,
     pv_annuity_total_interest,
 )
+from content.examples.prob_mutually_exclusive import prob_mutually_exclusive
 from content.examples.probability_venn import (
     prob_count_intersection,
     prob_venn_intersection,
@@ -2710,6 +2713,120 @@ def template_tree_draw_one_each(params: dict, detail: str = "full") -> ProblemCa
     )
 
 
+def template_prob_mutually_exclusive(params: dict, detail: str = "full") -> ProblemCard:
+    p_a, p_aub, ans = params["p_a"], params["p_aub"], params["answer"]
+    full = [
+        r"\text{mutually exclusive: } P(A \text{ or } B) = P(A) + P(B)",
+        rf"P(B) = P(A \text{{ or }} B) - P(A) = {_numtex(float(p_aub))} "
+        rf"- {_numtex(float(p_a))}",
+        rf"= {_numtex(float(ans))}",
+    ]
+    return ProblemCard(
+        instruction=(
+            "$A$ and $B$ are mutually exclusive events. Given "
+            f"$P(A) = {_numtex(float(p_a))}$ and "
+            f"$P(A \\text{{ or }} B) = {_numtex(float(p_aub))}$, calculate $P(B)$."
+        ),
+        display_math=(
+            rf"P(A) = {_numtex(float(p_a))},\quad "
+            rf"P(A \text{{ or }} B) = {_numtex(float(p_aub))}"
+        ),
+        worked_steps=full if detail == "full" else full[-1:],
+    )
+
+
+def template_game_expected_payout(params: dict, detail: str = "full") -> ProblemCard:
+    players, price, profit = params["players"], params["price"], params["profit"]
+    p_win, pool = params["p_win"], params["payout_pool"]
+    winners, revenue = params["expected_winners"], params["revenue"]
+    max_payout = params["max_payout"]
+    keep_pct = 100 - int(profit * 100)  # % of revenue that forms the payout pool
+    full = [
+        rf"P(\text{{odd}}) = \tfrac{{{params['odd_faces']}}}{{{params['die_sides']}}}"
+        rf" = \tfrac12,\quad P(\text{{picture}}) = "
+        rf"\tfrac{{{params['picture']}}}{{{params['deck']}}} = \tfrac{{4}}{{13}}",
+        rf"P(\text{{win}}) = \tfrac12 \times \tfrac{{4}}{{13}} = "
+        rf"{sympy.latex(p_win)}",
+        rf"\text{{revenue}} = {players} \times {_zar(float(price), 0)} = "
+        rf"{_zar(float(revenue), 0)}",
+        rf"\text{{payout pool}} = {keep_pct}\% \times {_zar(float(revenue), 0)} = "
+        rf"{_zar(float(pool))}",
+        rf"\text{{expected winners}} = {players} \times {sympy.latex(p_win)} = "
+        rf"{winners}",
+        rf"\text{{max payout}} = \dfrac{{{_zar(float(pool))}}}{{{winners}}} = "
+        rf"{_zar(float(max_payout))}",
+    ]
+    return ProblemCard(
+        instruction=(
+            "A fun-park game: a player rolls a fair six-sided die and draws one card "
+            "from a standard deck of 52 (with 16 picture cards). A player WINS on an "
+            "odd number AND a picture card. Each of the "
+            f"{players} players pays {_rand(float(price), 0)} to play one game in the "
+            f"hour. If the owner wants a {int(profit * 100)}% profit on the hour's "
+            "takings, calculate the maximum amount payable to each winner."
+        ),
+        display_math=(
+            rf"\text{{win: odd roll AND picture card}};\quad "
+            rf"{players}\ \text{{players}} \times {_zar(float(price), 0)}"
+        ),
+        worked_steps=full if detail == "full" else full[-3:],
+    )
+
+
+def template_digit_count_exactly_one(params: dict, detail: str = "full") -> ProblemCard:
+    """Compound (shared-stem) card for the NSC Q11. One range of three-digit numbers
+    carries both sub-parts: count those with exactly one digit ``t`` (11.1, casework),
+    then the complement probability (11.2). No diagram. Engine-graded auto 1 + 1 = the
+    canonical 2; the casework lines and the total/complement setup are hand-marked."""
+    t, start, end = params["t"], params["start"], params["end"]
+    total, count, prob = params["total"], params["answer_11_1"], params["answer_11_2"]
+    nine_minus = 9 - t
+
+    subparts = [
+        SubPart(
+            "1",
+            f"How many of these numbers have EXACTLY one digit equal to ${t}$?",
+            4,
+            [
+                rf"\text{{hundreds }} H \in \{{{t}, \dots, 9\}};\ "
+                rf"\text{{count over }} [{100 * t}; 999],\ "
+                rf"\text{{then drop }} {100 * t}",
+                rf"H = {t},\ T \neq {t},\ U \neq {t}:\ 1 \times 9 \times 9 = 81",
+                rf"H \neq {t},\ T = {t},\ U \neq {t}:\ {nine_minus}\times 1\times 9 = "
+                rf"{9 * nine_minus}",
+                rf"H \neq {t},\ T \neq {t},\ U = {t}:\ {nine_minus}\times 9\times 1 = "
+                rf"{9 * nine_minus}",
+                rf"81 + 2\times {9 * nine_minus} = {count + 1};\ "
+                rf"\text{{drop }} {100 * t}\ (\text{{one }} {t}):\ = {count}",
+            ],
+            auto_marks=1,
+        ),
+        SubPart(
+            "2",
+            "Calculate the probability that a number chosen from this range does "
+            "NOT satisfy the condition in 11.1.",
+            3,
+            [
+                rf"\text{{numbers from }} {start} \text{{ to }} {end}:\ "
+                rf"{end} - {start} + 1 = {total}",
+                rf"P(\text{{not}}) = \frac{{{total} - {count}}}{{{total}}} = "
+                rf"{sympy.latex(prob)} \approx {_numtex(round(float(prob), 2))}",
+            ],
+            auto_marks=1,
+        ),
+    ]
+    if detail != "full":
+        for sp in subparts:
+            sp.memo_steps = sp.memo_steps[-1:]
+
+    return ProblemCard(
+        instruction=f"Consider the three-digit numbers from ${start}$ up to ${end}$.",
+        display_math=rf"\{{{start},\ {start + 1},\ \dots,\ {end}\}}",
+        worked_steps=[],
+        subparts=subparts,
+    )
+
+
 # ── statistics (ladder 6) ───────────────────────────────────────────────────────
 
 
@@ -4575,6 +4692,18 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     tree_draw_one_each.id: WorksheetEntry(
         problem=tree_draw_one_each,
         template=template_tree_draw_one_each,
+    ),
+    prob_mutually_exclusive.id: WorksheetEntry(
+        problem=prob_mutually_exclusive,
+        template=template_prob_mutually_exclusive,
+    ),
+    game_expected_payout.id: WorksheetEntry(
+        problem=game_expected_payout,
+        template=template_game_expected_payout,
+    ),
+    digit_count_exactly_one.id: WorksheetEntry(
+        problem=digit_count_exactly_one,
+        template=template_digit_count_exactly_one,
     ),
     # ── statistics family (ladder 6) ──
     grouped_mean_solve.id: WorksheetEntry(

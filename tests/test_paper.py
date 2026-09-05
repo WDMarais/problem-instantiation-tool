@@ -294,3 +294,38 @@ def test_shipped_q9_auto_manual_split():
     q9 = [rs for rs in built if rs.slot.number.startswith("9.")]
     assert sum(rs.auto_marks for rs in q9) == 6  # engine-graded (canonical)
     assert sum(rs.manual_marks for rs in q9) == 12  # method lines + 9.4 sketch
+
+
+def test_shipped_q10_is_two_independent_probability_slots():
+    # like Q8, Q10 is NOT a compound: two separate contexts, no shared stem
+    built = build_paper(_MJ2025_P1, seed=2)
+    q10 = {rs.slot.number: rs for rs in built if rs.slot.number.split(".")[0] == "10"}
+    assert set(q10) == {"10.1", "10.2"}
+    assert not any(rs.is_stem for rs in q10.values())  # no stem → not a compound
+    assert sum(rs.slot.marks for rs in q10.values()) == 8
+
+
+def test_shipped_q10_auto_manual_split():
+    built = build_paper(_MJ2025_P1, seed=2)
+    q10 = {rs.slot.number: rs for rs in built if rs.slot.number.split(".")[0] == "10"}
+    # 10.1's single answer is graded whole (fully auto)
+    assert q10["10.1"].manual_marks == 0
+    assert q10["10.1"].auto_marks == q10["10.1"].slot.marks
+    # 10.2 grades P(win) + the final payout (2 of 6); the money method is hand-marked
+    assert q10["10.2"].auto_marks == 2 and q10["10.2"].manual_marks == 4
+
+
+def test_shipped_q11_is_one_shared_count_compound():
+    # a compound (shared range across 11.1/11.2), with NO diagram
+    built = build_paper(_MJ2025_P1, seed=2)
+    q11 = {rs.slot.number: rs for rs in built if rs.slot.number.split(".")[0] == "11"}
+    assert set(q11) == {"11", "11.1", "11.2"}
+    assert q11["11"].is_stem and not q11["11"].graph_svg  # shared stem, no diagram
+    assert sum(rs.slot.marks for rs in q11.values() if rs.slot.number != "11") == 7
+
+
+def test_shipped_q11_auto_manual_split():
+    built = build_paper(_MJ2025_P1, seed=2)
+    q11 = [rs for rs in built if rs.slot.number.startswith("11.")]
+    assert sum(rs.auto_marks for rs in q11) == 2  # count + probability (canonical)
+    assert sum(rs.manual_marks for rs in q11) == 5  # casework + complement setup
