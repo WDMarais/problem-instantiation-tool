@@ -328,16 +328,18 @@ body.tabbed .qsection.active { display: block; }
 
 .memo h2 { font-size: 13pt; border-bottom: 2px solid #1a1a1a; padding-bottom: 3px;
            margin-bottom: 4mm; }
-.memo-row { position: relative; padding: 1.5mm 22mm 1.5mm 17mm;
+.memo-row { position: relative; padding: 1.5mm 34mm 1.5mm 17mm;
             border-bottom: 1px solid #eee; }
 .memo-num { position: absolute; left: 0; top: 1.5mm; font-weight: bold;
             font-size: 10pt; }
 .memo-steps { font-size: 10pt; line-height: 1.5; }
-.memo-steps > div { margin: .5mm 0; }
+/* a step wider than its column (e.g. a long \\text{} that math won't wrap) scrolls
+   inside its own box rather than bleeding right under the marks/badges gutter */
+.memo-steps > div { margin: .5mm 0; overflow-x: auto; }
 .memo-meta { position: absolute; right: 0; top: 1.5mm; white-space: nowrap; }
 .memo-marks { font-weight: bold; font-size: 9.5pt; }
 .memo-badge { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .5px;
-              padding: 1px 5px; border-radius: 3px; margin-left: 3mm; }
+              padding: 1px 4px; border-radius: 3px; margin-left: 2mm; }
 .memo-badge.auto { background: #dcfce7; color: #166534; }
 .memo-badge.manual { background: #e0e7ff; color: #3730a3; }
 .memo-badge.static { background: #fef3c7; color: #92400e; }
@@ -801,6 +803,18 @@ _MJ2025_P2 = PaperSpec(
             10,
             "regression — scatter, least-squares line, correlation, predict, reason",
             problem_id="regression_line",
+        ),
+        # Question 5.1 — trigonometry: special ratios. A COMPOUND (shared-stem) slot:
+        # one given ratio (cos θ) plus the quadrant drives three sub-parts (sin²θ, a
+        # reduction-formula ratio, a compound-angle value). No diagram. The 9 headline
+        # marks split 3 engine-graded (the final value of each) + 6 hand-marked (the
+        # Pythagoras/quadrant/expansion method). Q5.2 (identity simplify) and Q5.3
+        # (special tan-product) are a fixed-answer shape, deferred to a later slot.
+        PaperSlot(
+            "5.1",
+            9,
+            "special ratios — sin²θ, a reduction ratio, a compound-angle value",
+            problem_id="trig_given_ratio",
         ),
     ),
 )

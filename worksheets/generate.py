@@ -240,6 +240,7 @@ from content.examples.trig import (
     trig_equation,
     trig_special_angles,
 )
+from content.examples.trig_given_ratio import trig_given_ratio
 from content.examples.trig_graph_properties import (
     trig_graph_amplitude,
     trig_graph_decreasing,
@@ -3109,8 +3110,8 @@ def template_regression_line(params: dict, detail: str = "full") -> ProblemCard:
             "in this context.",
             1,
             [
-                rf"\text{{the intercept }} {a} \text{{ predicts }} {a} "
-                rf"\text{{ minutes to prepare }} 0 \text{{ items — not meaningful}}"
+                rf"\text{{at }} x=0:\ \hat{{y}} = {a}\ \text{{min for }} 0 "
+                rf"\text{{ items — not meaningful}}"
             ],
             auto_marks=0,
         ),
@@ -3126,6 +3127,68 @@ def template_regression_line(params: dict, detail: str = "full") -> ProblemCard:
             r"prepare it for delivery. The data are shown below."
         ),
         display_math=params["table_latex"],
+        worked_steps=[],
+        subparts=subparts,
+    )
+
+
+def template_trig_given_ratio(params: dict, detail: str = "full") -> ProblemCard:
+    """Compound (shared-stem) card for P2 Q5.1. One given ratio (cos θ) plus the
+    quadrant drives three sub-parts: sin²θ (5.1.1), a reduction-formula ratio (5.1.2)
+    and a compound-angle value (5.1.3). Engine-graded auto 1+1+1 = the canonical 3
+    (the final value of each); the Pythagoras/quadrant/expansion lines are hand-marked.
+    No diagram."""
+    adj, opp, hyp = params["adj"], params["opp"], params["hyp"]
+    q = params["quadrant"]
+    cos_l = sympy.latex(params["cos_t"])
+    sin_l = sympy.latex(params["sin_t"])
+    sin2_l = sympy.latex(params["answer_sin2"])
+    red_l = params["reduction_latex"]
+    red_mid = params["reduction_mid_latex"]
+    red_v = sympy.latex(params["answer_reduction"])
+    comp_l = params["compound_latex"]
+    comp_ex = params["compound_expand_latex"]
+    comp_v = sympy.latex(params["answer_compound"])
+
+    subparts = [
+        SubPart(
+            "1",
+            r"Determine, without using a calculator, the value of $\sin^2\theta$.",
+            3,
+            [
+                rf"y^2 = {hyp}^2 - {adj}^2 = {opp**2}\ \Rightarrow\ "
+                rf"\sin\theta = {sin_l}\ (\text{{quadrant }} {q})",
+                rf"\sin^2\theta = {sin2_l}",
+            ],
+            auto_marks=1,
+        ),
+        SubPart(
+            "2",
+            rf"Determine the value of ${red_l}$.",
+            2,
+            [rf"{red_l} = {red_mid} = {red_v}"],
+            auto_marks=1,
+        ),
+        SubPart(
+            "3",
+            rf"Determine the value of ${comp_l}$.",
+            4,
+            [
+                rf"{comp_l} = {comp_ex}",
+                rf"= {comp_v}",
+            ],
+            auto_marks=1,
+        ),
+    ]
+    if detail != "full":
+        for sp in subparts:
+            sp.memo_steps = sp.memo_steps[-1:]
+
+    return ProblemCard(
+        instruction=(
+            rf"Given: $\cos\theta = {cos_l}$ where ${params['range_latex']}$."
+        ),
+        display_math="",
         worked_steps=[],
         subparts=subparts,
     )
@@ -4900,6 +4963,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     regression_line.id: WorksheetEntry(
         problem=regression_line,
         template=template_regression_line,
+    ),
+    trig_given_ratio.id: WorksheetEntry(
+        problem=trig_given_ratio,
+        template=template_trig_given_ratio,
     ),
     # ── analytic geometry family (ladder 7) ──
     analytic_geometry_triangle.id: WorksheetEntry(
