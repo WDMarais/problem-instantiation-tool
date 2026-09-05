@@ -86,6 +86,7 @@ from content.examples.exponent_laws import (
     exponent_algebraic_simplify,
     exponent_variable_simplify,
 )
+from content.examples.exponent_simplify_constant import exponent_simplify_constant
 from content.examples.exponential_common_base import exponential_common_base
 from content.examples.exponential_equation import exponential_equation
 from content.examples.exponential_from_graph import exponential_from_graph
@@ -3604,6 +3605,29 @@ def template_exponential_common_base(params: dict, detail: str = "full") -> Prob
     )
 
 
+def template_exponent_simplify_constant(
+    params: dict, detail: str = "full"
+) -> ProblemCard:
+    a, m, k = params["a"], params["m"], params["k"]
+    ans = params["answer"]
+    expr = rf"\dfrac{{{a}^{{x+{m}}} - {a}^{{x}}}}{{{a}^{{x+{k}}}}}"
+    steps = [
+        # 1. factor the shared power out of the numerator (the by-hand method line)
+        rf"{expr} = \dfrac{{{a}^{{x}}\left({a}^{{{m}}} - 1\right)}}"
+        rf"{{{a}^{{x}}\cdot {a}^{{{k}}}}}",
+        # 2. cancel aˣ and evaluate the constant
+        rf"= \dfrac{{{a**m} - 1}}{{{a**k}}} = {sympy.latex(ans)}",
+    ]
+    return ProblemCard(
+        instruction=(
+            "Simplify to a single rational number, without using a calculator "
+            r"(the answer is independent of the integer $x$):"
+        ),
+        display_math=expr,
+        worked_steps=steps if detail == "full" else steps[-1:],
+    )
+
+
 def template_quadratic_formula(params: dict, detail: str = "full") -> ProblemCard:
     a, b = params["a"], params["b"]
     disc = params["discriminant"]
@@ -4599,6 +4623,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     exponent_algebraic_simplify.id: WorksheetEntry(
         problem=exponent_algebraic_simplify,
         template=template_exponent_algebraic_simplify,
+    ),
+    exponent_simplify_constant.id: WorksheetEntry(
+        problem=exponent_simplify_constant,
+        template=template_exponent_simplify_constant,
     ),
     exponential_common_base.id: WorksheetEntry(
         problem=exponential_common_base,

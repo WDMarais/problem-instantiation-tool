@@ -572,23 +572,17 @@ _MJ2025_P1 = PaperSpec(
             problem_id="nonlinear_simultaneous",
             auto_marks=4,
         ),
+        # 1.3 was a STATIC proof (the same 8/3 identity every seed) — the one frozen
+        # slot in the paper. Now generated: the source's "prove = 8/3" is posed as a
+        # gradable "simplify to a constant" over a varying base and exponent offsets
+        # (a proof's target value is given, so nothing is left to grade). auto_marks =
+        # the simplified value (2); the factor-and-cancel set-up line is hand-marked.
         PaperSlot(
             "1.3",
             3,
-            "exponent-algebra proof (resistant)",
-            static=StaticContent(
-                instruction=(
-                    "Prove, without using a calculator, that "
-                    r"$\dfrac{3^{x+2} - 3^{x}}{3^{x+1}} = \dfrac{8}{3}$ "
-                    "for every integer $x$."
-                ),
-                memo_steps=(
-                    r"\dfrac{3^{x+2} - 3^{x}}{3^{x+1}} "
-                    r"= \dfrac{3^{x}\left(3^{2} - 1\right)}{3^{x}\cdot 3}",
-                    r"= \dfrac{9 - 1}{3}",
-                    r"= \dfrac{8}{3}",
-                ),
-            ),
+            "exponent-algebra — simplify a same-base ratio to a constant",
+            problem_id="exponent_simplify_constant",
+            auto_marks=2,
         ),
         # Question 2 — sequences & series (arithmetic 2.1, geometric 2.2)
         PaperSlot(

@@ -296,6 +296,25 @@ def test_shipped_q9_auto_manual_split():
     assert sum(rs.manual_marks for rs in q9) == 12  # method lines + 9.4 sketch
 
 
+def test_shipped_q13_is_generated_and_varies():
+    # 1.3 was the paper's one static slot; it is now a generated simplify that
+    # re-rolls per seed (auto=2 value + 1 hand-marked set-up line, no static block)
+    exprs = set()
+    for seed in (0, 1, 7, 13):
+        rs = next(
+            r for r in build_paper(_MJ2025_P1, seed=seed) if r.slot.number == "1.3"
+        )
+        assert rs.generated and rs.slot.static is None
+        assert rs.auto_marks == 2 and rs.manual_marks == 1
+        exprs.add(rs.display_math)
+    assert len(exprs) > 1  # genuinely varies across seeds
+
+
+def test_no_static_slots_remain():
+    # the whole paper now re-rolls per seed — no frozen questions
+    assert all(rs.slot.static is None for rs in build_paper(_MJ2025_P1, seed=0))
+
+
 def test_shipped_q10_is_two_independent_probability_slots():
     # like Q8, Q10 is NOT a compound: two separate contexts, no shared stem
     built = build_paper(_MJ2025_P1, seed=2)
