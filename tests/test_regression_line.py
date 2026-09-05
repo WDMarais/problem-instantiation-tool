@@ -145,3 +145,21 @@ def test_x_on_y_gradient_confusion_misses_the_gradient_mark():
         if res.marks_awarded < 4:
             caught += 1
     assert caught == 60
+
+
+# --- P2 Q2 compound template -------------------------------------------------
+
+
+def test_template_is_shared_stem_compound():
+    from worksheets.generate import PROBLEMS, template_regression_line
+
+    p = _params(1)
+    for detail in ("full", "short"):
+        card = template_regression_line(p, detail=detail)
+        assert len(card.subparts) == 5  # scatter, line, r, predict, reason
+        assert sum(sp.marks for sp in card.subparts) == 10  # NSC headline
+        assert sum(sp.auto_marks for sp in card.subparts) == 4  # canonical total
+        assert card.display_math  # the data table lives on the stem
+        assert not card.worked_steps  # a compound stem carries no worked steps
+        assert all(sp.memo_steps for sp in card.subparts)
+    assert regression_line.id in PROBLEMS

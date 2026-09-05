@@ -790,6 +790,18 @@ _MJ2025_P2 = PaperSpec(
             "premium data — mean, standard deviation, within-one-σ count, weighted k%",
             problem_id="premium_increase_analysis",
         ),
+        # Question 2 — statistics: regression. A COMPOUND (shared-stem) slot: one
+        # bivariate dataset (items vs packing time) drives all five sub-parts (the
+        # scatter plot, the least-squares line, the correlation r, a prediction, and
+        # the "why the intercept is meaningless" reason). No diagram. The 10 headline
+        # marks split 4 engine-graded (gradient; intercept; r; prediction) + 6
+        # hand-marked (the scatter draw and the intercept explanation).
+        PaperSlot(
+            "2",
+            10,
+            "regression — scatter, least-squares line, correlation, predict, reason",
+            problem_id="regression_line",
+        ),
     ),
 )
 

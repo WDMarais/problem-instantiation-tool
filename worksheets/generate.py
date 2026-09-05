@@ -3051,28 +3051,83 @@ def template_stats_grouped(params: dict, detail: str = "full") -> ProblemCard:
 
 
 def template_regression_line(params: dict, detail: str = "full") -> ProblemCard:
+    """Compound (shared-stem) card for the P2 Q2 regression block. One bivariate
+    dataset (x = number of items in an order, y = minutes a packer took) drives five
+    sub-parts: the scatter plot (2.1, hand-marked), the least-squares line ŷ = A + Bx
+    (2.2), the correlation r (2.3), a prediction (2.4) and the always-true "why the
+    intercept is meaningless" reason (2.5, hand-marked). Engine-graded auto
+    2+1+1 = the canonical 4 (gradient, intercept, r, prediction); the scatter-plot
+    draw and the intercept explanation are the hand-marked marks. No diagram."""
+    n = params["n"]
     b = round(float(params["gradient"]), 2)
     a = round(float(params["intercept"]), 2)
     r = params["correlation"]
     x_pred = params["x_pred"]
     pred = round(float(params["prediction"]), 2)
-    full = [
-        r"\text{enter the }(x,y)\text{ pairs in STAT mode and read off the "
-        r"regression coefficients}",
-        rf"B = \frac{{\sum(x-\bar{{x}})(y-\bar{{y}})}}{{\sum(x-\bar{{x}})^2}} = {b}"
-        rf",\quad A = \bar{{y}} - B\bar{{x}} = {a}",
-        rf"\hat{{y}} = {a} {_signed(b)}x,\qquad r = {r}",
-        rf"\hat{{y}}({x_pred}) = {a} {_signed(b)}({x_pred}) = {pred}",
+
+    subparts = [
+        SubPart(
+            "1",
+            "Draw a scatter plot of the data on the grid provided.",
+            3,
+            [
+                rf"\text{{plot the }} {n} \text{{ points }} (x_i,\ y_i) "
+                rf"\text{{ from the table}}"
+            ],
+            auto_marks=0,
+        ),
+        SubPart(
+            "2",
+            r"Determine the equation of the least-squares regression line "
+            r"$\hat{y} = A + Bx$.",
+            3,
+            [
+                r"\text{enter the }(x,y)\text{ pairs in STAT mode and read off }A,B",
+                rf"B = \frac{{\sum(x-\bar{{x}})(y-\bar{{y}})}}{{\sum(x-\bar{{x}})^2}} "
+                rf"= {b},\quad A = \bar{{y}} - B\bar{{x}} = {a}",
+                rf"\hat{{y}} = {a} {_signed(b)}x",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "3",
+            "Write down the correlation coefficient of the data.",
+            1,
+            [rf"r = {r}"],
+            auto_marks=1,
+        ),
+        SubPart(
+            "4",
+            rf"Use the regression line to predict $\hat{{y}}$ when $x = {x_pred}$.",
+            2,
+            [rf"\hat{{y}}({x_pred}) = {a} {_signed(b)}({x_pred}) = {pred}"],
+            auto_marks=1,
+        ),
+        SubPart(
+            "5",
+            "Explain why the y-intercept of the regression line does NOT make sense "
+            "in this context.",
+            1,
+            [
+                rf"\text{{the intercept }} {a} \text{{ predicts }} {a} "
+                rf"\text{{ minutes to prepare }} 0 \text{{ items — not meaningful}}"
+            ],
+            auto_marks=0,
+        ),
     ]
+    if detail != "full":
+        for sp in subparts:
+            sp.memo_steps = sp.memo_steps[-1:]
+
     return ProblemCard(
         instruction=(
-            r"For the bivariate data below, find the equation of the least-squares "
-            r"regression line $\hat{y} = A + Bx$ and the correlation coefficient "
-            rf"$r$, then use the line to predict $\hat{{y}}$ when $x = {x_pred}$. "
-            r"Round to two decimals."
+            rf"A supermarket recorded, for each of {n} online orders, the number of "
+            r"items $x$ in the order and the time $y$ (in minutes) a packer took to "
+            r"prepare it for delivery. The data are shown below."
         ),
         display_math=params["table_latex"],
-        worked_steps=full if detail == "full" else full[-2:],
+        worked_steps=[],
+        subparts=subparts,
     )
 
 
