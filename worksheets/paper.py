@@ -804,6 +804,19 @@ _MJ2025_P2 = PaperSpec(
             "regression — scatter, least-squares line, correlation, predict, reason",
             problem_id="regression_line",
         ),
+        # Question 3 — analytical geometry: ΔSRT. A COMPOUND (shared-stem) slot: one
+        # instance (R on the x-axis, T on the y-axis, S(m;s) left of R, line RT) drives
+        # six chained sub-parts (R, length RT in surd form, m from a given RT²:SR²
+        # ratio, the equation of VR ⊥ ST, the foot V, and the reflected-quadrilateral
+        # area RVTR′). No diagram — every part follows from the line equation and the
+        # given facts. The 21 headline marks split 12 engine-graded (each final value)
+        # + 9 hand-marked (the intercept/distance/ratio/perp/shoelace derivations).
+        PaperSlot(
+            "3",
+            21,
+            "triangle SRT — intercepts, length, ratio for m, ⊥ foot, reflected area",
+            problem_id="analytic_geometry_srt",
+        ),
         # Question 5.1 — trigonometry: special ratios. A COMPOUND (shared-stem) slot:
         # one given ratio (cos θ) plus the quadrant drives three sub-parts (sin²θ, a
         # reduction-formula ratio, a compound-angle value). No diagram. The 9 headline

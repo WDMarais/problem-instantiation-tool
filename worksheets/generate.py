@@ -30,6 +30,7 @@ import sympy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from content.examples.analytic_geometry_srt import problem as analytic_geometry_srt
 from content.examples.analytic_geometry_triangle import (
     problem as analytic_geometry_triangle,
 )
@@ -3200,11 +3201,34 @@ def template_trig_graph_analysis(params: dict, detail: str = "full") -> ProblemC
     g = sin(bx) on [−180°;180°] drive six read-off-the-equation sub-parts (range,
     period, increasing interval, two sign-inequality sets, a right shift). Every part
     is engine-graded — auto 1+1+1+2+3+2 = the canonical 10, no hand-marked method.
-    No diagram (the properties follow from the equations)."""
+    Both curves are drawn for orientation; every answer still follows from the
+    equations."""
     a, q, b = params["a"], params["q"], params["b"]
     s = params["shift_deg"]
     qd = f" + {q}" if q > 0 else (f" - {abs(q)}" if q < 0 else "")
     c_l = sympy.latex(sympy.Rational(-q, a))
+    graph = {
+        "curves": [
+            {
+                "id": "f",
+                "func": "cos",
+                "amplitude": a,
+                "period_deg": 360,
+                "phase_shift_deg": 0,
+                "offset": q,
+            },
+            {
+                "id": "g",
+                "func": "sin",
+                "amplitude": 1,
+                "period_deg": 360 // b,
+                "phase_shift_deg": 0,
+                "offset": 0,
+            },
+        ],
+        "x_domain_deg": [-180, 180],
+    }
+    svg = render_trig_graph(graph, width=380, height=230)
 
     subparts = [
         SubPart(
@@ -3276,6 +3300,152 @@ def template_trig_graph_analysis(params: dict, detail: str = "full") -> ProblemC
         display_math="",
         worked_steps=[],
         subparts=subparts,
+        graph_svg=svg,
+    )
+
+
+_AG_TRI_COLOR = "#2563EB"  # triangle edges (blue)
+_AG_PERP_COLOR = "#DC2626"  # the perpendicular VR (red)
+
+
+def _srt_scene(params: dict) -> str:
+    """A schematic (not-to-scale) diagram of ΔSRT with the foot V on ST: axes,
+    the three vertices and V labelled by letter only (no coordinates — the value
+    of m and the point V are what the question asks for), the triangle SR, RT, TS
+    and the perpendicular VR. Points sit at their true positions so the
+    configuration (S left of R, T on the y-axis, V between S and T) is faithful."""
+    r, t, s_y, m = params["r"], params["t"], params["s_y"], params["m"]
+    vx, vy = float(params["answer_Vx"]), float(params["answer_Vy"])
+    R, T, S, V = (r, 0.0), (0.0, t), (float(m), float(s_y)), (vx, vy)
+    xs = [R[0], T[0], S[0], V[0]]
+    ys = [R[1], T[1], S[1], V[1]]
+    padx = max((max(xs) - min(xs)) * 0.12, 1.0)
+    pady = max((max(ys) - min(ys)) * 0.12, 1.0)
+    scene = CartesianScene(
+        x_min=min(xs) - padx,
+        x_max=max(xs) + padx,
+        y_min=min(ys) - pady,
+        y_max=max(ys) + pady,
+        items=(
+            Polyline(points=(S, R, T, S), color=_AG_TRI_COLOR),  # triangle SRT
+            Polyline(points=(V, R), color=_AG_PERP_COLOR),  # perpendicular VR
+            ScenePoint(*R, label="R"),
+            ScenePoint(*T, label="T"),
+            ScenePoint(*S, label="S"),
+            ScenePoint(*V, label="V"),
+        ),
+        equal_aspect=True,
+    )
+    return render_scene(scene, width=300, height=240)
+
+
+def template_analytic_geometry_srt(params: dict, detail: str = "full") -> ProblemCard:
+    """Compound (shared-stem) card for P2 Q3. One instance of ΔSRT — R on the
+    x-axis, T on the y-axis, S(m; s) left of R, line RT: kx − y + t = 0 — drives
+    six sub-parts (R, length RT, m from a ratio, the equation of the ⊥ foot line
+    VR, the point V, the reflected-area RVTR′). Auto 2+2+2+(1+1)+(1+1)+2 = the
+    canonical 12; the derivation marks (2·3) are hand-marked. A schematic diagram
+    orients the figure; every part still follows from the line equation and the
+    given facts."""
+    k, r, t = params["k"], params["r"], params["t"]
+    s_y, m = params["s_y"], params["m"]
+    p_c, q_c = params["p_coef"], params["q_coef"]
+    rt2, sr2 = params["rt2"], params["sr2"]
+    rt_l = sympy.latex(params["answer_RT"])
+    gst = sympy.latex(params["grad_st"])
+    vg, vc = params["answer_VR_gradient"], params["answer_VR_intercept"]
+    vg_l = sympy.latex(vg)
+    vx, vy = params["answer_Vx"], params["answer_Vy"]
+    vx_l, vy_l = sympy.latex(vx), sympy.latex(vy)
+    area_l = sympy.latex(params["answer_area"])
+    rr = params["r_refl"]
+    kc = "" if k == 1 else str(k)
+    diff = sr2 - s_y**2
+    other_m = 2 * r - m
+    vr_eq = rf"y = {vg_l}x {'+' if vc >= 0 else '-'} {sympy.latex(abs(vc))}"
+
+    subparts = [
+        SubPart(
+            "1",
+            r"Calculate the coordinates of $R$.",
+            2,
+            [rf"y = 0:\ {kc}x + {t} = 0 \Rightarrow x = {r} \Rightarrow R = ({r};0)"],
+            auto_marks=2,
+        ),
+        SubPart(
+            "2",
+            r"Calculate the length of $RT$. Leave your answer in surd form.",
+            3,
+            [
+                rf"T = (0;{t})",
+                rf"RT = \sqrt{{({r})^2 + ({t})^2}} = \sqrt{{{rt2}}} = {rt_l}",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "3",
+            rf"If it is also given that ${q_c}RT^2 = {p_c}SR^2$, calculate the "
+            r"value of $m$.",
+            4,
+            [
+                rf"{q_c}RT^2 = {p_c}SR^2:\ {q_c}({rt2}) = {p_c}\,SR^2 "
+                rf"\Rightarrow SR^2 = {sr2}",
+                rf"(m - ({r}))^2 + {s_y}^2 = {sr2} \Rightarrow (m - ({r}))^2 = {diff}",
+                rf"m = {m} \text{{ or }} m = {other_m};\ "
+                rf"S \text{{ left of }} R \Rightarrow m = {m}",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "4",
+            r"$V$ lies on $ST$ such that $VR \perp ST$. Determine the equation of "
+            r"$VR$ in the form $y = mx + c$.",
+            5,
+            [
+                rf"m_{{ST}} = \frac{{{t} - {s_y}}}{{0 - ({m})}} = {gst}",
+                rf"m_{{VR}} = -\frac{{1}}{{m_{{ST}}}} = {vg_l}",
+                rf"0 = ({vg_l})({r}) + c \Rightarrow {vr_eq}",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "5",
+            rf"Hence, show that the coordinates of $V$ are $({vx_l};{vy_l})$.",
+            2,
+            [
+                rf"ST:\ y = {gst}x + {t}",
+                rf"{gst}x + {t} = {vg_l}x {'+' if vc >= 0 else '-'} "
+                rf"{sympy.latex(abs(vc))} \Rightarrow V = ({vx_l};{vy_l})",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "6",
+            r"If $R'$ is the reflection of $R$ about the line $x = 0$, calculate "
+            r"the area of $RVTR'$.",
+            5,
+            [
+                rf"R' = ({rr};0)",
+                rf"\text{{area}} = \tfrac12\left|\,x_R(y_V - y_{{R'}}) + \cdots"
+                rf"\,\right| = {area_l}",
+            ],
+            auto_marks=2,
+        ),
+    ]
+    if detail != "full":
+        for sp in subparts:
+            sp.memo_steps = sp.memo_steps[-1:]
+
+    return ProblemCard(
+        instruction=(
+            r"In $\triangle SRT$, $R$ lies on the $x$-axis and $S$ lies to the left "
+            r"of $R$. $T$ lies on the $y$-axis and $S = "
+            rf"(m;{s_y})$. The equation of $RT$ is ${kc}x - y + {t} = 0$."
+        ),
+        display_math="",
+        worked_steps=[],
+        subparts=subparts,
+        graph_svg=_srt_scene(params),
     )
 
 
@@ -5058,6 +5228,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
         template=template_trig_graph_analysis,
     ),
     # ── analytic geometry family (ladder 7) ──
+    analytic_geometry_srt.id: WorksheetEntry(
+        problem=analytic_geometry_srt,
+        template=template_analytic_geometry_srt,
+    ),
     analytic_geometry_triangle.id: WorksheetEntry(
         problem=analytic_geometry_triangle,
         template=template_analytic_geometry_triangle,
