@@ -817,6 +817,20 @@ _MJ2025_P2 = PaperSpec(
             "triangle SRT — intercepts, length, ratio for m, ⊥ foot, reflected area",
             problem_id="analytic_geometry_srt",
         ),
+        # Question 4 — analytical geometry: circle & tangent. A COMPOUND (shared-stem)
+        # slot: one circle centred at M(a;0) with a lattice point E on it, the tangent
+        # at E and a point C on that tangent drive seven sub-parts (the tangent-radius
+        # angle, the tangent's equation, DM, the value p, the parallelogram point S,
+        # an inside/outside test after the radius grows, and the isosceles angle ÊTM).
+        # A schematic diagram (letters only). The 20 headline marks split 11 engine-
+        # graded (each final value, incl. the inside/outside tag and the numeric angle)
+        # + 9 hand-marked (the derivations and the "show that p" step).
+        PaperSlot(
+            "4",
+            20,
+            "circle & tangent — angle, tangent eqn, DM, p, parallelogram, region, ÊTM",
+            problem_id="circle_tangent_chain",
+        ),
         # Question 5.1 — trigonometry: special ratios. A COMPOUND (shared-stem) slot:
         # one given ratio (cos θ) plus the quadrant drives three sub-parts (sin²θ, a
         # reduction-formula ratio, a compound-angle value). No diagram. The 9 headline

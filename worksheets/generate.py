@@ -56,6 +56,7 @@ from content.examples.arithmetic_sequence import (
 from content.examples.circle_equation import circle_equation
 from content.examples.circle_from_graph import circle_from_graph
 from content.examples.circle_tangent import circle_tangent
+from content.examples.circle_tangent_chain import problem as circle_tangent_chain
 from content.examples.circumcentre import circumcentre
 from content.examples.common_tangent_parabolas import common_tangent_parabolas
 from content.examples.compound_periodic import (
@@ -261,7 +262,13 @@ from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.exceptions import ScopeViolationError
 from problem_instantiation_tool.registry import InMemoryRegistry
 from problem_instantiation_tool.schemas import Problem
-from render.cartesian import CartesianScene, ConstantLine, Polyline, render_scene
+from render.cartesian import (
+    CartesianScene,
+    Circle,
+    ConstantLine,
+    Polyline,
+    render_scene,
+)
 from render.cartesian import Point as ScenePoint
 from render.circle import circle_scene
 from render.exponential import exponential_scene
@@ -3449,6 +3456,172 @@ def template_analytic_geometry_srt(params: dict, detail: str = "full") -> Proble
     )
 
 
+def _circle_chain_scene(params: dict) -> str:
+    """Schematic (not-to-scale) diagram for P2 Q4: the circle centred at M(a;0),
+    the point E on it, the tangent EC meeting the x-axis at D and the tangent at
+    C, and the radius MT produced to C. Points are labelled by letter only (D, C,
+    p, S and the ∠ETM are what the parts ask for), so no answer is given away; S
+    is not drawn (it is constructed in 4.5)."""
+    a = params["a"]
+    ex, ey, cx, p = params["ex"], params["ey"], params["cx"], int(params["answer_p"])
+    dxc = float(params["d_x"])
+    r = 5.0
+    wx, wy = cx - a, float(p)
+    wlen = (wx * wx + wy * wy) ** 0.5
+    tx, ty = a + r * wx / wlen, r * wy / wlen  # T = M + r·(C−M)/|C−M|
+    xs = [a - r, a + r, ex, dxc, cx, tx]
+    ys = [-r, r, ey, 0.0, float(p), ty]
+    padx = max((max(xs) - min(xs)) * 0.1, 1.0)
+    pady = max((max(ys) - min(ys)) * 0.1, 1.0)
+    scene = CartesianScene(
+        x_min=min(xs) - padx,
+        x_max=max(xs) + padx,
+        y_min=min(ys) - pady,
+        y_max=max(ys) + pady,
+        items=(
+            Circle(float(a), 0.0, r, color=_AG_TRI_COLOR),
+            Polyline(
+                points=((float(ex), float(ey)), (float(cx), float(p))),
+                color=_AG_PERP_COLOR,
+            ),  # tangent EC
+            Polyline(points=((float(a), 0.0), (float(cx), float(p)))),  # MT produced
+            ScenePoint(float(a), 0.0, label="M"),
+            ScenePoint(float(ex), float(ey), label="E"),
+            ScenePoint(dxc, 0.0, label="D"),
+            ScenePoint(float(cx), float(p), label="C"),
+            ScenePoint(tx, ty, label="T"),
+        ),
+        equal_aspect=True,
+    )
+    return render_scene(scene, width=320, height=260)
+
+
+def template_circle_tangent_chain(params: dict, detail: str = "full") -> ProblemCard:
+    """Compound (shared-stem) card for P2 Q4. One circle centred at M(a;0), a
+    lattice point E on it, the tangent at E and a point C on that tangent drive
+    seven sub-parts: the tangent-radius angle (90°), the tangent's equation, the
+    length DM, the value p, the parallelogram point S, an inside/outside test
+    after the radius grows, and the isosceles angle ÊTM. Auto 1+2+2+0+2+2+2 = the
+    canonical 11; the derivations and the "show that p" (11+9-mark split) are
+    hand-marked."""
+    a, dx, dy = params["a"], params["dx"], params["dy"]
+    ex, ey, cx = params["ex"], params["ey"], params["cx"]
+    p = int(params["answer_p"])
+    delta, r_new = params["delta"], params["r_new"]
+    m_me = sympy.Rational(dy, dx)  # gradient of radius ME
+    m_l = sympy.latex(params["tangent_gradient"])
+    c_l = sympy.latex(params["tangent_c"])
+    dxc_l = sympy.latex(params["d_x"])
+    dm_l = sympy.latex(params["answer_DM"])
+    ms_l = sympy.latex(params["answer_MS"])
+    ms2 = params["ms2"]
+    sx, sy = int(params["answer_Sx"]), int(params["answer_Sy"])
+    region = params["answer_region"]
+    ang = params["answer_angle_etm"]
+    dot = dx * (cx - a) + dy * p
+    wlen2 = (cx - a) ** 2 + p**2
+    reg_sign = ">" if region == "outside" else "<"
+
+    subparts = [
+        SubPart(
+            "1",
+            r"Write down the size of $\hat{CEM}$.",
+            1,
+            [
+                r"EC \text{ tangent},\ ME \text{ radius} \Rightarrow ME \perp EC "
+                r"\Rightarrow \hat{CEM} = 90^\circ"
+            ],
+            auto_marks=1,
+        ),
+        SubPart(
+            "2",
+            r"Determine the equation of the tangent $EC$ in the form $y = mx + c$.",
+            4,
+            [
+                rf"m_{{ME}} = \frac{{{ey} - 0}}{{{ex} - {a}}} = {sympy.latex(m_me)}"
+                rf"\Rightarrow m_{{EC}} = {m_l}",
+                rf"{ey} = ({m_l})({ex}) + c \Rightarrow c = {c_l}",
+                rf"y = {m_l}x + {c_l}",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "3",
+            r"Calculate the length of $DM$.",
+            3,
+            [
+                rf"y = 0:\ {m_l}x + {c_l} = 0 \Rightarrow D = ({dxc_l};0)",
+                rf"DM = \left|{a} - ({dxc_l})\right| = {dm_l}",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "4",
+            rf"$C({cx};p)$ lies on the tangent. Show that $p = {p}$.",
+            1,
+            [rf"p = ({m_l})({cx}) + {c_l} = {p}"],
+            auto_marks=0,
+        ),
+        SubPart(
+            "5",
+            r"Calculate the coordinates of $S$ if $SEMC$ is a parallelogram and "
+            r"$x_S < 0$.",
+            3,
+            [
+                rf"\vec{{S}} = \vec{{E}} - \vec{{M}} + \vec{{C}} "
+                rf"= ({ex} - {a} + {_par(cx)};\ {ey} + {_par(p)})",
+                rf"S = ({sx};{sy})",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "6",
+            rf"If the radius of the circle is increased by {delta} units, determine "
+            r"whether $S$ lies inside or outside the new circle. Support your answer "
+            r"with the necessary calculations.",
+            3,
+            [
+                rf"r_{{\text{{new}}}} = 5 + {delta} = {r_new}",
+                rf"MS = \sqrt{{({a} - ({sx}))^2 + (0 - ({sy}))^2}} "
+                rf"= \sqrt{{{ms2}}} = {ms_l}",
+                rf"{ms_l} {reg_sign} {r_new} \Rightarrow S \text{{ lies }} "
+                rf"\textbf{{{region}}} \text{{ the new circle}}",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "7",
+            r"If $ET$ is drawn, calculate the size of $\hat{ETM}$.",
+            5,
+            [
+                r"ME = MT = 5\ (\text{radii}) \Rightarrow \triangle EMT "
+                r"\text{ isosceles}",
+                rf"\cos\hat{{EMT}} = \frac{{\vec{{ME}}\cdot\vec{{MC}}}}"
+                rf"{{|\vec{{ME}}||\vec{{MC}}|}} = \frac{{{dot}}}{{5\sqrt{{{wlen2}}}}}",
+                rf"\hat{{ETM}} = \frac{{180^\circ - \hat{{EMT}}}}{{2}} "
+                rf"\approx {ang}^\circ",
+            ],
+            auto_marks=2,
+        ),
+    ]
+    if detail != "full":
+        for sp in subparts:
+            sp.memo_steps = sp.memo_steps[-1:]
+
+    return ProblemCard(
+        instruction=(
+            rf"$M$ is the centre of the circle $(x - {a})^2 + y^2 = 25$. "
+            rf"$E({ex};{ey})$ and $T$ are points on the circle. $EC$ is a tangent to "
+            r"the circle at $E$ and cuts the $x$-axis at $D$. $MT$ is produced to "
+            rf"meet the tangent at $C({cx};p)$."
+        ),
+        display_math="",
+        worked_steps=[],
+        subparts=subparts,
+        graph_svg=_circle_chain_scene(params),
+    )
+
+
 # ── analytic geometry (ladder 7) ──────────────────────────────────────────────
 def template_analytic_geometry_triangle(
     params: dict, detail: str = "full"
@@ -5231,6 +5404,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     analytic_geometry_srt.id: WorksheetEntry(
         problem=analytic_geometry_srt,
         template=template_analytic_geometry_srt,
+    ),
+    circle_tangent_chain.id: WorksheetEntry(
+        problem=circle_tangent_chain,
+        template=template_circle_tangent_chain,
     ),
     analytic_geometry_triangle.id: WorksheetEntry(
         problem=analytic_geometry_triangle,
