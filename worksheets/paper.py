@@ -816,6 +816,17 @@ _MJ2025_P2 = PaperSpec(
             "special ratios — sin²θ, a reduction ratio, a compound-angle value",
             problem_id="trig_given_ratio",
         ),
+        # Question 7 — trigonometric graphs. A COMPOUND (shared-stem) slot: two curves
+        # f = a·cos x + q and g = sin(bx) drive six read-off-the-equation sub-parts
+        # (range, period, increasing interval, two sign-inequality sets, a right shift).
+        # No diagram — the properties follow from the equations. All 10 marks are
+        # engine-graded (4 interval sets via set_solution, the period, the shifted eqn).
+        PaperSlot(
+            "7",
+            10,
+            "trig graphs — range, period, increasing, sign intervals, a right shift",
+            problem_id="trig_graph_analysis",
+        ),
     ),
 )
 

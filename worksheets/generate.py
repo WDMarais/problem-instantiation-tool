@@ -241,6 +241,7 @@ from content.examples.trig import (
     trig_special_angles,
 )
 from content.examples.trig_given_ratio import trig_given_ratio
+from content.examples.trig_graph_analysis import trig_graph_analysis
 from content.examples.trig_graph_properties import (
     trig_graph_amplitude,
     trig_graph_decreasing,
@@ -3194,6 +3195,90 @@ def template_trig_given_ratio(params: dict, detail: str = "full") -> ProblemCard
     )
 
 
+def template_trig_graph_analysis(params: dict, detail: str = "full") -> ProblemCard:
+    """Compound (shared-stem) card for P2 Q7. Two curves f = a·cos x + q and
+    g = sin(bx) on [−180°;180°] drive six read-off-the-equation sub-parts (range,
+    period, increasing interval, two sign-inequality sets, a right shift). Every part
+    is engine-graded — auto 1+1+1+2+3+2 = the canonical 10, no hand-marked method.
+    No diagram (the properties follow from the equations)."""
+    a, q, b = params["a"], params["q"], params["b"]
+    s = params["shift_deg"]
+    qd = f" + {q}" if q > 0 else (f" - {abs(q)}" if q < 0 else "")
+    c_l = sympy.latex(sympy.Rational(-q, a))
+
+    subparts = [
+        SubPart(
+            "1",
+            r"Write down the range of $f$.",
+            1,
+            [rf"y \in {params['range_latex']}"],
+            auto_marks=1,
+        ),
+        SubPart(
+            "2",
+            r"Write down the period of $g$.",
+            1,
+            [rf"\text{{period}} = \frac{{360^\circ}}{{{b}}} = {360 // b}^\circ"],
+            auto_marks=1,
+        ),
+        SubPart(
+            "3",
+            r"For which values of $x$ is $f$ increasing?",
+            1,
+            [
+                rf"f'(x) = -{a}\sin x > 0 \Rightarrow \sin x < 0 "
+                rf"\Rightarrow x \in {params['incr_latex']}"
+            ],
+            auto_marks=1,
+        ),
+        SubPart(
+            "4.1",
+            r"Determine the values of $x$ for which $g(x)\cdot f'(x) < 0$.",
+            2,
+            [
+                rf"g\cdot f' < 0 \Rightarrow \sin({b}x)\sin x > 0",
+                rf"x \in {params['prod_latex']}",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "4.2",
+            r"Determine the values of $x$ for which $f(x) \le 0$.",
+            3,
+            [
+                rf"{a}\cos x{qd} \le 0 \Rightarrow \cos x \le {c_l}",
+                rf"x \in {params['fneg_latex']}",
+            ],
+            auto_marks=3,
+        ),
+        SubPart(
+            "5",
+            rf"The graph of $g$ is shifted ${s}^\circ$ to the right to obtain $h$. "
+            r"Determine the equation of $h$ in its simplest form.",
+            2,
+            [
+                rf"h(x) = \sin({b}(x - {s}^\circ)) = \sin({b}x - {b * s}^\circ) "
+                rf"= {params['shift_latex']}"
+            ],
+            auto_marks=2,
+        ),
+    ]
+    if detail != "full":
+        for sp in subparts:
+            sp.memo_steps = sp.memo_steps[-1:]
+
+    return ProblemCard(
+        instruction=(
+            rf"The graphs of $f(x) = {params['f_latex']}$ and "
+            rf"$g(x) = {params['g_latex']}$ are drawn for "
+            r"$x \in [-180^\circ;\ 180^\circ]$."
+        ),
+        display_math="",
+        worked_steps=[],
+        subparts=subparts,
+    )
+
+
 # ── analytic geometry (ladder 7) ──────────────────────────────────────────────
 def template_analytic_geometry_triangle(
     params: dict, detail: str = "full"
@@ -4967,6 +5052,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     trig_given_ratio.id: WorksheetEntry(
         problem=trig_given_ratio,
         template=template_trig_given_ratio,
+    ),
+    trig_graph_analysis.id: WorksheetEntry(
+        problem=trig_graph_analysis,
+        template=template_trig_graph_analysis,
     ),
     # ── analytic geometry family (ladder 7) ──
     analytic_geometry_triangle.id: WorksheetEntry(
