@@ -74,11 +74,26 @@ class Pose:
     reflect: bool = False
 
 
+@dataclass(frozen=True)
+class Circle:
+    """A circle outline drawn in layout space. ``center`` names a ``Point`` (so the
+    centre transforms with the pose like any vertex); ``radius`` is in layout units
+    (the same space as ``Point.x``/``.y``). The uniform fit + pose scale keeps a
+    circle a circle, so no ellipse ever results. Circumference points are ordinary
+    ``Point``s placed on the circle by the figure builder (see ``circle_point``);
+    this primitive only draws the ring, behind the chords."""
+
+    center: str  # point name of the centre
+    radius: float  # layout units
+    dashed: bool = False
+
+
 @dataclass
 class GeometryFigure:
     points: list[Point]
     segments: list[Segment] = field(default_factory=list)
     angles: list[Angle] = field(default_factory=list)
+    circles: list[Circle] = field(default_factory=list)
     pose: Pose = field(default_factory=Pose)
     width: int = 300
     height: int = 230
@@ -105,6 +120,13 @@ def render_figure(fig: GeometryFigure) -> str:
 
     xs = [x for x, _ in wpts.values()]
     ys = [y for _, y in wpts.values()]
+    # fold each circle's full extent into the bbox — its circumference points need
+    # not reach the compass extremes, so the ring can bulge past them (rotation and
+    # reflection leave a circle's radius untouched, so posed extent is centre ± r).
+    for circ in fig.circles:
+        wcx, wcy = wpts[circ.center]
+        xs += [wcx - circ.radius, wcx + circ.radius]
+        ys += [wcy - circ.radius, wcy + circ.radius]
     x_min, x_max = min(xs), max(xs)
     y_min, y_max = min(ys), max(ys)
     span_x = max(x_max - x_min, 1e-9)
@@ -143,6 +165,15 @@ def render_figure(fig: GeometryFigure) -> str:
         f' style="display:block;max-width:100%;height:auto"'
         f' font-family="Georgia, serif">'
     ]
+
+    # ── circle outlines (drawn first, so chords and points sit on top) ──────────
+    for circ in fig.circles:
+        ccx, ccy = S(circ.center)
+        dash = ' stroke-dasharray="5,3"' if circ.dashed else ""
+        out.append(
+            f'<circle cx="{ccx:.1f}" cy="{ccy:.1f}" r="{circ.radius * scale:.1f}"'
+            f' fill="none" stroke="{_STROKE}" stroke-width="1.6"{dash}/>'
+        )
 
     # ── segments ──────────────────────────────────────────────────────────────
     for seg in fig.segments:
@@ -192,6 +223,25 @@ def render_figure(fig: GeometryFigure) -> str:
 
     out.append("</svg>")
     return "\n".join(out)
+
+
+# ── figure-builder helpers ──────────────────────────────────────────────────────
+
+
+def circle_point(
+    name: str,
+    cx: float,
+    cy: float,
+    radius: float,
+    angle_deg: float,
+    **kwargs: object,
+) -> Point:
+    """A ``Point`` on the circle of centre ``(cx, cy)`` and ``radius`` at
+    ``angle_deg`` (layout y-up: 0° = east, 90° = north, counter-clockwise). Lets a
+    figure builder place circumference points that actually lie on a ``Circle``.
+    Extra keyword args (``label``, ``label_dir``, ``dot``) pass through to ``Point``."""
+    a = math.radians(angle_deg)
+    return Point(name, cx + radius * math.cos(a), cy + radius * math.sin(a), **kwargs)  # type: ignore[arg-type]
 
 
 # ── primitive helpers ──────────────────────────────────────────────────────────
