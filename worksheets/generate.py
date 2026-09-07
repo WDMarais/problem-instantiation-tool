@@ -242,6 +242,7 @@ from content.examples.trig import (
     trig_equation,
     trig_special_angles,
 )
+from content.examples.trig_3d_tower import problem as trig_3d_tower
 from content.examples.trig_given_ratio import trig_given_ratio
 from content.examples.trig_graph_analysis import trig_graph_analysis
 from content.examples.trig_graph_properties import (
@@ -284,6 +285,8 @@ from render.graph import render_trig_graph
 from render.hyperbola import hyperbola_scene
 from render.line import line_scene
 from render.parabola import parabola_scene, parabola_vertex_scene
+from render.scene3d import Face, Guide, Point3D, Scene3D, View
+from render.scene3d import render_scene3d as _render_scene3d
 
 # ── data models ───────────────────────────────────────────────────────────────
 
@@ -3622,6 +3625,170 @@ def template_circle_tangent_chain(params: dict, detail: str = "full") -> Problem
     )
 
 
+def _trig_3d_scene(params: dict) -> str:
+    """Cabinet-oblique wireframe for P2 Q8: the vertical tower FT over the ground
+    triangle AFB. Not to scale — positions are schematic; only the lettered points
+    and the given angles (α at A, β at B, the elevation θ at A, the right angle at
+    F) are shown, so no answer (AF, TF) is read off the figure."""
+    alpha, beta, theta = params["alpha"], params["beta"], params["theta"]
+    # AB is the front base (both on y=0); F is the back vertex the tower rises from,
+    # so from A the rays to B (flat), F (shallow) and T (steep) fan out at distinct
+    # screen angles. Positions are schematic (not to scale).
+    A, B, F, T = (-4.0, 0.0, 0.0), (4.0, 0.0, 0.0), (0.6, 3.0, 0.0), (0.6, 3.0, 5.2)
+
+    def _mesh(p0, p1, p2, n, color):
+        """A faint triangular grid over triangle p0-p1-p2: lines parallel to p0→p1
+        and to p0→p2, clipped to the triangle. The two families show the plane's
+        two in-plane directions, so which way it recedes is unambiguous."""
+
+        def q(s, t):
+            return tuple(
+                p0[i] + s * (p1[i] - p0[i]) + t * (p2[i] - p0[i]) for i in range(3)
+            )
+
+        lines = []
+        for k in range(1, n):
+            f = k / n
+            lines.append(Guide(q(f, 0.0), q(f, 1 - f), color=color, width=0.5))
+            lines.append(Guide(q(0.0, f), q(1 - f, f), color=color, width=0.5))
+        return lines
+
+    scene = Scene3D(
+        points=[
+            Point3D("A", *A, label_dir=(-0.7, -0.9)),
+            Point3D("B", *B, label_dir=(1.0, -0.3)),
+            Point3D("F", *F, label_dir=(0.5, -1.0)),
+            Point3D("T", *T, label_dir=(0.0, 1.0)),
+        ],
+        faces=[
+            # one horizontal ground plane (amber) and the two vertical tower walls
+            # (blues, a shade apart so the fold at FT reads); the tint contrast is
+            # what makes the tower stand upright out of the ground.
+            Face(("A", "B", "F"), fill="#d97706", opacity=0.13),
+            Face(("B", "F", "T"), fill="#1d4ed8", opacity=0.09),  # back wall
+            Face(("A", "F", "T"), fill="#3b82f6", opacity=0.11),  # front wall
+        ],
+        guides=(
+            _mesh(A, B, F, 4, "#b45309")  # ground grid (amber-grey)
+            + _mesh(A, F, T, 3, "#60a5fa")  # front-wall grid (blue-grey)
+            + _mesh(B, F, T, 3, "#60a5fa")  # back-wall grid
+        ),
+        segments=[
+            Segment("A", "B"),  # front base
+            Segment("A", "F"),
+            Segment("B", "F"),
+            Segment("F", "T", ticks=1),  # the vertical tower
+            Segment("A", "T"),
+            Segment("B", "T", dashed=True),  # back slant edge (depth cue)
+        ],
+        angles=[
+            Angle(vertex="F", a="A", b="T", right=True),  # FT ⟂ ground
+            # the given angles sit *outside* the shape (reverse bisector), clear of
+            # the shaded/meshed faces
+            Angle(
+                vertex="A",
+                a="B",
+                b="F",
+                label=f"{alpha}°",
+                radius=16,
+                label_outside=True,
+            ),  # FÂB
+            Angle(
+                vertex="A",
+                a="F",
+                b="T",
+                label=f"{theta}°",
+                radius=30,
+                label_outside=True,
+            ),  # elevation
+            Angle(
+                vertex="B",
+                a="A",
+                b="F",
+                label=f"{beta}°",
+                radius=16,
+                label_outside=True,
+            ),  # FB̂A
+        ],
+        view=View(azimuth_deg=28.0, depth=0.5),
+        width=380,
+        height=300,
+        pad=48,
+        axes=True,  # x/y/z triad to anchor the oblique projection
+    )
+    return _render_scene3d(scene)
+
+
+def template_trig_3d_tower(params: dict, detail: str = "full") -> ProblemCard:
+    """Compound (shared-stem) card for P2 Q8. One vertical tower FT over a
+    horizontal triangle AFB drives three sub-parts: AF by the sine rule, the
+    "show that TF = AF·tan θ" relation, and the height TF. Auto 3+0+3 = the
+    canonical 6; 8.2 is a hand-marked derivation (8+... the 8-mark split)."""
+    alpha, beta, theta, d = (
+        params["alpha"],
+        params["beta"],
+        params["theta"],
+        params["d"],
+    )
+    third = params["angle_F"]
+    af = params["answer_AF"]
+    tf = params["answer_TF"]
+
+    subparts = [
+        SubPart(
+            "1",
+            r"Calculate the length of $AF$.",
+            3,
+            [
+                rf"\hat{{F}} = 180^\circ - {alpha}^\circ - {beta}^\circ "
+                rf"= {third}^\circ",
+                r"\frac{AF}{\sin\hat{B}} = \frac{AB}{\sin\hat{F}}"
+                r"\quad(\text{sine rule in } \triangle AFB)",
+                rf"AF = \frac{{{d}\sin {beta}^\circ}}{{\sin {third}^\circ}} "
+                rf"= {af}\text{{ m}}",
+            ],
+            auto_marks=3,
+        ),
+        SubPart(
+            "2",
+            r"$FT$ is vertical. Show that $TF = AF\tan\theta$, where "
+            r"$\theta$ is the angle of elevation of $T$ from $A$.",
+            2,
+            [
+                r"FT \perp \text{ horizontal plane} \Rightarrow \hat{TFA} = 90^\circ",
+                r"\tan\theta = \frac{TF}{AF} \Rightarrow TF = AF\tan\theta",
+            ],
+            auto_marks=0,
+        ),
+        SubPart(
+            "3",
+            r"Hence calculate the height $TF$ of the tower.",
+            3,
+            [
+                rf"TF = AF\tan {theta}^\circ = {af}\tan {theta}^\circ "
+                rf"= {tf}\text{{ m}}",
+            ],
+            auto_marks=3,
+        ),
+    ]
+    if detail != "full":
+        for sp in subparts:
+            sp.memo_steps = sp.memo_steps[-1:]
+
+    return ProblemCard(
+        instruction=(
+            r"$F$ is the foot of a vertical tower $FT$. $A$ and $B$ are two points "
+            rf"in the same horizontal plane as $F$, with $AB = {d}$ m. "
+            rf"$F\hat{{A}}B = {alpha}^\circ$, $F\hat{{B}}A = {beta}^\circ$ and the "
+            rf"angle of elevation of $T$ from $A$ is ${theta}^\circ$."
+        ),
+        display_math="",
+        worked_steps=[],
+        subparts=subparts,
+        graph_svg=_trig_3d_scene(params),
+    )
+
+
 # ── analytic geometry (ladder 7) ──────────────────────────────────────────────
 def template_analytic_geometry_triangle(
     params: dict, detail: str = "full"
@@ -5408,6 +5575,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     circle_tangent_chain.id: WorksheetEntry(
         problem=circle_tangent_chain,
         template=template_circle_tangent_chain,
+    ),
+    trig_3d_tower.id: WorksheetEntry(
+        problem=trig_3d_tower,
+        template=template_trig_3d_tower,
     ),
     analytic_geometry_triangle.id: WorksheetEntry(
         problem=analytic_geometry_triangle,

@@ -53,6 +53,12 @@ class Angle:
     label: str = ""  # plain text shown in the arc, e.g. "x" or "70°"
     arcs: int = 1  # concentric arcs (equal-angle marks)
     right: bool = False  # draw a right-angle square instead of an arc
+    radius: float | None = None  # arc radius in px; None = default. Give two angles
+    # sharing a vertex distinct radii so their arcs/labels nest instead of colliding.
+    label_offset: tuple[float, float] | None = None  # screen-space nudge (x→right,
+    # y→up) added to the bisector-placed label — frees a label from a thin wedge.
+    label_outside: bool = False  # place the label on the *far* side of the vertex
+    # (reverse bisector), i.e. outside the shape, instead of inside the wedge.
 
 
 @dataclass(frozen=True)
@@ -274,7 +280,7 @@ def _angle_mark(
     t1 = math.atan2(ua[1], ua[0])
     t2 = math.atan2(ub[1], ub[0])
     delta = math.atan2(math.sin(t2 - t1), math.cos(t2 - t1))  # minor signed sweep
-    base_r = 17.0
+    base_r = ang.radius if ang.radius is not None else 17.0
     for i in range(ang.arcs):
         r = base_r + i * 4.0
         steps = 14
@@ -291,7 +297,11 @@ def _angle_mark(
     if ang.label:
         bis = _unit(ua[0] + ub[0], ua[1] + ub[1])
         lr = base_r + (ang.arcs - 1) * 4.0 + 12.0
-        lx, ly = vx + bis[0] * lr, vy + bis[1] * lr
+        sign = -1.0 if ang.label_outside else 1.0
+        lx, ly = vx + sign * bis[0] * lr, vy + sign * bis[1] * lr
+        if ang.label_offset is not None:
+            lx += ang.label_offset[0]
+            ly -= ang.label_offset[1]  # screen y is down
         out.append(
             f'<text x="{lx:.1f}" y="{ly + 4:.1f}" font-size="12.5"'
             f' text-anchor="middle" fill="{_MARK}">{ang.label}</text>'

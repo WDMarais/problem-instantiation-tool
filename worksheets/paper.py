@@ -854,6 +854,18 @@ _MJ2025_P2 = PaperSpec(
             "trig graphs — range, period, increasing, sign intervals, a right shift",
             problem_id="trig_graph_analysis",
         ),
+        # Question 8 — 3-D trigonometry. A COMPOUND (shared-stem) slot: a vertical
+        # tower FT over a horizontal triangle AFB drives three sub-parts — AF by the
+        # sine rule, the "show that TF = AF·tan θ" relation, and the height TF. First
+        # consumer of the 3-D wireframe renderer (render/scene3d.py, cabinet-oblique).
+        # The 8 headline marks split 6 engine-graded (AF, TF) + 2 hand-marked (8.2,
+        # a "show that" whose relation is given, so nothing for the engine to grade).
+        PaperSlot(
+            "8",
+            8,
+            "3-D trig — AF by sine rule, show TF = AF·tan θ, the tower height TF",
+            problem_id="trig_3d_tower",
+        ),
     ),
 )
 
