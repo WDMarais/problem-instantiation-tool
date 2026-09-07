@@ -3626,8 +3626,9 @@ def template_circle_tangent_chain(params: dict, detail: str = "full") -> Problem
 
 
 def _trig_3d_scene(params: dict) -> str:
-    """Cabinet-oblique wireframe for P2 Q8: the vertical tower FT over the ground
-    triangle AFB. Not to scale — positions are schematic; only the lettered points
+    """Elevated-axonometric wireframe for P2 Q8: the vertical tower FT over the
+    ground triangle AFB. Not to scale — positions are schematic; only the lettered
+    points
     and the given angles (α at A, β at B, the elevation θ at A, the right angle at
     F) are shown, so no answer (AF, TF) is read off the figure."""
     alpha, beta, theta = params["alpha"], params["beta"], params["theta"]
@@ -3683,34 +3684,17 @@ def _trig_3d_scene(params: dict) -> str:
         ],
         angles=[
             Angle(vertex="F", a="A", b="T", right=True),  # FT ⟂ ground
-            # the given angles sit *outside* the shape (reverse bisector), clear of
-            # the shaded/meshed faces
-            Angle(
-                vertex="A",
-                a="B",
-                b="F",
-                label=f"{alpha}°",
-                radius=16,
-                label_outside=True,
-            ),  # FÂB
-            Angle(
-                vertex="A",
-                a="F",
-                b="T",
-                label=f"{theta}°",
-                radius=30,
-                label_outside=True,
-            ),  # elevation
-            Angle(
-                vertex="B",
-                a="A",
-                b="F",
-                label=f"{beta}°",
-                radius=16,
-                label_outside=True,
-            ),  # FB̂A
+            # The elevated view opens the ground triangle, so FÂB and FB̂A are real
+            # wedges (~25–30° on screen), not slivers. Each degree label rides just
+            # beyond its own arc along the opening bisector (default placement) — no
+            # reverse-bisector stacking. The arcs reach well into the plane so the
+            # number has breathing room; θ's arc is nested wider than α's so the two
+            # marks at A clear each other.
+            Angle(vertex="A", a="B", b="F", label=f"{alpha}°", radius=22),  # FÂB
+            Angle(vertex="A", a="F", b="T", label=f"{theta}°", radius=38),  # elev.
+            Angle(vertex="B", a="A", b="F", label=f"{beta}°", radius=22),  # FB̂A
         ],
-        view=View(azimuth_deg=28.0, depth=0.5),
+        view=View(azimuth_deg=25.0, elevation_deg=35.0),
         width=380,
         height=300,
         pad=48,

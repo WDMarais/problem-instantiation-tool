@@ -1,5 +1,5 @@
 """
-SVG renderer for 3-D wireframe figures (cabinet-oblique projection).
+SVG renderer for 3-D wireframe figures (elevated axonometric projection).
 
 This is the *fourth* visual domain (see render/DESIGN.md's three-way split). The
 first three all ask "is there a coordinate frame?"; a 3-D scene forces a second
@@ -21,11 +21,15 @@ segment / dash / angle-arc / right-angle / tick / label machinery is exactly
 ``render.geometry``'s — reused verbatim, not re-implemented (DRY lives at the
 emitter, per DESIGN.md). ``Segment`` and ``Angle`` are that module's dataclasses.
 
-Coordinates: ``x`` right, ``y`` receding into the page, ``z`` up. Cabinet oblique
-draws the receding ``y``-axis at ``azimuth_deg`` above the horizontal, foreshortened
-by ``depth`` (0.5 = cabinet, 1.0 = cavalier). SRS variety comes from rotating the
-``View`` azimuth — the whole solid turns coherently, with none of the distortion a
-2-D pose would inflict on a hand-built pseudo-3-D figure.
+Coordinates: ``x`` right, ``y`` receding into the page, ``z`` up. The view is an
+*elevated axonometric*: turntable the scene about the vertical by ``azimuth_deg``,
+raise the camera ``elevation_deg`` above the ground, then project orthographically.
+This is a real rotation, not the cabinet *shear* it replaces — its payoff is that a
+near-edge-on ground plane opens into an actual triangle "seen from above" (so a
+ground angle stops projecting to an illegible sliver), while a vertical edge stays
+exactly vertical on screen (points sharing ``x``/``y`` share their screen ``u``, so
+the tower does not tip over). SRS variety comes from rotating the ``View`` azimuth —
+the whole solid turns coherently; ``elevation_deg`` is the fixed camera height.
 """
 
 from __future__ import annotations
@@ -84,12 +88,14 @@ class Guide:
 
 @dataclass(frozen=True)
 class View:
-    """The cabinet-oblique projection. ``azimuth_deg`` is the angle of the receding
-    y-axis above the screen horizontal; ``depth`` foreshortens it (0.5 = cabinet,
-    1.0 = cavalier). Vary ``azimuth_deg`` for figure-to-figure variety."""
+    """The elevated-axonometric view. ``azimuth_deg`` turntables the scene about the
+    vertical (vary it for figure-to-figure variety); ``elevation_deg`` is the camera
+    height above the ground plane — larger tilts the eye further over the top, which
+    opens near-horizontal planes but never tips verticals (they stay vertical on
+    screen at any elevation). 0° elevation is a flat front view."""
 
     azimuth_deg: float = 35.0
-    depth: float = 0.5
+    elevation_deg: float = 30.0
 
 
 @dataclass
@@ -113,10 +119,11 @@ def _axis_gnomon(view: View, ox: float, oy: float, length: float = 28.0) -> list
     of the deliberately-unscaled figure. Points are Euclidean, not coordinates —
     this orients the projection without implying an analytic frame."""
     a = math.radians(view.azimuth_deg)
+    e = math.radians(view.elevation_deg)
     dirs = {  # projected unit axes in screen space (y is down, so v-up is negated)
-        "x": (1.0, 0.0),
-        "y": (view.depth * math.cos(a), -view.depth * math.sin(a)),
-        "z": (0.0, -1.0),
+        "x": (math.cos(a), -math.sin(a) * math.sin(e)),
+        "y": (-math.sin(a), -math.cos(a) * math.sin(e)),
+        "z": (0.0, -math.cos(e)),
     }
     out: list[str] = []
     for name, (dx, dy) in dirs.items():
@@ -141,11 +148,14 @@ def _axis_gnomon(view: View, ox: float, oy: float, length: float = 28.0) -> list
 
 
 def _project(p: Point3D, view: View) -> tuple[float, float]:
-    """(x, y, z) → (u, v) with v up. Cabinet oblique: the receding y-axis rises at
-    ``azimuth_deg`` and is scaled by ``depth``."""
+    """(x, y, z) → (u, v) with v up. Elevated axonometric: turntable by
+    ``azimuth_deg`` about the vertical, then tilt the camera up by ``elevation_deg``
+    and drop the depth (orthographic). Verticals (fixed x, y) keep a constant u, so
+    they stay vertical on screen; the ground plane opens as elevation increases."""
     a = math.radians(view.azimuth_deg)
-    u = p.x + view.depth * p.y * math.cos(a)
-    v = p.z + view.depth * p.y * math.sin(a)
+    e = math.radians(view.elevation_deg)
+    u = p.x * math.cos(a) - p.y * math.sin(a)
+    v = p.z * math.cos(e) + (p.x * math.sin(a) + p.y * math.cos(a)) * math.sin(e)
     return u, v
 
 
