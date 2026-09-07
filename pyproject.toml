@@ -15,11 +15,18 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
+    "pytest-xdist>=3.8.0",
     "ruff>=0.15.13",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Parallelise by default: the suite is CPU-bound (sympy/generators) and the box
+# has spare cores. `worksteal` (not the default `load` scheduler) lets idle workers
+# pull from busy queues, so a few heavy tests can't stall a worker while others sit
+# idle — that alone took the full run from ~5min to ~1:20. Subset runs pay ~1s of
+# worker spawn. Pass `-n0` to disable (e.g. for `--pdb`, which xdist can't drive).
+addopts = "-n auto --dist worksteal"
 
 [tool.ruff]
 line-length = 88

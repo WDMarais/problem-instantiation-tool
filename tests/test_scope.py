@@ -63,15 +63,29 @@ def engine() -> Engine:
     return Engine(registry=InMemoryRegistry(PROBLEMS))
 
 
+_SCOPE_SWEEP_SEEDS = 2000  # total fixed-seed lattice swept per generator
+_SCOPE_SWEEP_CHUNKS = 4  # split into contiguous seed ranges so a heavy generator's
+# sweep distributes across xdist workers instead of being the suite's serial long
+# pole. The union of chunks is still seeds 0..1999 — identical coverage, just
+# parallelisable (an atomic 2000-draw test can't be split across workers).
+
+
 @pytest.mark.scope
+@pytest.mark.parametrize("chunk", range(_SCOPE_SWEEP_CHUNKS))
 @pytest.mark.parametrize("problem_id", sorted(PREDICATES))
-def test_generator_draws_are_all_in_scope(engine: Engine, problem_id: str) -> None:
+def test_generator_draws_are_all_in_scope(
+    engine: Engine, problem_id: str, chunk: int
+) -> None:
+    # Contiguous slice of the fixed lattice; the // arithmetic covers 0..N exactly
+    # for any chunk count (no reliance on even divisibility).
+    lo = chunk * _SCOPE_SWEEP_SEEDS // _SCOPE_SWEEP_CHUNKS
+    hi = (chunk + 1) * _SCOPE_SWEEP_SEEDS // _SCOPE_SWEEP_CHUNKS
     # min_distinct guards against a vacuous green: the sweep must actually explore
-    # the draw space, not draw one instance 2000 times.
+    # the draw space, not draw one instance for the whole chunk.
     report = assert_scope_holds(
-        engine, problem_id, PREDICATES[problem_id], seeds=range(2000), min_distinct=20
+        engine, problem_id, PREDICATES[problem_id], seeds=range(lo, hi), min_distinct=20
     )
-    assert report.instances_drawn == 2000
+    assert report.instances_drawn == hi - lo
 
 
 @pytest.mark.scope
