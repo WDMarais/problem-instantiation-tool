@@ -55,6 +55,9 @@ from content.examples.arithmetic_sequence import (
 )
 from content.examples.circle_equation import circle_equation
 from content.examples.circle_from_graph import circle_from_graph
+from content.examples.circle_geometry_angle_chase import (
+    problem as circle_geometry_angle_chase,
+)
 from content.examples.circle_tangent import circle_tangent
 from content.examples.circle_tangent_chain import problem as circle_tangent_chain
 from content.examples.circumcentre import circumcentre
@@ -279,8 +282,10 @@ from render.geometry import (
     Point,
     Pose,
     Segment,
+    circle_point,
     render_figure,
 )
+from render.geometry import Circle as EuclidCircle  # vs render.cartesian.Circle
 from render.graph import render_trig_graph
 from render.hyperbola import hyperbola_scene
 from render.line import line_scene
@@ -3773,6 +3778,110 @@ def template_trig_3d_tower(params: dict, detail: str = "full") -> ProblemCard:
     )
 
 
+def _circle_angle_chase_scene(params: dict) -> str:
+    """Euclidean circle figure for the angle-chase: centre O, points A/B/C/D on the
+    circle placed at their TRUE angular positions (so the drawn angles are faithful,
+    not merely schematic), the given inscribed angle at C, and the two sought marks
+    (x at D, y at O). Display-only — every answer is baked by the generator."""
+    lab, pos = params["labels"], params["pos"]
+    c = params["c"]
+    p = params["pose"]
+    r = 1.0
+
+    def _cp(role: str) -> Point:
+        a = math.radians(pos[role])
+        return circle_point(
+            role,
+            0.0,
+            0.0,
+            r,
+            pos[role],
+            label=lab[role],
+            label_dir=(math.cos(a), math.sin(a)),  # push the label radially outward
+        )
+
+    fig = GeometryFigure(
+        points=[
+            # AÔB always opens downward (A, B straddle 270°), so push the O label to
+            # the opposite hemisphere (up, toward the major arc) to vacate that wedge
+            # for the y mark. Figure-relative, so it stays opposite the wedge per pose.
+            Point("O", 0.0, 0.0, label=lab["O"], label_dir=(0.0, 1.0)),
+            _cp("A"),
+            _cp("B"),
+            _cp("C"),
+            _cp("D"),
+        ],
+        circles=[EuclidCircle("O", r)],
+        segments=[
+            Segment("A", "B"),  # the subtended chord
+            Segment("C", "A"),
+            Segment("C", "B"),  # given inscribed angle at C
+            Segment("D", "A"),
+            Segment("D", "B"),  # same-segment angle x at D
+            Segment("O", "A"),
+            Segment("O", "B"),  # radii — the central angle y at O
+        ],
+        angles=[
+            Angle("C", "A", "B", label=f"{c}°", radius=15),  # given
+            Angle("D", "A", "B", label="x", radius=15),  # 9.1
+            Angle("O", "A", "B", label="y", radius=20),  # 9.2 (central)
+        ],
+        pose=Pose(rotate_deg=p["rotate_deg"], scale=p["scale"], reflect=p["reflect"]),
+        width=340,
+        height=300,
+        pad=36,
+    )
+    return render_figure(fig)
+
+
+def template_circle_geometry_angle_chase(
+    params: dict, detail: str = "full"
+) -> ProblemCard:
+    lab = params["labels"]
+    o, a, b, cc, dd = lab["O"], lab["A"], lab["B"], lab["C"], lab["D"]
+    c = params["c"]
+    central = params["central_deg"]
+
+    subparts = [
+        SubPart(
+            "1",
+            rf"Calculate, giving a reason, the size of $x = {a}\hat{{{dd}}}{b}$.",
+            2,
+            [
+                rf"x = {a}\hat{{{dd}}}{b} = {a}\hat{{{cc}}}{b} = {c}^\circ"
+                rf"\quad(\angle\text{{s in the same segment}})",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "2",
+            rf"Calculate, giving a reason, the size of $y = {a}\hat{{{o}}}{b}$.",
+            2,
+            [
+                rf"y = {a}\hat{{{o}}}{b} = 2 \times {a}\hat{{{cc}}}{b} "
+                rf"= 2 \times {c}^\circ = {central}^\circ"
+                rf"\quad(\angle\text{{ centre}} = 2 \angle\text{{ circ.}})",
+            ],
+            auto_marks=2,
+        ),
+    ]
+    if detail != "full":
+        for sp in subparts:
+            sp.memo_steps = sp.memo_steps[-1:]
+
+    return ProblemCard(
+        instruction=(
+            rf"$O$ is the centre of the circle through ${a}$, ${b}$, ${cc}$ and "
+            rf"${dd}$. ${a}\hat{{{cc}}}{b} = {c}^\circ$. In the figure "
+            rf"${a}\hat{{{dd}}}{b} = x$ and ${a}\hat{{{o}}}{b} = y$."
+        ),
+        display_math="",
+        worked_steps=[],
+        subparts=subparts,
+        graph_svg=_circle_angle_chase_scene(params),
+    )
+
+
 # ── analytic geometry (ladder 7) ──────────────────────────────────────────────
 def template_analytic_geometry_triangle(
     params: dict, detail: str = "full"
@@ -5563,6 +5672,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     trig_3d_tower.id: WorksheetEntry(
         problem=trig_3d_tower,
         template=template_trig_3d_tower,
+    ),
+    circle_geometry_angle_chase.id: WorksheetEntry(
+        problem=circle_geometry_angle_chase,
+        template=template_circle_geometry_angle_chase,
     ),
     analytic_geometry_triangle.id: WorksheetEntry(
         problem=analytic_geometry_triangle,
