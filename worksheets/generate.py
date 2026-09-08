@@ -76,6 +76,9 @@ from content.examples.counting_arrangements import (
 )
 from content.examples.cubic_shared_analysis import cubic_shared_analysis
 from content.examples.cubic_stationary_points import cubic_stationary_points
+from content.examples.cyclic_quad_opposite_angles import (
+    problem as cyclic_quad_opposite_angles,
+)
 from content.examples.depreciation import (
     depreciation_amount,
     depreciation_rate,
@@ -3997,6 +4000,130 @@ def template_tangent_chord_angle_chase(
     )
 
 
+def _cyclic_quad_scene(params: dict) -> str:
+    """Faithful cyclic-quadrilateral figure: A, B, C, D on a circle in order, with
+    side BC produced to E. Marks the given interior angle at A, the sought opposite
+    interior angle x = BĈD at C, and the sought exterior angle y = DĈE beyond C. The
+    four vertices sit at true angular positions (∠A subtends arc BCD = 2a) and E is
+    exactly collinear on BC produced, so all three drawn angles equal their baked
+    values — not schematic. Display-only; every answer is baked by the generator."""
+    lab, pos = params["labels"], params["pos"]
+    a = params["given_deg"]
+    r = 1.0
+
+    def _cp(role: str) -> Point:
+        ang = math.radians(pos[role])
+        return circle_point(
+            role,
+            0.0,
+            0.0,
+            r,
+            pos[role],
+            label=lab[role],
+            label_dir=(math.cos(ang), math.sin(ang)),  # push the label radially out
+        )
+
+    b_pt, c_pt = _cp("B"), _cp("C")
+    # E on BC produced: step beyond C along B→C by a fixed layout offset, so B, C, E
+    # are collinear and DĈE is the true supplement of BĈD.
+    ux, uy = c_pt.x - b_pt.x, c_pt.y - b_pt.y
+    norm = math.hypot(ux, uy) or 1.0
+    ext = 0.55
+    e_pt = Point(
+        "E",
+        c_pt.x + ux / norm * ext,
+        c_pt.y + uy / norm * ext,
+        label=lab["E"],
+        label_dir=(ux / norm, uy / norm),  # label beyond E, off the line
+    )
+
+    fig = GeometryFigure(
+        points=[
+            # centre anchors the ring but is not part of this theorem — draw it unseen
+            Point("O", 0.0, 0.0, dot=False, label=""),
+            _cp("A"),
+            b_pt,
+            c_pt,
+            _cp("D"),
+            e_pt,
+        ],
+        circles=[EuclidCircle("O", r)],
+        segments=[
+            Segment("A", "B"),
+            Segment("B", "C"),  # BC, continued by CE below as one straight line
+            Segment("C", "D"),
+            Segment("D", "A"),  # the cyclic quadrilateral ABCD
+            Segment("C", "E"),  # BC produced to E
+        ],
+        angles=[
+            # Angle(vertex, ray1, ray2): the vertex is where the arc sits. x (∠BCD)
+            # and y (∠DCE) share vertex C and ray CD, so give them distinct radii —
+            # otherwise their arcs meet at CD and read as one continuous sweep.
+            Angle("A", "D", "B", label=f"{a}°", radius=18),  # given interior ∠DAB
+            Angle("C", "B", "D", label="x", radius=18),  # 11.1 opposite interior ∠BCD
+            Angle("C", "D", "E", label="y", radius=27),  # 11.2 exterior ∠DCE
+        ],
+        pose=Pose(
+            rotate_deg=params["pose"]["rotate_deg"],
+            scale=params["pose"]["scale"],
+            reflect=params["pose"]["reflect"],
+        ),
+        width=360,
+        height=320,
+        pad=36,
+    )
+    return render_figure(fig)
+
+
+def template_cyclic_quad_opposite_angles(
+    params: dict, detail: str = "full"
+) -> ProblemCard:
+    lab = params["labels"]
+    aa, bb, cc, dd, ee = lab["A"], lab["B"], lab["C"], lab["D"], lab["E"]
+    a = params["given_deg"]
+    opp = 180 - a
+
+    subparts = [
+        SubPart(
+            "1",
+            rf"Calculate, giving a reason, the size of $x = {bb}\hat{{{cc}}}{dd}$.",
+            2,
+            [
+                rf"x = {bb}\hat{{{cc}}}{dd} = 180^\circ - {dd}\hat{{{aa}}}{bb} "
+                rf"= 180^\circ - {a}^\circ = {opp}^\circ"
+                rf"\quad(\text{{opp }}\angle\text{{s of cyclic quad}})",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "2",
+            rf"Calculate, giving a reason, the size of $y = {dd}\hat{{{cc}}}{ee}$.",
+            2,
+            [
+                rf"y = {dd}\hat{{{cc}}}{ee} = {dd}\hat{{{aa}}}{bb} = {a}^\circ"
+                rf"\quad(\text{{ext }}\angle\text{{ of cyclic quad}})",
+            ],
+            auto_marks=2,
+        ),
+    ]
+    if detail != "full":
+        for sp in subparts:
+            sp.memo_steps = sp.memo_steps[-1:]
+
+    return ProblemCard(
+        instruction=(
+            rf"${aa}$, ${bb}$, ${cc}$ and ${dd}$ are points on a circle. "
+            rf"${bb}{cc}$ is produced to ${ee}$, and ${dd}\hat{{{aa}}}{bb} "
+            rf"= {a}^\circ$. In the figure ${bb}\hat{{{cc}}}{dd} = x$ and "
+            rf"${dd}\hat{{{cc}}}{ee} = y$."
+        ),
+        display_math="",
+        worked_steps=[],
+        subparts=subparts,
+        graph_svg=_cyclic_quad_scene(params),
+    )
+
+
 # ── analytic geometry (ladder 7) ──────────────────────────────────────────────
 def template_analytic_geometry_triangle(
     params: dict, detail: str = "full"
@@ -5795,6 +5922,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     tangent_chord_angle_chase.id: WorksheetEntry(
         problem=tangent_chord_angle_chase,
         template=template_tangent_chord_angle_chase,
+    ),
+    cyclic_quad_opposite_angles.id: WorksheetEntry(
+        problem=cyclic_quad_opposite_angles,
+        template=template_cyclic_quad_opposite_angles,
     ),
     analytic_geometry_triangle.id: WorksheetEntry(
         problem=analytic_geometry_triangle,
