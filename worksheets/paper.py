@@ -881,6 +881,20 @@ _MJ2025_P2 = PaperSpec(
             "circle geometry — same-segment angle x = AD̂B, central angle y = AÔB",
             problem_id="circle_geometry_angle_chase",
         ),
+        # Question 10 — Euclidean geometry: tangent-chord angle-chase. A COMPOUND
+        # (shared-stem) slot and the second circle-theorem consumer of the figure
+        # renderer, the first to draw a tangent. A tangent touches at A; the given
+        # tangent-chord angle drives two two-column sub-parts — the alternate-segment
+        # inscribed angle x = AĈB (tan-chord angle) and the central angle y = AÔB
+        # (∠ centre = 2 ∠ circ.). The figure is faithful: the drawn tan-chord angle,
+        # AĈB and AÔB all equal their values. All 4 headline marks are engine-graded
+        # via value_and_reason (1 value + 1 reason per part).
+        PaperSlot(
+            "10",
+            4,
+            "circle geometry — tangent-chord angle x = AĈB, central angle y = AÔB",
+            problem_id="tangent_chord_angle_chase",
+        ),
     ),
 )
 
