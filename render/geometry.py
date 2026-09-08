@@ -21,6 +21,29 @@ from dataclasses import dataclass, field
 _STROKE = "#333333"
 _LABEL = "#111111"
 _MARK = "#2563EB"  # angle / parallel / tick marks — blue, distinct from outline
+_HALO = "#FFFFFF"  # glyph-halo colour: label text is stroked with this so it reads
+# over any chord/arc it crosses (small-tolerant visual language — see _text)
+
+
+def _text(
+    x: float,
+    y: float,
+    s: str,
+    *,
+    size: float,
+    fill: str,
+    italic: bool = False,
+) -> str:
+    """A label with a white glyph halo (``paint-order="stroke"``): the fill text is
+    drawn over a fat white outline of itself, so it stays legible on top of any chord
+    or arc it lands on. Every label in the figure goes through here — one home for the
+    "readable at ~300px over a busy diagram" convention."""
+    style = ' font-style="italic"' if italic else ""
+    return (
+        f'<text x="{x:.1f}" y="{y:.1f}" font-size="{size}" text-anchor="middle"'
+        f' fill="{fill}"{style} paint-order="stroke" stroke="{_HALO}"'
+        f' stroke-width="3" stroke-linejoin="round">{s}</text>'
+    )
 
 
 @dataclass(frozen=True)
@@ -215,11 +238,7 @@ def render_figure(fig: GeometryFigure) -> str:
             d = math.hypot(dx, dy) or 1.0
             lx = px + dx / d * 14
             ly = py + dy / d * 14
-            out.append(
-                f'<text x="{lx:.1f}" y="{ly + 4:.1f}" font-size="13"'
-                f' text-anchor="middle" fill="{_LABEL}"'
-                f' font-style="italic">{text}</text>'
-            )
+            out.append(_text(lx, ly + 4, text, size=13, fill=_LABEL, italic=True))
 
     out.append("</svg>")
     return "\n".join(out)
@@ -352,8 +371,5 @@ def _angle_mark(
         if ang.label_offset is not None:
             lx += ang.label_offset[0]
             ly -= ang.label_offset[1]  # screen y is down
-        out.append(
-            f'<text x="{lx:.1f}" y="{ly + 4:.1f}" font-size="12.5"'
-            f' text-anchor="middle" fill="{_MARK}">{ang.label}</text>'
-        )
+        out.append(_text(lx, ly + 4, ang.label, size=12.5, fill=_MARK))
     return out
