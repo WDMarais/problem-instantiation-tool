@@ -19,6 +19,7 @@ from render.geometry import (
     Pose,
     circle_point,
     render_figure,
+    tangent_point,
 )
 
 
@@ -89,6 +90,27 @@ def test_ring_fits_viewbox_when_points_cluster_on_one_arc():
     ox, oy, r = (float(g) for g in outline.groups())
     assert ox - r >= 0 and ox + r <= 300  # ring within the viewBox horizontally
     assert oy - r >= 0 and oy + r <= 230  # and vertically
+
+
+def test_tangent_point_is_perpendicular_to_the_radius():
+    cx, cy, r = 1.0, 2.0, 3.0
+    for touch in (0, 37, 90, 210, 355):
+        contact = circle_point("A", cx, cy, r, touch)
+        tp = tangent_point("P", cx, cy, r, touch, offset=4.0)
+        radial = (contact.x - cx, contact.y - cy)  # centre -> contact
+        tangent = (tp.x - contact.x, tp.y - contact.y)  # contact -> tangent point
+        dot = radial[0] * tangent[0] + radial[1] * tangent[1]
+        assert math.isclose(dot, 0.0, abs_tol=1e-9)  # radius ⟂ tangent
+        assert math.isclose(math.hypot(*tangent), 4.0)  # offset preserved
+
+
+def test_opposite_offsets_are_collinear_through_the_contact_point():
+    contact = circle_point("A", 0.0, 0.0, 2.0, 50)
+    s = tangent_point("S", 0.0, 0.0, 2.0, 50, offset=3.0)
+    t = tangent_point("T", 0.0, 0.0, 2.0, 50, offset=-3.0)
+    # S, contact, T collinear ⇒ contact is their midpoint
+    assert math.isclose((s.x + t.x) / 2, contact.x, abs_tol=1e-9)
+    assert math.isclose((s.y + t.y) / 2, contact.y, abs_tol=1e-9)
 
 
 def test_circle_stays_circle_under_reflect_and_rotate():

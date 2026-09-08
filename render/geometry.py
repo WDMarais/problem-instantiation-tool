@@ -42,7 +42,7 @@ def _text(
     return (
         f'<text x="{x:.1f}" y="{y:.1f}" font-size="{size}" text-anchor="middle"'
         f' fill="{fill}"{style} paint-order="stroke" stroke="{_HALO}"'
-        f' stroke-width="3" stroke-linejoin="round">{s}</text>'
+        f' stroke-width="4" stroke-linejoin="round">{s}</text>'
     )
 
 
@@ -261,6 +261,30 @@ def circle_point(
     Extra keyword args (``label``, ``label_dir``, ``dot``) pass through to ``Point``."""
     a = math.radians(angle_deg)
     return Point(name, cx + radius * math.cos(a), cy + radius * math.sin(a), **kwargs)  # type: ignore[arg-type]
+
+
+def tangent_point(
+    name: str,
+    cx: float,
+    cy: float,
+    radius: float,
+    touch_angle_deg: float,
+    offset: float,
+    **kwargs: object,
+) -> Point:
+    """A ``Point`` on the tangent line to the circle at its contact point.
+
+    The contact point is at ``touch_angle_deg`` on the circle (like ``circle_point``);
+    the returned point sits ``offset`` layout-units along the tangent direction from
+    there — perpendicular to the radius, so the segment contact→point is a true
+    tangent (radius ⟂ tangent holds in the drawing). Sign of ``offset`` picks the
+    side; place one on each side to draw the tangent extending through the contact
+    point, and use either as an ``Angle`` ray to mark a tangent-chord angle."""
+    a = math.radians(touch_angle_deg)
+    tx, ty = cx + radius * math.cos(a), cy + radius * math.sin(a)  # contact point
+    # tangent unit = radius direction rotated 90° (CCW): (cos,sin) -> (-sin,cos)
+    ux, uy = -math.sin(a), math.cos(a)
+    return Point(name, tx + offset * ux, ty + offset * uy, **kwargs)  # type: ignore[arg-type]
 
 
 # ── primitive helpers ──────────────────────────────────────────────────────────
