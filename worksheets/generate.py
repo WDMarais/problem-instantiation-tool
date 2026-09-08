@@ -229,6 +229,9 @@ from content.examples.series import (
 from content.examples.statistics_grouped import problem as stats_grouped
 from content.examples.statistics_one_var import problem as stats_one_var
 from content.examples.surd_equation import surd_equation
+from content.examples.tangent_chord_angle_chase import (
+    problem as tangent_chord_angle_chase,
+)
 from content.examples.tangent_line import tangent_line
 from content.examples.tree_probability import (
     tree_draw_both,
@@ -284,6 +287,7 @@ from render.geometry import (
     Segment,
     circle_point,
     render_figure,
+    tangent_point,
 )
 from render.geometry import Circle as EuclidCircle  # vs render.cartesian.Circle
 from render.graph import render_trig_graph
@@ -3882,6 +3886,117 @@ def template_circle_geometry_angle_chase(
     )
 
 
+def _tangent_chord_scene(params: dict) -> str:
+    """Faithful tangent-chord figure: circle centre O; A, B, C on it; a tangent at A
+    (⟂ radius OA). Shows the given tan-chord angle at A, the sought inscribed angle x
+    at C (alternate segment) and the central angle y at O. A sits at the bottom so the
+    tangent is horizontal; B is 2t further round, so chord AB rises exactly t above the
+    tangent — the drawn tan-chord angle, AĈB and AÔB are all faithful, not schematic.
+    Display-only — every answer is baked by the generator."""
+    lab, pos = params["labels"], params["pos"]
+    t = params["t"]
+    p = params["pose"]
+    r = 1.0
+    touch = params["contact_deg"]
+    tan_len = 1.15
+
+    def _cp(role: str) -> Point:
+        a = math.radians(pos[role])
+        return circle_point(
+            role,
+            0.0,
+            0.0,
+            r,
+            pos[role],
+            label=lab[role],
+            label_dir=(math.cos(a), math.sin(a)),  # push the label radially outward
+        )
+
+    fig = GeometryFigure(
+        points=[
+            # AÔB opens toward A/B (downward), so push the O label up, off the wedge.
+            Point("O", 0.0, 0.0, label=lab["O"], label_dir=(0.0, 1.0)),
+            _cp("A"),
+            _cp("B"),
+            _cp("C"),
+            # tangent through A: a labelled end M (the marked ray) and an unlabelled
+            # construction end on the far side; the segment M-Mf is the tangent line.
+            tangent_point("M", 0.0, 0.0, r, touch, tan_len, label=lab["M"]),
+            tangent_point("Mf", 0.0, 0.0, r, touch, -tan_len, dot=False, label=""),
+        ],
+        circles=[EuclidCircle("O", r)],
+        segments=[
+            Segment("M", "Mf"),  # the tangent line through A
+            Segment("A", "B"),  # the chord
+            Segment("C", "A"),
+            Segment("C", "B"),  # inscribed angle x at C (alternate segment)
+            Segment("O", "A"),
+            Segment("O", "B"),  # radii — the central angle y at O
+        ],
+        angles=[
+            # radius 40 so the arc *length* (r·θ) matches the central y (r=20, angle
+            # 2t): the tan-chord angle is half, so double the radius.
+            Angle("A", "M", "B", label=f"{t}°", radius=40),  # given tan-chord angle
+            Angle("C", "A", "B", label="x", radius=15),  # 10.1
+            Angle("O", "A", "B", label="y", radius=20),  # 10.2 (central)
+        ],
+        pose=Pose(rotate_deg=p["rotate_deg"], scale=p["scale"], reflect=p["reflect"]),
+        width=360,
+        height=320,
+        pad=36,
+    )
+    return render_figure(fig)
+
+
+def template_tangent_chord_angle_chase(
+    params: dict, detail: str = "full"
+) -> ProblemCard:
+    lab = params["labels"]
+    o, a, b, cc, m = lab["O"], lab["A"], lab["B"], lab["C"], lab["M"]
+    t = params["t"]
+    central = params["central_deg"]
+
+    subparts = [
+        SubPart(
+            "1",
+            rf"Calculate, giving a reason, the size of $x = {a}\hat{{{cc}}}{b}$.",
+            2,
+            [
+                rf"x = {a}\hat{{{cc}}}{b} = {m}\hat{{{a}}}{b} = {t}^\circ"
+                rf"\quad(\text{{tan-chord angle}})",
+            ],
+            auto_marks=2,
+        ),
+        SubPart(
+            "2",
+            rf"Calculate, giving a reason, the size of $y = {a}\hat{{{o}}}{b}$.",
+            2,
+            [
+                rf"y = {a}\hat{{{o}}}{b} = 2 \times {a}\hat{{{cc}}}{b} "
+                rf"= 2 \times {t}^\circ = {central}^\circ"
+                rf"\quad(\angle\text{{ centre}} = 2 \angle\text{{ circ.}})",
+            ],
+            auto_marks=2,
+        ),
+    ]
+    if detail != "full":
+        for sp in subparts:
+            sp.memo_steps = sp.memo_steps[-1:]
+
+    return ProblemCard(
+        instruction=(
+            rf"${a}$, ${b}$ and ${cc}$ are points on the circle with centre ${o}$. "
+            rf"${m}{a}$ is a tangent to the circle at ${a}$, and "
+            rf"${m}\hat{{{a}}}{b} = {t}^\circ$. In the figure "
+            rf"${a}\hat{{{cc}}}{b} = x$ and ${a}\hat{{{o}}}{b} = y$."
+        ),
+        display_math="",
+        worked_steps=[],
+        subparts=subparts,
+        graph_svg=_tangent_chord_scene(params),
+    )
+
+
 # ── analytic geometry (ladder 7) ──────────────────────────────────────────────
 def template_analytic_geometry_triangle(
     params: dict, detail: str = "full"
@@ -5676,6 +5791,10 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     circle_geometry_angle_chase.id: WorksheetEntry(
         problem=circle_geometry_angle_chase,
         template=template_circle_geometry_angle_chase,
+    ),
+    tangent_chord_angle_chase.id: WorksheetEntry(
+        problem=tangent_chord_angle_chase,
+        template=template_tangent_chord_angle_chase,
     ),
     analytic_geometry_triangle.id: WorksheetEntry(
         problem=analytic_geometry_triangle,
