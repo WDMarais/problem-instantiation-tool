@@ -866,6 +866,21 @@ _MJ2025_P2 = PaperSpec(
             "3-D trig — AF by sine rule, show TF = AF·tan θ, the tower height TF",
             problem_id="trig_3d_tower",
         ),
+        # Question 9 — Euclidean geometry: circle angle-chase. A COMPOUND (shared-stem)
+        # slot: O is the centre, A/B/C/D lie on the circle, and the given inscribed
+        # angle AĈB drives two two-column sub-parts — the same-segment angle x = AD̂B
+        # and the central angle y = AÔB. First Euclidean circle-theorem consumer of the
+        # figure renderer (render/geometry.py Circle primitive); the figure IS the
+        # problem. All 4 headline marks are engine-graded via value_and_reason (1 value
+        # + 1 reason per part). The formal proof block (the literal 2025 Q9–Q11) stays
+        # out of scope — no proof-structure verifier — so this is the angle-chase
+        # archetype that fans across years, not the one-off proof.
+        PaperSlot(
+            "9",
+            4,
+            "circle geometry — same-segment angle x = AD̂B, central angle y = AÔB",
+            problem_id="circle_geometry_angle_chase",
+        ),
     ),
 )
 
