@@ -895,6 +895,21 @@ _MJ2025_P2 = PaperSpec(
             "circle geometry — tangent-chord angle x = AĈB, central angle y = AÔB",
             problem_id="tangent_chord_angle_chase",
         ),
+        # Question 11 — Euclidean geometry: cyclic-quadrilateral angle-chase. A
+        # COMPOUND (shared-stem) slot and the third circle-theorem consumer of the
+        # figure renderer. A/B/C/D lie on a circle (a cyclic quad) with side BC
+        # produced to E; the given interior angle at A drives two sub-parts using two
+        # DISTINCT cyclic-quad theorems — the opposite interior angle x = BĈD
+        # (opp ∠s of cyclic quad = 180°) and the exterior angle y = DĈE
+        # (ext ∠ of cyclic quad = interior opposite). The figure is faithful: the
+        # drawn ∠DAB, BĈD and DĈE all equal their values. All 4 headline marks are
+        # engine-graded via value_and_reason (1 value + 1 reason per part).
+        PaperSlot(
+            "11",
+            4,
+            "circle geometry — cyclic quad: opposite angle x = BĈD, exterior y = DĈE",
+            problem_id="cyclic_quad_opposite_angles",
+        ),
     ),
 )
 
