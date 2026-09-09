@@ -238,7 +238,7 @@ def render_figure(fig: GeometryFigure) -> str:
             d = math.hypot(dx, dy) or 1.0
             lx = px + dx / d * 14
             ly = py + dy / d * 14
-            out.append(_text(lx, ly + 4, text, size=13, fill=_LABEL, italic=True))
+            out.append(_text(lx, ly + 4, text, size=14, fill=_LABEL, italic=True))
 
     out.append("</svg>")
     return "\n".join(out)
@@ -395,5 +395,5 @@ def _angle_mark(
         if ang.label_offset is not None:
             lx += ang.label_offset[0]
             ly -= ang.label_offset[1]  # screen y is down
-        out.append(_text(lx, ly + 4, ang.label, size=12.5, fill=_MARK))
+        out.append(_text(lx, ly + 4, ang.label, size=13.5, fill=_MARK))
     return out

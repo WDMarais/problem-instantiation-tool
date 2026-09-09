@@ -3254,7 +3254,7 @@ def template_trig_graph_analysis(params: dict, detail: str = "full") -> ProblemC
         ],
         "x_domain_deg": [-180, 180],
     }
-    svg = render_trig_graph(graph, width=380, height=230)
+    svg = render_trig_graph(graph, width=500, height=250)
 
     subparts = [
         SubPart(
@@ -3362,7 +3362,7 @@ def _srt_scene(params: dict) -> str:
         ),
         equal_aspect=True,
     )
-    return render_scene(scene, width=300, height=240)
+    return render_scene(scene, width=440, height=352)
 
 
 def template_analytic_geometry_srt(params: dict, detail: str = "full") -> ProblemCard:
@@ -3512,7 +3512,7 @@ def _circle_chain_scene(params: dict) -> str:
         ),
         equal_aspect=True,
     )
-    return render_scene(scene, width=320, height=260)
+    return render_scene(scene, width=456, height=370)
 
 
 def template_circle_tangent_chain(params: dict, detail: str = "full") -> ProblemCard:

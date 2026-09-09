@@ -164,7 +164,7 @@ def _text(
     fill: str,
     anchor: str = "middle",
     italic: bool = False,
-    family: str = "sans-serif",
+    family: str = "Georgia, serif",
 ) -> str:
     """A label with a white glyph halo (``paint-order="stroke"``): the fill text is
     drawn over a fat white outline of itself, so it stays legible over any curve,
@@ -351,22 +351,20 @@ def render_scene(
             ml + pw - 2,
             ax_y - 4,
             scene.x_label,
-            size=10,
+            size=13,
             fill=_AXIS_COLOR,
             anchor="end",
             italic=True,
-            family="serif",
         )
     if scene.y_label:
         _axis_label(
             ax_x + 4,
             mt + 8,
             scene.y_label,
-            size=10,
+            size=13,
             fill=_AXIS_COLOR,
             anchor="start",
             italic=True,
-            family="serif",
         )
 
     # axis tick labels. Default: near the axis, skipping 0. `edge_ticks`: at the
@@ -383,9 +381,9 @@ def render_scene(
                 f'<line x1="{xi:.1f}" y1="{ax_y - 3:.1f}" x2="{xi:.1f}"'
                 f' y2="{ax_y + 3:.1f}" stroke="{_AXIS_COLOR}" stroke-width="1"/>'
             )
-            _axis_label(xi, mt + ph + 15, text, size=9, fill=_TICK_COLOR)
+            _axis_label(xi, mt + ph + 15, text, size=13, fill=_TICK_COLOR)
         else:
-            _axis_label(xi, ax_y + 13, text, size=9, fill=_TICK_COLOR)
+            _axis_label(xi, ax_y + 13, text, size=13, fill=_TICK_COLOR)
     for yt in scene.y_ticks:
         if not (y_min <= yt <= y_max) or (abs(yt) <= 1e-9 and not edge):
             continue
@@ -400,7 +398,7 @@ def render_scene(
             ax_x - (6 if edge else 5),
             yi + 3,
             text,
-            size=9,
+            size=13,
             fill=_TICK_COLOR,
             anchor="end",
         )
@@ -431,7 +429,7 @@ def render_scene(
     for pt, dot_svg in deferred_points:
         out.append(dot_svg)
         if pt.label is not None:
-            out.append(placer.place(sx(pt.x), sy(pt.y), pt.label, 9.5, pt.color))
+            out.append(placer.place(sx(pt.x), sy(pt.y), pt.label, 13, pt.color))
 
     out.append("</svg>")
     return "\n".join(out)
@@ -458,13 +456,13 @@ def _emit_item(
         return dot_svg
     if isinstance(item, Label):
         px, py = sx(item.x), sy(item.y)
-        placer.block(_text_box(px, py, item.text, 10, item.anchor))
+        placer.block(_text_box(px, py, item.text, 12.5, item.anchor))
         return [
             _text(
                 px,
                 py,
                 item.text,
-                size=10,
+                size=12.5,
                 fill=item.color,
                 anchor=item.anchor,
                 italic=item.italic,
@@ -560,14 +558,14 @@ def _emit_constline(cl: ConstantLine, sx, sy, ml, mt, pw, ph) -> list[str]:
     out = [line]
     if cl.label is not None:
         if cl.orient == "v":
-            out.append(_text(sx(cl.value), mt + 9, cl.label, size=9, fill=cl.color))
+            out.append(_text(sx(cl.value), mt + 9, cl.label, size=13, fill=cl.color))
         else:
             out.append(
                 _text(
                     ml + pw - 2,
                     sy(cl.value) - 3,
                     cl.label,
-                    size=9,
+                    size=13,
                     fill=cl.color,
                     anchor="end",
                 )

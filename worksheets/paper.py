@@ -346,7 +346,10 @@ body.tabbed .qsection.active { display: block; }
               white-space: nowrap; }
 .slot-instruction { font-size: 10.5pt; line-height: 1.35; }
 .slot-eq { margin: 1.5mm 0; }
-.slot-graph { margin: 1.5mm 0; }
+/* centre figures in the column: inline SVGs (geometry) via text-align, block SVGs
+   (the Cartesian plots carry an inline display:block) via auto side-margins. */
+.slot-graph { margin: 1.5mm 0; text-align: center; }
+.slot-graph svg { margin-inline: auto; }
 .work-space { border-bottom: 1px dotted #ccc; }
 
 .memo h2 { font-size: 13pt; border-bottom: 2px solid #1a1a1a; padding-bottom: 3px;
