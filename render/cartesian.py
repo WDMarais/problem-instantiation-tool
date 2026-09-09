@@ -29,10 +29,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-_AXIS_COLOR = "#333333"
-_GRID_COLOR = "#e0e0e0"
-_CURVE_COLOR = "#2563EB"
-_ACCENT_COLOR = "#DC2626"
+# One palette for the whole graph family (see render/DESIGN.md). Data is blue and
+# reference geometry is muted grey, mirroring the geometry renderer's convention so
+# a function plot and a Euclidean figure read as the same product. Every label is
+# drawn over a white glyph-halo (see `_text`) so it stays legible where it crosses a
+# curve, a gridline or an axis.
+_AXIS_COLOR = "#333333"  # axis lines
+_GRID_COLOR = "#e0e0e0"  # gridlines
+_TICK_COLOR = "#555555"  # numeric tick labels (margin furniture)
+_CURVE_COLOR = "#2563EB"  # curves — and, by default, all data (points + their labels)
+_POINT_COLOR = "#2563EB"  # a given point and its coordinate callout ("blue text")
+_REFERENCE_COLOR = "#6B7280"  # asymptotes, radii — muted so data reads in front
+_ACCENT_COLOR = "#DC2626"  # reserved emphasis, only when a caller asks for it
+_HALO = "#FFFFFF"  # glyph-halo colour stroked behind every label
 
 _counter = 0
 
@@ -70,7 +79,7 @@ class Point:
     y: float
     label: str | None = None
     droplines: bool = False
-    color: str = _AXIS_COLOR
+    color: str = _POINT_COLOR
 
 
 @dataclass(frozen=True)
@@ -96,7 +105,7 @@ class Label:
     x: float
     y: float
     text: str
-    color: str = _AXIS_COLOR
+    color: str = _CURVE_COLOR
     anchor: str = "middle"  # SVG text-anchor: start | middle | end
     italic: bool = False
 
@@ -144,6 +153,105 @@ class CartesianScene:
 def _fmt(v: float) -> str:
     """Integer-valued floats render without a trailing '.0'; else 1 dp."""
     return f"{int(round(v))}" if abs(v - round(v)) < 1e-9 else f"{v:.1f}"
+
+
+def _text(
+    x: float,
+    y: float,
+    s: str,
+    *,
+    size: float,
+    fill: str,
+    anchor: str = "middle",
+    italic: bool = False,
+    family: str = "sans-serif",
+) -> str:
+    """A label with a white glyph halo (``paint-order="stroke"``): the fill text is
+    drawn over a fat white outline of itself, so it stays legible over any curve,
+    gridline or axis it lands on. Every ``<text>`` in the graph family goes through
+    here — the same convention the geometry renderer already uses (render/geometry.py),
+    so a plot and a Euclidean figure read as one product."""
+    style = ' font-style="italic"' if italic else ""
+    return (
+        f'<text x="{x:.1f}" y="{y:.1f}" font-size="{size}"'
+        f' text-anchor="{anchor}" fill="{fill}"{style} font-family="{family}"'
+        f' paint-order="stroke" stroke="{_HALO}" stroke-width="3"'
+        f' stroke-linejoin="round">{s}</text>'
+    )
+
+
+def _text_box(
+    px: float, py: float, s: str, size: float, anchor: str
+) -> tuple[float, float, float, float]:
+    """Rough pixel bounding box (x1, y1, x2, y2) of a label of text `s` at baseline
+    (`px`, `py`) with the given anchor. Width is a proportional-font estimate; it only
+    has to be good enough to keep labels from stacking on each other."""
+    w = 0.58 * size * len(s)
+    if anchor == "start":
+        x1, x2 = px, px + w
+    elif anchor == "end":
+        x1, x2 = px - w, px
+    else:  # middle
+        x1, x2 = px - w / 2, px + w / 2
+    return (x1, py - size * 0.8, x2, py + size * 0.2)
+
+
+def _overlap(a: tuple, b: tuple) -> bool:
+    return not (a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1])
+
+
+class _LabelPlacer:
+    """Greedy, deterministic placement for point callouts: try a small ring of
+    offsets around the dot and take the first that clears every label / dot already
+    placed (and stays inside the plot). The halo makes a label readable *over* the
+    curve; this keeps two labels from landing on top of *each other*. Fixed-position
+    labels (axis captions, asymptote tags, the 'turning point' note) are registered as
+    obstacles via :meth:`block` but never moved."""
+
+    # candidate (dx, dy) nudges in px; dy<0 is up. Ordered by preference: up-right
+    # first, then the other quadrants, then further out.
+    _CANDS = (
+        (6, -6),
+        (-6, -6),
+        (6, 12),
+        (-6, 12),
+        (10, -16),
+        (-10, -16),
+        (14, -6),
+        (-14, -6),
+    )
+
+    def __init__(self, ml: float, mt: float, pw: float, ph: float) -> None:
+        self._boxes: list[tuple[float, float, float, float]] = []
+        self._bounds = (ml, mt, ml + pw, mt + ph)
+
+    def block(self, box: tuple[float, float, float, float]) -> None:
+        self._boxes.append(box)
+
+    def _fits(self, box: tuple) -> bool:
+        bl, bt, br, bb = self._bounds
+        # allow a little bleed past the plot edge, but reject a big overhang
+        if box[0] < bl - 6 or box[2] > br + 6 or box[1] < bt - 6 or box[3] > bb + 6:
+            return False
+        return not any(_overlap(box, o) for o in self._boxes)
+
+    def place(self, px: float, py: float, text: str, size: float, fill: str) -> str:
+        # the dot itself is an obstacle for later labels
+        chosen = None
+        for dx, dy in self._CANDS:
+            anchor = "start" if dx >= 0 else "end"
+            box = _text_box(px + dx, py + dy, text, size, anchor)
+            if self._fits(box):
+                chosen = (px + dx, py + dy, anchor, box)
+                break
+        if chosen is None:  # nothing clear: fall back to up-right, place it anyway
+            dx, dy = self._CANDS[0]
+            anchor = "start"
+            box = _text_box(px + dx, py + dy, text, size, anchor)
+            chosen = (px + dx, py + dy, anchor, box)
+        lx, ly, anchor, box = chosen
+        self._boxes.append(box)
+        return _text(lx, ly, text, size=size, fill=fill, anchor=anchor)
 
 
 def render_scene(
@@ -225,17 +333,40 @@ def render_scene(
         f'<line x1="{ax_x:.1f}" y1="{mt}" x2="{ax_x:.1f}" y2="{mt + ph}"'
         f' stroke="{_AXIS_COLOR}" stroke-width="1.5"/>'
     )
+    placer = _LabelPlacer(ml, mt, pw, ph)
+
+    # All text (axis captions, tick numbers, point callouts) is collected here and
+    # emitted AFTER the primitives so its white halo sits on top of the curve /
+    # asymptote / drop-lines it crosses — otherwise a later-drawn line paints over the
+    # halo and the number reads cramped against it. Tick *marks* (the short axis
+    # dashes) stay under, drawn inline below.
+    axis_text: list[str] = []
+
+    def _axis_label(x, y, s, **kw) -> None:
+        placer.block(_text_box(x, y, s, kw.get("size", 9), kw.get("anchor", "middle")))
+        axis_text.append(_text(x, y, s, **kw))
+
     if scene.x_label:
-        out.append(
-            f'<text x="{ml + pw - 2:.1f}" y="{ax_y - 4:.1f}" font-size="10"'
-            f' text-anchor="end" font-style="italic" fill="{_AXIS_COLOR}"'
-            f' font-family="serif">{scene.x_label}</text>'
+        _axis_label(
+            ml + pw - 2,
+            ax_y - 4,
+            scene.x_label,
+            size=10,
+            fill=_AXIS_COLOR,
+            anchor="end",
+            italic=True,
+            family="serif",
         )
     if scene.y_label:
-        out.append(
-            f'<text x="{ax_x + 4:.1f}" y="{mt + 8:.1f}" font-size="10"'
-            f' font-style="italic" fill="{_AXIS_COLOR}"'
-            f' font-family="serif">{scene.y_label}</text>'
+        _axis_label(
+            ax_x + 4,
+            mt + 8,
+            scene.y_label,
+            size=10,
+            fill=_AXIS_COLOR,
+            anchor="start",
+            italic=True,
+            family="serif",
         )
 
     # axis tick labels. Default: near the axis, skipping 0. `edge_ticks`: at the
@@ -252,17 +383,9 @@ def render_scene(
                 f'<line x1="{xi:.1f}" y1="{ax_y - 3:.1f}" x2="{xi:.1f}"'
                 f' y2="{ax_y + 3:.1f}" stroke="{_AXIS_COLOR}" stroke-width="1"/>'
             )
-            out.append(
-                f'<text x="{xi:.1f}" y="{mt + ph + 15:.1f}" font-size="9"'
-                f' text-anchor="middle" fill="#555"'
-                f' font-family="sans-serif">{text}</text>'
-            )
+            _axis_label(xi, mt + ph + 15, text, size=9, fill=_TICK_COLOR)
         else:
-            out.append(
-                f'<text x="{xi:.1f}" y="{ax_y + 13:.1f}" font-size="9"'
-                f' text-anchor="middle" fill="#555"'
-                f' font-family="sans-serif">{text}</text>'
-            )
+            _axis_label(xi, ax_y + 13, text, size=9, fill=_TICK_COLOR)
     for yt in scene.y_ticks:
         if not (y_min <= yt <= y_max) or (abs(yt) <= 1e-9 and not edge):
             continue
@@ -273,21 +396,50 @@ def render_scene(
                 f'<line x1="{ax_x - 3:.1f}" y1="{yi:.1f}" x2="{ax_x + 3:.1f}"'
                 f' y2="{yi:.1f}" stroke="{_AXIS_COLOR}" stroke-width="1"/>'
             )
-        out.append(
-            f'<text x="{ax_x - (6 if edge else 5):.1f}" y="{yi + 3:.1f}"'
-            f' font-size="9" text-anchor="end" fill="#555"'
-            f' font-family="sans-serif">{text}</text>'
+        _axis_label(
+            ax_x - (6 if edge else 5),
+            yi + 3,
+            text,
+            size=9,
+            fill=_TICK_COLOR,
+            anchor="end",
         )
 
-    # primitives, in declared order (later ones draw on top)
+    # primitives, in declared order (later ones draw on top).
+    deferred_points: list[tuple[Point, str]] = []
     for item in scene.items:
-        out.extend(_emit_item(item, sx, sy, clip_id, ml, mt, pw, ph, ax_x, ax_y))
+        out.extend(
+            _emit_item(
+                item,
+                sx,
+                sy,
+                clip_id,
+                ml,
+                mt,
+                pw,
+                ph,
+                ax_x,
+                ax_y,
+                placer,
+                deferred_points,
+            )
+        )
+
+    # on top of everything: axis numbers/captions (halo reads over the curve), then
+    # the point callouts (nudged to dodge every dot and every label already placed).
+    out.extend(axis_text)
+    for pt, dot_svg in deferred_points:
+        out.append(dot_svg)
+        if pt.label is not None:
+            out.append(placer.place(sx(pt.x), sy(pt.y), pt.label, 9.5, pt.color))
 
     out.append("</svg>")
     return "\n".join(out)
 
 
-def _emit_item(item, sx, sy, clip_id, ml, mt, pw, ph, ax_x, ax_y) -> list[str]:
+def _emit_item(
+    item, sx, sy, clip_id, ml, mt, pw, ph, ax_x, ax_y, placer, deferred_points
+) -> list[str]:
     if isinstance(item, Polyline):
         return _emit_polyline(item, sx, sy, clip_id)
     if isinstance(item, ConstantLine):
@@ -297,13 +449,26 @@ def _emit_item(item, sx, sy, clip_id, ml, mt, pw, ph, ax_x, ax_y) -> list[str]:
     if isinstance(item, Band):
         return _emit_band(item, sx, sy, ml, mt, pw, ph)
     if isinstance(item, Point):
-        return _emit_point(item, sx, sy, ax_x, ax_y)
+        # draw drop-lines + dot now (in declared z-order); defer the label so it can
+        # avoid every fixed label and dot on the scene. The dot is registered as an
+        # obstacle immediately so other callouts steer clear of it.
+        dot_svg, defer = _emit_point(item, sx, sy, ax_x, ax_y, placer)
+        if defer is not None:
+            deferred_points.append(defer)
+        return dot_svg
     if isinstance(item, Label):
-        style = ' font-style="italic"' if item.italic else ""
+        px, py = sx(item.x), sy(item.y)
+        placer.block(_text_box(px, py, item.text, 10, item.anchor))
         return [
-            f'<text x="{sx(item.x):.1f}" y="{sy(item.y):.1f}" font-size="10"'
-            f' text-anchor="{item.anchor}" fill="{item.color}"'
-            f'{style} font-family="sans-serif">{item.text}</text>'
+            _text(
+                px,
+                py,
+                item.text,
+                size=10,
+                fill=item.color,
+                anchor=item.anchor,
+                italic=item.italic,
+            )
         ]
     raise TypeError(f"CartesianScene cannot emit primitive of type {type(item)!r}")
 
@@ -395,39 +560,47 @@ def _emit_constline(cl: ConstantLine, sx, sy, ml, mt, pw, ph) -> list[str]:
     out = [line]
     if cl.label is not None:
         if cl.orient == "v":
-            out.append(
-                f'<text x="{sx(cl.value):.1f}" y="{mt + 9:.1f}" font-size="9"'
-                f' text-anchor="middle" fill="{cl.color}"'
-                f' font-family="sans-serif">{cl.label}</text>'
-            )
+            out.append(_text(sx(cl.value), mt + 9, cl.label, size=9, fill=cl.color))
         else:
             out.append(
-                f'<text x="{ml + pw - 2:.1f}" y="{sy(cl.value) - 3:.1f}"'
-                f' font-size="9" text-anchor="end" fill="{cl.color}"'
-                f' font-family="sans-serif">{cl.label}</text>'
+                _text(
+                    ml + pw - 2,
+                    sy(cl.value) - 3,
+                    cl.label,
+                    size=9,
+                    fill=cl.color,
+                    anchor="end",
+                )
             )
     return out
 
 
-def _emit_point(pt: Point, sx, sy, ax_x, ax_y) -> list[str]:
+def _emit_point(pt: Point, sx, sy, ax_x, ax_y, placer):
+    """Emit the drop-lines and dot now (respecting declared z-order) and register the
+    dot as an obstacle. The label is deferred: returns (svg_now, defer) where `defer`
+    is `(pt, dot_svg)` or None — build_scene places every deferred label last so it can
+    dodge the fixed labels and dots already on the scene."""
     px, py = sx(pt.x), sy(pt.y)
+    # dot + drop-lines are neutral dark so they read on top of the blue curve; the
+    # coordinate label carries the data colour (pt.color). Matches the geometry
+    # renderer's dark dots / coloured value-labels convention.
     out: list[str] = []
     if pt.droplines:
         out.append(
             f'<line x1="{px:.1f}" y1="{py:.1f}" x2="{px:.1f}" y2="{ax_y:.1f}"'
-            f' stroke="{pt.color}" stroke-width="1" stroke-dasharray="3,2"'
-            f' opacity="0.7"/>'
+            f' stroke="{_AXIS_COLOR}" stroke-width="1" stroke-dasharray="3,2"'
+            f' opacity="0.55"/>'
         )
         out.append(
             f'<line x1="{px:.1f}" y1="{py:.1f}" x2="{ax_x:.1f}" y2="{py:.1f}"'
-            f' stroke="{pt.color}" stroke-width="1" stroke-dasharray="3,2"'
-            f' opacity="0.7"/>'
+            f' stroke="{_AXIS_COLOR}" stroke-width="1" stroke-dasharray="3,2"'
+            f' opacity="0.55"/>'
         )
-    out.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="2.6" fill="{pt.color}"/>')
-    if pt.label is not None:
-        # place the label up-and-right of the dot, nudged to stay off the curve
-        out.append(
-            f'<text x="{px + 5:.1f}" y="{py - 5:.1f}" font-size="9.5"'
-            f' fill="{pt.color}" font-family="sans-serif">{pt.label}</text>'
-        )
-    return out
+    dot = f'<circle cx="{px:.1f}" cy="{py:.1f}" r="2.6" fill="{_AXIS_COLOR}"/>'
+    # the dot is an obstacle for every label placed afterwards
+    placer.block((px - 3, py - 3, px + 3, py + 3))
+    if pt.label is None:
+        out.append(dot)
+        return out, None
+    # defer just the label+dot so its placement sees every later dot too
+    return out, (pt, dot)

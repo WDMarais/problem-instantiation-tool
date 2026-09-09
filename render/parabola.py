@@ -62,21 +62,20 @@ def parabola_scene(
     y_ticks = sorted({0, int(yint)} | ({int(vy)} if vy == int(vy) else set()))
 
     if show_intercepts:
-        items.append(Point(float(lo), 0.0, label=_fmt_int(lo), color="#DC2626"))
-        items.append(Point(float(hi), 0.0, label=_fmt_int(hi), color="#DC2626"))
+        items.append(Point(float(lo), 0.0, label=_fmt_int(lo)))
+        items.append(Point(float(hi), 0.0, label=_fmt_int(hi)))
         items.append(
             Point(
                 0.0,
                 float(yint),
                 label=f"(0; {_fmt_int(yint)})",
                 droplines=False,
-                color="#DC2626",
             )
         )
 
     if show_vertex:
-        items.append(Point(vx, float(vy), droplines=True, color="#16A34A"))
-        items.append(Label(vx, y_hi, "turning point", color="#16A34A", anchor="middle"))
+        items.append(Point(vx, float(vy), droplines=True))
+        items.append(Label(vx, y_hi, "turning point", anchor="middle"))
 
     return CartesianScene(
         x_min=x_lo,
@@ -138,7 +137,6 @@ def parabola_vertex_scene(
                 float(q),
                 label=f"({_fmt_int(p)}; {_fmt_int(q)})",
                 droplines=True,
-                color="#16A34A",
             )
         )
     if show_yint:
@@ -148,7 +146,6 @@ def parabola_vertex_scene(
                 float(yint),
                 label=f"(0; {_fmt_int(yint)})",
                 droplines=False,
-                color="#DC2626",
             )
         )
 

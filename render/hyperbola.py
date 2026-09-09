@@ -15,10 +15,16 @@ Display-only: the caller (a generator) already baked the answer. This module onl
 
 from __future__ import annotations
 
-from render.cartesian import CartesianScene, ConstantLine, Point, Polyline
+from render.cartesian import (
+    _REFERENCE_COLOR,
+    CartesianScene,
+    ConstantLine,
+    Point,
+    Polyline,
+)
 
 _N_SAMPLES = 90
-_ASYMPTOTE_COLOR = "#6B7280"
+_ASYMPTOTE_COLOR = _REFERENCE_COLOR
 
 
 def hyperbola_scene(
@@ -87,7 +93,6 @@ def hyperbola_scene(
                 float(py),
                 label=f"({px}; {py})",
                 droplines=True,
-                color="#DC2626",
             )
         )
 

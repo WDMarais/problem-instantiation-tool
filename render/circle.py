@@ -16,9 +16,15 @@ from __future__ import annotations
 
 from math import sqrt
 
-from render.cartesian import CartesianScene, Circle, Point, Polyline
+from render.cartesian import (
+    _REFERENCE_COLOR,
+    CartesianScene,
+    Circle,
+    Point,
+    Polyline,
+)
 
-_RADIUS_COLOR = "#6B7280"
+_RADIUS_COLOR = _REFERENCE_COLOR
 
 
 def circle_scene(
@@ -56,7 +62,7 @@ def circle_scene(
         )
 
     if show_centre:
-        items.append(Point(float(a), float(b), label=f"({a}; {b})", color="#16A34A"))
+        items.append(Point(float(a), float(b), label=f"({a}; {b})"))
 
     if point is not None:
         px, py = point
@@ -66,7 +72,6 @@ def circle_scene(
                 float(py),
                 label=f"({px}; {py})",
                 droplines=True,
-                color="#DC2626",
             )
         )
 

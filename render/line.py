@@ -54,7 +54,6 @@ def line_scene(
                 float(py),
                 label=f"({px}; {py})",
                 droplines=True,
-                color="#DC2626",
             )
         )
 
