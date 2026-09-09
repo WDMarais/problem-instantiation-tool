@@ -352,10 +352,13 @@ body.tabbed .qsection.active { display: block; }
             border-bottom: 1px solid #eee; }
 .memo-num { position: absolute; left: 0; top: 1.5mm; font-weight: bold;
             font-size: 10pt; }
-.memo-steps { font-size: 10pt; line-height: 1.5; }
+.memo-steps { font-size: 10pt; line-height: 1.6; }
 /* a step wider than its column (e.g. a long \\text{} that math won't wrap) scrolls
-   inside its own box rather than bleeding right under the marks/badges gutter */
-.memo-steps > div { margin: .5mm 0; overflow-x: auto; }
+   inside its own box rather than bleeding right under the marks/badges gutter.
+   overflow-y is pinned to visible-via-clip: setting only overflow-x:auto would let
+   CSS coerce overflow-y to auto, and MathJax's few px of extra height would then
+   raise a spurious vertical scrollbar on every line. */
+.memo-steps > div { margin: .5mm 0; overflow-x: auto; overflow-y: hidden; }
 .memo-meta { position: absolute; right: 0; top: 1.5mm; white-space: nowrap; }
 .memo-marks { font-weight: bold; font-size: 9.5pt; }
 .memo-badge { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .5px;
@@ -441,8 +444,19 @@ def _slot_html(rs: RenderedSlot) -> str:
     )
 
 
+def _memo_step_html(s: str) -> str:
+    """One memo line. A bare-LaTeX step (the common case) is the whole line's math,
+    wrapped in ``$…$``. A step that already carries ``$…$`` delimiters is mixed
+    prose + inline math: the prose is left as HTML so it *wraps* (proof "Given:" /
+    "Construction:" lines would otherwise be one non-wrapping ``\\text{}`` box that
+    overflows the column), and KaTeX renders the ``$…$`` islands in place."""
+    if "$" in s:
+        return s
+    return f"${_tex_html(s)}$"
+
+
 def _memo_row_html(rs: RenderedSlot) -> str:
-    steps = "".join(f"<div>${_tex_html(s)}$</div>" for s in rs.memo_steps)
+    steps = "".join(f"<div>{_memo_step_html(s)}</div>" for s in rs.memo_steps)
     if not rs.generated:
         badges = '<span class="memo-badge static">static</span>'
     elif rs.manual_marks > 0:
@@ -873,14 +887,14 @@ _Q9_CIRCLE_PROOFS = StaticPool(
                 "circumference."
             ),
             memo_steps=(
-                r"\text{Given: } O \text{ the centre; } A\hat{O}B \text{ (centre) "
-                r"and } A\hat{C}B \text{ (circumference) subtend arc } AB.",
-                r"\text{Construction: join } CO \text{ and produce to } D.",
-                r"OA=OC\ (\text{radii})\Rightarrow \hat{C}_1=\hat{A}_1;\quad "
-                r"\hat{O}_1=\hat{C}_1+\hat{A}_1=2\hat{C}_1\ (\text{ext }\angle\ "
-                r"\triangle OAC)",
-                r"\text{similarly } \hat{O}_2=2\hat{C}_2;\quad\therefore A\hat{O}B"
-                r"=\hat{O}_1+\hat{O}_2=2(\hat{C}_1+\hat{C}_2)=2\,A\hat{C}B",
+                r"Given: $O$ the centre; $A\hat{O}B$ (centre) and $A\hat{C}B$ "
+                r"(circumference) subtend arc $AB$.",
+                r"Construction: join $CO$ and produce to $D$.",
+                r"$OA=OC$ (radii), so $\hat{C}_1=\hat{A}_1$, and "
+                r"$\hat{O}_1=\hat{C}_1+\hat{A}_1=2\hat{C}_1$ (exterior angle of "
+                r"$\triangle OAC$).",
+                r"Similarly $\hat{O}_2=2\hat{C}_2$. Adding: "
+                r"$A\hat{O}B=\hat{O}_1+\hat{O}_2=2(\hat{C}_1+\hat{C}_2)=2\,A\hat{C}B$.",
             ),
         ),
         StaticContent(
@@ -889,13 +903,13 @@ _Q9_CIRCLE_PROOFS = StaticPool(
                 "quadrilateral are supplementary."
             ),
             memo_steps=(
-                r"\text{Given: cyclic quadrilateral } ABCD \text{ with centre } O.",
-                r"\hat{O}_1=2\hat{A}\ (\angle\text{ at centre}=2\times\angle\text{ at "
-                r"circ., on arc } BCD)",
-                r"\hat{O}_2=2\hat{C}\ (\text{on arc } BAD);\quad \hat{O}_1+\hat{O}_2"
-                r"=360^\circ\ (\angle\text{s about } O)",
-                r"\therefore 2\hat{A}+2\hat{C}=360^\circ\Rightarrow \hat{A}+\hat{C}"
-                r"=180^\circ",
+                r"Given: cyclic quadrilateral $ABCD$ with centre $O$.",
+                r"$\hat{O}_1=2\hat{A}$ (angle at centre $=2\times$ angle at "
+                r"circumference, on arc $BCD$).",
+                r"$\hat{O}_2=2\hat{C}$ (on arc $BAD$), and "
+                r"$\hat{O}_1+\hat{O}_2=360^\circ$ (angles about $O$).",
+                r"So $2\hat{A}+2\hat{C}=360^\circ$, giving "
+                r"$\hat{A}+\hat{C}=180^\circ$.",
             ),
         ),
     )
@@ -910,13 +924,12 @@ _Q10_CIRCLE_PROOFS = StaticPool(
                 "in the alternate segment."
             ),
             memo_steps=(
-                r"\text{Given: tangent } SAT \text{ at } A, \text{ chord } AB, "
-                r"\text{ and } C \text{ on the major arc.}",
-                r"\text{Construction: draw diameter } AOD \text{ and join } BD.",
-                r"D\hat{A}T=90^\circ\ (\text{tangent}\perp\text{radius});\quad "
-                r"A\hat{B}D=90^\circ\ (\angle\text{ in semicircle})",
-                r"\hat{D}=A\hat{C}B\ (\angle\text{s in same segment, arc } AB);\quad "
-                r"B\hat{A}T=90^\circ-D\hat{A}B=\hat{D}=A\hat{C}B",
+                r"Given: tangent $SAT$ at $A$, chord $AB$, and $C$ on the major arc.",
+                r"Construction: draw diameter $AOD$ and join $BD$.",
+                r"$D\hat{A}T=90^\circ$ (tangent $\perp$ radius) and "
+                r"$A\hat{B}D=90^\circ$ (angle in semicircle).",
+                r"$\hat{D}=A\hat{C}B$ (same segment, arc $AB$), so "
+                r"$B\hat{A}T=90^\circ-D\hat{A}B=\hat{D}=A\hat{C}B$.",
             ),
         ),
         StaticContent(
@@ -925,11 +938,11 @@ _Q10_CIRCLE_PROOFS = StaticPool(
                 "interior opposite angle."
             ),
             memo_steps=(
-                r"\text{Given: cyclic quadrilateral } ABCD \text{ with side } BC "
-                r"\text{ produced to } E.",
-                r"B\hat{C}D+\hat{A}=180^\circ\ (\text{opp }\angle\text{s cyclic quad})",
-                r"D\hat{C}E+B\hat{C}D=180^\circ\ (\angle\text{s on a straight line})",
-                r"\therefore D\hat{C}E=\hat{A}",
+                r"Given: cyclic quadrilateral $ABCD$ with side $BC$ produced to $E$.",
+                r"$B\hat{C}D+\hat{A}=180^\circ$ (opposite angles of a cyclic "
+                r"quadrilateral).",
+                r"$D\hat{C}E+B\hat{C}D=180^\circ$ (angles on a straight line).",
+                r"Therefore $D\hat{C}E=\hat{A}$.",
             ),
         ),
     )
@@ -943,15 +956,14 @@ _Q11_SIMILARITY_PROOFS = StaticPool(
                 "equiangular, their corresponding sides are in proportion."
             ),
             memo_steps=(
-                r"\text{Given: } \triangle ABC, \triangle DEF \text{ with } "
-                r"\hat{A}=\hat{D},\ \hat{B}=\hat{E},\ \hat{C}=\hat{F}.",
-                r"\text{Construction: mark } P\text{ on } AB, Q\text{ on } AC \text{ "
-                r"with } AP=DE, AQ=DF; \text{ join } PQ.",
-                r"\triangle APQ\equiv\triangle DEF\ (\text{SAS})\Rightarrow "
-                r"A\hat{P}Q=\hat{E}=\hat{B}\Rightarrow PQ\parallel BC",
-                r"\therefore \dfrac{AB}{AP}=\dfrac{AC}{AQ}\ (\text{line}\parallel"
-                r"\text{ side})\Rightarrow \dfrac{AB}{DE}=\dfrac{AC}{DF}"
-                r"=\dfrac{BC}{EF}",
+                r"Given: $\triangle ABC$ and $\triangle DEF$ with $\hat{A}=\hat{D}$, "
+                r"$\hat{B}=\hat{E}$, $\hat{C}=\hat{F}$.",
+                r"Construction: mark $P$ on $AB$ and $Q$ on $AC$ with $AP=DE$, "
+                r"$AQ=DF$; join $PQ$.",
+                r"$\triangle APQ\equiv\triangle DEF$ (SAS), so $A\hat{P}Q=\hat{E}"
+                r"=\hat{B}$, giving $PQ\parallel BC$.",
+                r"Then $\dfrac{AB}{AP}=\dfrac{AC}{AQ}$ (line parallel to a side), so "
+                r"$\dfrac{AB}{DE}=\dfrac{AC}{DF}=\dfrac{BC}{EF}$.",
             ),
         ),
         StaticContent(
@@ -960,14 +972,14 @@ _Q11_SIMILARITY_PROOFS = StaticPool(
                 "side of a triangle divides the other two sides in proportion."
             ),
             memo_steps=(
-                r"\text{Given: } \triangle ABC \text{ with } DE\parallel BC, "
-                r"D\text{ on } AB, E\text{ on } AC.",
-                r"\text{Construction: join } BE \text{ and } CD.",
-                r"\dfrac{\text{area }\triangle ADE}{\text{area }\triangle BDE}"
-                r"=\dfrac{AD}{DB};\quad \dfrac{\text{area }\triangle ADE}"
-                r"{\text{area }\triangle CED}=\dfrac{AE}{EC}\ (\text{equal heights})",
-                r"\text{area }\triangle BDE=\text{area }\triangle CED\ (\text{same "
-                r"base } DE,\ DE\parallel BC)\Rightarrow \dfrac{AD}{DB}=\dfrac{AE}{EC}",
+                r"Given: $\triangle ABC$ with $DE\parallel BC$, $D$ on $AB$ and $E$ "
+                r"on $AC$.",
+                r"Construction: join $BE$ and $CD$.",
+                r"$\dfrac{\text{area }\triangle ADE}{\text{area }\triangle BDE}"
+                r"=\dfrac{AD}{DB}$ and $\dfrac{\text{area }\triangle ADE}"
+                r"{\text{area }\triangle CED}=\dfrac{AE}{EC}$ (equal heights).",
+                r"$\triangle BDE$ and $\triangle CED$ have equal areas (same base "
+                r"$DE$, $DE\parallel BC$), so $\dfrac{AD}{DB}=\dfrac{AE}{EC}$.",
             ),
         ),
     )
