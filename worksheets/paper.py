@@ -35,6 +35,7 @@ from pathlib import Path
 
 from problem_instantiation_tool.engine import Engine
 from problem_instantiation_tool.registry import InMemoryRegistry
+from render.euclid_theorems import svg_for as _theorem_svg
 from worksheets.generate import (
     PROBLEMS,
     REGISTRY,
@@ -65,6 +66,7 @@ class StaticContent:
     instruction: str  # plain text; inline math in $…$
     memo_steps: tuple[str, ...]  # LaTeX bodies (no $ delimiters) — the fixed memo
     display_math: str = ""  # optional givens, LaTeX body (no $$ delimiters)
+    figure_svg: str = ""  # optional inline SVG (e.g. a theorem-proof diagram)
 
 
 @dataclass(frozen=True)
@@ -291,6 +293,7 @@ def build_paper(spec: PaperSpec, *, seed: int | None = None) -> list[RenderedSlo
                     instruction=s.instruction,
                     display_math=s.display_math,
                     memo_steps=list(s.memo_steps),
+                    graph_svg=s.figure_svg or None,
                     generated=False,
                 )
             )
@@ -886,6 +889,7 @@ _Q9_CIRCLE_PROOFS = StaticPool(
                 "at the centre of a circle is twice the angle the arc subtends at the "
                 "circumference."
             ),
+            figure_svg=_theorem_svg("angle_at_centre"),
             memo_steps=(
                 r"Given: $O$ the centre; $A\hat{O}B$ (centre) and $A\hat{C}B$ "
                 r"(circumference) subtend arc $AB$.",
@@ -902,6 +906,7 @@ _Q9_CIRCLE_PROOFS = StaticPool(
                 "Prove the theorem which states that the opposite angles of a cyclic "
                 "quadrilateral are supplementary."
             ),
+            figure_svg=_theorem_svg("cyclic_quad_opposite"),
             memo_steps=(
                 r"Given: cyclic quadrilateral $ABCD$ with centre $O$.",
                 r"$\hat{O}_1=2\hat{A}$ (angle at centre $=2\times$ angle at "
@@ -923,6 +928,7 @@ _Q10_CIRCLE_PROOFS = StaticPool(
                 "circle and a chord drawn from the point of contact equals the angle "
                 "in the alternate segment."
             ),
+            figure_svg=_theorem_svg("tangent_chord"),
             memo_steps=(
                 r"Given: tangent $SAT$ at $A$, chord $AB$, and $C$ on the major arc.",
                 r"Construction: draw diameter $AOD$ and join $BD$.",
@@ -937,6 +943,7 @@ _Q10_CIRCLE_PROOFS = StaticPool(
                 "Prove that the exterior angle of a cyclic quadrilateral equals the "
                 "interior opposite angle."
             ),
+            figure_svg=_theorem_svg("cyclic_quad_exterior"),
             memo_steps=(
                 r"Given: cyclic quadrilateral $ABCD$ with side $BC$ produced to $E$.",
                 r"$B\hat{C}D+\hat{A}=180^\circ$ (opposite angles of a cyclic "
@@ -955,6 +962,7 @@ _Q11_SIMILARITY_PROOFS = StaticPool(
                 "Prove the theorem which states that if two triangles are "
                 "equiangular, their corresponding sides are in proportion."
             ),
+            figure_svg=_theorem_svg("equiangular_triangles"),
             memo_steps=(
                 r"Given: $\triangle ABC$ and $\triangle DEF$ with $\hat{A}=\hat{D}$, "
                 r"$\hat{B}=\hat{E}$, $\hat{C}=\hat{F}$.",
@@ -971,6 +979,7 @@ _Q11_SIMILARITY_PROOFS = StaticPool(
                 "Prove the theorem which states that a line drawn parallel to one "
                 "side of a triangle divides the other two sides in proportion."
             ),
+            figure_svg=_theorem_svg("basic_proportionality"),
             memo_steps=(
                 r"Given: $\triangle ABC$ with $DE\parallel BC$, $D$ on $AB$ and $E$ "
                 r"on $AC$.",

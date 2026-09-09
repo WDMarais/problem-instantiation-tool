@@ -83,3 +83,16 @@ def test_geometry_questions_carry_a_static_proof_part():
         assert not rs.generated  # hand-marked static proof
         assert "RHS" not in "".join(rs.memo_steps)  # a geometry proof, not an identity
         assert rs.memo_steps  # carries the worked proof
+
+
+def test_geometry_proof_parts_carry_a_labelled_figure():
+    # an NSC "prove the theorem" question provides a general diagram; every variant a
+    # geometry proof pool can draw must ship one (else the proof names undrawn points).
+    for proof_num in ("9.3", "10.3", "11.3"):
+        for seed in range(40):  # rotate through both variants of each pool
+            rs = next(
+                s
+                for s in build_paper(PAPERS["2025_mj_p2"], seed=seed)
+                if s.slot.number == proof_num
+            )
+            assert rs.graph_svg and "<svg" in rs.graph_svg
