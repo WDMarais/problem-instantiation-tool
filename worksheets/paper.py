@@ -68,6 +68,24 @@ class StaticContent:
 
 
 @dataclass(frozen=True)
+class StaticPool:
+    """A small pool of hand-authored variants for one resistant slot; build_paper
+    picks one per seed. The content is still fixed and hand-marked (a proof has no
+    auto-grader) — the pool only removes the "this part is canned" tell across the
+    several papers we ship, by rotating which fixed variant appears. Not a
+    generator: no numeric instantiation, nothing engine-graded."""
+
+    variants: tuple[StaticContent, ...]
+
+    def __post_init__(self) -> None:
+        if not self.variants:
+            raise ValueError("StaticPool needs at least one variant")
+
+    def choose(self, rng: random.Random) -> StaticContent:
+        return rng.choice(self.variants)
+
+
+@dataclass(frozen=True)
 class PaperSlot:
     """One numbered exam item. Exactly one of ``problem_id`` / ``static`` is set.
 
@@ -92,7 +110,7 @@ class PaperSlot:
     problem_id: str | None = (
         None  # generated slot → key in worksheets.generate.PROBLEMS
     )
-    static: StaticContent | None = None  # resistant passthrough
+    static: StaticContent | StaticPool | None = None  # resistant passthrough (or pool)
     auto_marks: int | None = None  # engine-graded portion; None → = generator total
 
     def __post_init__(self) -> None:
@@ -265,6 +283,8 @@ def build_paper(spec: PaperSpec, *, seed: int | None = None) -> list[RenderedSlo
         else:
             s = slot.static
             assert s is not None
+            if isinstance(s, StaticPool):  # rotate which fixed variant this seed gets
+                s = s.choose(rng)
             out.append(
                 RenderedSlot(
                     slot=slot,
@@ -774,6 +794,186 @@ _MJ2025_P1 = PaperSpec(
     ),
 )
 
+# Question 6 (P2) — prove a trig identity. A resistant slot: a free-form deductive
+# proof has no auto-grader (and none is feasible — the same wall as the Euclidean
+# proof block), so it is hand-marked StaticContent. To avoid the identical proof
+# recurring across the several papers we ship, it is a StaticPool of five standard
+# Grade-12 identities (our own wording, standard textbook results — nothing copied
+# from any exam), one drawn per seed. Each carries a full worked memo; the whole
+# slot is hand-marked (the "static" badge says so).
+_Q6_IDENTITY_PROOFS = StaticPool(
+    (
+        StaticContent(
+            instruction="Prove the following identity:",
+            display_math=r"\dfrac{1-\cos^2 x}{\sin x\,\cos x}=\tan x",
+            memo_steps=(
+                r"\text{LHS}=\dfrac{1-\cos^2 x}{\sin x\,\cos x}"
+                r"=\dfrac{\sin^2 x}{\sin x\,\cos x}",
+                r"=\dfrac{\sin x}{\cos x}=\tan x=\text{RHS}",
+            ),
+        ),
+        StaticContent(
+            instruction="Prove the following identity:",
+            display_math=(
+                r"\dfrac{\sin x}{1+\cos x}+\dfrac{1+\cos x}{\sin x}=\dfrac{2}{\sin x}"
+            ),
+            memo_steps=(
+                r"\text{LHS}=\dfrac{\sin^2 x+(1+\cos x)^2}{\sin x\,(1+\cos x)}"
+                r"=\dfrac{\sin^2 x+1+2\cos x+\cos^2 x}{\sin x\,(1+\cos x)}",
+                r"=\dfrac{2+2\cos x}{\sin x\,(1+\cos x)}"
+                r"=\dfrac{2(1+\cos x)}{\sin x\,(1+\cos x)}"
+                r"=\dfrac{2}{\sin x}=\text{RHS}",
+            ),
+        ),
+        StaticContent(
+            instruction="Prove the following identity:",
+            display_math=r"\dfrac{\cos x}{1-\sin x}=\dfrac{1+\sin x}{\cos x}",
+            memo_steps=(
+                r"\text{LHS}=\dfrac{\cos x}{1-\sin x}\cdot\dfrac{1+\sin x}{1+\sin x}"
+                r"=\dfrac{\cos x\,(1+\sin x)}{1-\sin^2 x}",
+                r"=\dfrac{\cos x\,(1+\sin x)}{\cos^2 x}=\dfrac{1+\sin x}{\cos x}"
+                r"=\text{RHS}",
+            ),
+        ),
+        StaticContent(
+            instruction="Prove the following identity:",
+            display_math=r"(\sin x+\cos x)^2=1+2\sin x\cos x",
+            memo_steps=(
+                r"\text{LHS}=\sin^2 x+2\sin x\cos x+\cos^2 x",
+                r"=(\sin^2 x+\cos^2 x)+2\sin x\cos x=1+2\sin x\cos x=\text{RHS}",
+            ),
+        ),
+        StaticContent(
+            instruction="Prove the following identity:",
+            display_math=r"\dfrac{1}{\cos^2 x}-\tan^2 x=1",
+            memo_steps=(
+                r"\text{LHS}=\dfrac{1}{\cos^2 x}-\dfrac{\sin^2 x}{\cos^2 x}"
+                r"=\dfrac{1-\sin^2 x}{\cos^2 x}",
+                r"=\dfrac{\cos^2 x}{\cos^2 x}=1=\text{RHS}",
+            ),
+        ),
+    )
+)
+
+
+# The Euclidean-geometry proof blocks (P2 Q9.3 / Q10.3 / Q11.3). The real paper's
+# Q9–Q10 are ~40 marks of circle-theorem and similarity PROOFS — the resistant wall
+# (a free-form deductive proof has no auto-grader). Our live angle-chase archetypes
+# (9.1/9.2, 10.1/10.2, 11.1/11.2) are the variable substitute; these hand-marked
+# static proof pools carry the proof marks the substitute doesn't, so P2 reconciles
+# to the NSC 150. Standard Grade-12 bookwork proofs — our own wording, standard
+# results, nothing copied from any exam; one drawn per seed. Each geometry question
+# draws from its own pool so no proof repeats within a paper.
+_Q9_CIRCLE_PROOFS = StaticPool(
+    (
+        StaticContent(
+            instruction=(
+                "Prove the theorem which states that the angle subtended by an arc "
+                "at the centre of a circle is twice the angle the arc subtends at the "
+                "circumference."
+            ),
+            memo_steps=(
+                r"\text{Given: } O \text{ the centre; } A\hat{O}B \text{ (centre) "
+                r"and } A\hat{C}B \text{ (circumference) subtend arc } AB.",
+                r"\text{Construction: join } CO \text{ and produce to } D.",
+                r"OA=OC\ (\text{radii})\Rightarrow \hat{C}_1=\hat{A}_1;\quad "
+                r"\hat{O}_1=\hat{C}_1+\hat{A}_1=2\hat{C}_1\ (\text{ext }\angle\ "
+                r"\triangle OAC)",
+                r"\text{similarly } \hat{O}_2=2\hat{C}_2;\quad\therefore A\hat{O}B"
+                r"=\hat{O}_1+\hat{O}_2=2(\hat{C}_1+\hat{C}_2)=2\,A\hat{C}B",
+            ),
+        ),
+        StaticContent(
+            instruction=(
+                "Prove the theorem which states that the opposite angles of a cyclic "
+                "quadrilateral are supplementary."
+            ),
+            memo_steps=(
+                r"\text{Given: cyclic quadrilateral } ABCD \text{ with centre } O.",
+                r"\hat{O}_1=2\hat{A}\ (\angle\text{ at centre}=2\times\angle\text{ at "
+                r"circ., on arc } BCD)",
+                r"\hat{O}_2=2\hat{C}\ (\text{on arc } BAD);\quad \hat{O}_1+\hat{O}_2"
+                r"=360^\circ\ (\angle\text{s about } O)",
+                r"\therefore 2\hat{A}+2\hat{C}=360^\circ\Rightarrow \hat{A}+\hat{C}"
+                r"=180^\circ",
+            ),
+        ),
+    )
+)
+
+_Q10_CIRCLE_PROOFS = StaticPool(
+    (
+        StaticContent(
+            instruction=(
+                "Prove the theorem which states that the angle between a tangent to a "
+                "circle and a chord drawn from the point of contact equals the angle "
+                "in the alternate segment."
+            ),
+            memo_steps=(
+                r"\text{Given: tangent } SAT \text{ at } A, \text{ chord } AB, "
+                r"\text{ and } C \text{ on the major arc.}",
+                r"\text{Construction: draw diameter } AOD \text{ and join } BD.",
+                r"D\hat{A}T=90^\circ\ (\text{tangent}\perp\text{radius});\quad "
+                r"A\hat{B}D=90^\circ\ (\angle\text{ in semicircle})",
+                r"\hat{D}=A\hat{C}B\ (\angle\text{s in same segment, arc } AB);\quad "
+                r"B\hat{A}T=90^\circ-D\hat{A}B=\hat{D}=A\hat{C}B",
+            ),
+        ),
+        StaticContent(
+            instruction=(
+                "Prove that the exterior angle of a cyclic quadrilateral equals the "
+                "interior opposite angle."
+            ),
+            memo_steps=(
+                r"\text{Given: cyclic quadrilateral } ABCD \text{ with side } BC "
+                r"\text{ produced to } E.",
+                r"B\hat{C}D+\hat{A}=180^\circ\ (\text{opp }\angle\text{s cyclic quad})",
+                r"D\hat{C}E+B\hat{C}D=180^\circ\ (\angle\text{s on a straight line})",
+                r"\therefore D\hat{C}E=\hat{A}",
+            ),
+        ),
+    )
+)
+
+_Q11_SIMILARITY_PROOFS = StaticPool(
+    (
+        StaticContent(
+            instruction=(
+                "Prove the theorem which states that if two triangles are "
+                "equiangular, their corresponding sides are in proportion."
+            ),
+            memo_steps=(
+                r"\text{Given: } \triangle ABC, \triangle DEF \text{ with } "
+                r"\hat{A}=\hat{D},\ \hat{B}=\hat{E},\ \hat{C}=\hat{F}.",
+                r"\text{Construction: mark } P\text{ on } AB, Q\text{ on } AC \text{ "
+                r"with } AP=DE, AQ=DF; \text{ join } PQ.",
+                r"\triangle APQ\equiv\triangle DEF\ (\text{SAS})\Rightarrow "
+                r"A\hat{P}Q=\hat{E}=\hat{B}\Rightarrow PQ\parallel BC",
+                r"\therefore \dfrac{AB}{AP}=\dfrac{AC}{AQ}\ (\text{line}\parallel"
+                r"\text{ side})\Rightarrow \dfrac{AB}{DE}=\dfrac{AC}{DF}"
+                r"=\dfrac{BC}{EF}",
+            ),
+        ),
+        StaticContent(
+            instruction=(
+                "Prove the theorem which states that a line drawn parallel to one "
+                "side of a triangle divides the other two sides in proportion."
+            ),
+            memo_steps=(
+                r"\text{Given: } \triangle ABC \text{ with } DE\parallel BC, "
+                r"D\text{ on } AB, E\text{ on } AC.",
+                r"\text{Construction: join } BE \text{ and } CD.",
+                r"\dfrac{\text{area }\triangle ADE}{\text{area }\triangle BDE}"
+                r"=\dfrac{AD}{DB};\quad \dfrac{\text{area }\triangle ADE}"
+                r"{\text{area }\triangle CED}=\dfrac{AE}{EC}\ (\text{equal heights})",
+                r"\text{area }\triangle BDE=\text{area }\triangle CED\ (\text{same "
+                r"base } DE,\ DE\parallel BC)\Rightarrow \dfrac{AD}{DB}=\dfrac{AE}{EC}",
+            ),
+        ),
+    )
+)
+
+
 # Paper 2 — statistics, analytical geometry, trigonometry, Euclidean geometry.
 # Being wired render-free-first: the statistics/trig questions land now; the
 # analytical-geometry (cartesian renderer) and Euclidean-geometry (figure IS the
@@ -866,6 +1066,25 @@ _MJ2025_P2 = PaperSpec(
             problem_id="trig_simplify_product",
             auto_marks=2,
         ),
+        # Question 6.1 — prove a trig identity (hand-marked static pool; see above).
+        PaperSlot(
+            "6.1",
+            6,
+            "prove a trig identity (hand-marked — outside the variable set)",
+            static=_Q6_IDENTITY_PROOFS,
+        ),
+        # Question 6.2 — hence/otherwise solve a trig equation. A live slot: a general
+        # trig equation solved for the reference angle. Standalone (not literally
+        # chained off 6.1's identity) — the engine grades the answer value (1 of the
+        # 7 marks) via symbolic_equality; the reference-angle / quadrant / general-
+        # solution method lines are hand-marked.
+        PaperSlot(
+            "6.2",
+            7,
+            "hence solve a trig equation (reference angle)",
+            problem_id="trig_equation",
+            auto_marks=1,
+        ),
         # Question 7 — trigonometric graphs. A COMPOUND (shared-stem) slot: two curves
         # f = a·cos x + q and g = sin(bx) drive six read-off-the-equation sub-parts
         # (range, period, increasing interval, two sign-inequality sets, a right shift).
@@ -904,6 +1123,14 @@ _MJ2025_P2 = PaperSpec(
             "circle geometry — same-segment angle x = AD̂B, central angle y = AÔB",
             problem_id="circle_geometry_angle_chase",
         ),
+        # Question 9.3 — a circle-theorem proof (hand-marked static pool; see above).
+        # Carries the proof marks the live angle-chase (9.1/9.2) doesn't.
+        PaperSlot(
+            "9.3",
+            10,
+            "prove a circle theorem (hand-marked — outside the variable set)",
+            static=_Q9_CIRCLE_PROOFS,
+        ),
         # Question 10 — Euclidean geometry: tangent-chord angle-chase. A COMPOUND
         # (shared-stem) slot and the second circle-theorem consumer of the figure
         # renderer, the first to draw a tangent. A tangent touches at A; the given
@@ -917,6 +1144,13 @@ _MJ2025_P2 = PaperSpec(
             4,
             "circle geometry — tangent-chord angle x = AĈB, central angle y = AÔB",
             problem_id="tangent_chord_angle_chase",
+        ),
+        # Question 10.3 — a circle-theorem proof (hand-marked static pool; see above).
+        PaperSlot(
+            "10.3",
+            8,
+            "prove a circle theorem (hand-marked — outside the variable set)",
+            static=_Q10_CIRCLE_PROOFS,
         ),
         # Question 11 — Euclidean geometry: cyclic-quadrilateral angle-chase. A
         # COMPOUND (shared-stem) slot and the third circle-theorem consumer of the
@@ -932,6 +1166,14 @@ _MJ2025_P2 = PaperSpec(
             4,
             "circle geometry — cyclic quad: opposite angle x = BĈD, exterior y = DĈE",
             problem_id="cyclic_quad_opposite_angles",
+        ),
+        # Question 11.3 — a similarity / proportion proof (hand-marked static pool;
+        # see above). The similarity (BPT) strand of the real paper's proof block.
+        PaperSlot(
+            "11.3",
+            10,
+            "prove a similarity theorem (hand-marked — outside the variable set)",
+            static=_Q11_SIMILARITY_PROOFS,
         ),
     ),
 )
