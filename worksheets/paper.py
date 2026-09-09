@@ -585,7 +585,8 @@ _MJ2025_P1 = PaperSpec(
         # auto_marks = simplified power a^x = a^n (1) + exponent x = n (1); the 3rd
         # is the factoring line a^x(a^k+1), marked by hand. (The real 1.1.3 is a
         # common-base factoring solve, not the harder quadratic-in-u substitution —
-        # that is exponential_equation, a 1.1.4-type slot; see audit.)
+        # that is exponential_equation, a 1.1.4-type slot. Fidelity audit confirmed
+        # this match: exponential_common_base mirrors the real 2^(x+4)+2^x=8704.)
         PaperSlot(
             "1.1.3",
             3,

@@ -2420,10 +2420,10 @@ def template_quadratic_inequality(params: dict, detail: str = "full") -> Problem
     lo, hi = params["root1"], params["root2"]  # generator stores these sorted lo, hi
     opens = "upwards" if a > 0 else "downwards"
     full = [
-        rf"\text{{critical values: }} x = {lo} \;\text{{ or }}\; x = {hi}",
-        rf"\text{{the parabola opens {opens}, so the solution lies "
-        rf"{params['region']} the critical values}}",
-        params["solution_latex"],
+        rf"Critical values: $x = {lo}$ or $x = {hi}$.",
+        rf"The parabola opens {opens}, so the solution lies {params['region']} "
+        rf"the critical values $x = {lo}$ and $x = {hi}$.",
+        rf"$\therefore\; {params['solution_latex']}$",
     ]
     return ProblemCard(
         instruction="Solve for $x$:",
@@ -5135,9 +5135,9 @@ def template_parabola_properties(params: dict, detail: str = "full") -> ProblemC
                 rf"g'(x) = 2({q}) - f(x) = {gp_tex}",
                 rf"g'(x) = {gp_tex} > 0 \text{{ for all }} x"
                 rf"\ (\text{{minimum }} = {q} > 0)",
-                rf"\therefore\; g \text{{ is strictly increasing: no stationary "
-                rf"points, inflection at }} x = {h}",
-                r"\text{sketch: an always-increasing cubic with } g(0) < 0",
+                rf"$\therefore g$ is strictly increasing: no stationary points, "
+                rf"inflection at $x = {h}$.",
+                r"Sketch: an always-increasing cubic with $g(0) < 0$.",
             ],
             auto_marks=0,
         ),
