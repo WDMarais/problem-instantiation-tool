@@ -14,6 +14,8 @@ to an inline SVG string for embedding in a ``StaticContent.figure_svg``.
 
 from __future__ import annotations
 
+import math
+
 from render.geometry import (
     Angle,
     Circle,
@@ -192,6 +194,114 @@ def basic_proportionality() -> GeometryFigure:
     )
 
 
+def perp_from_centre_bisects_chord() -> GeometryFigure:
+    """The line drawn from the centre of a circle perpendicular to a chord bisects
+    the chord. Centre O; chord AB; M the foot of OM ⊥ AB; radii OA, OB give the two
+    congruent right triangles (RHS)."""
+    depth = 0.55  # how far below O the chord sits
+    half = math.sqrt(_R * _R - depth * depth)  # half-chord AM = MB
+    o = Point("O", 0.0, 0.0, label_dir=(-0.5, 0.6))
+    a = Point("A", -half, -depth, label_dir=(-1, -0.2))
+    b = Point("B", half, -depth, label_dir=(1, -0.2))
+    m = Point("M", 0.0, -depth, label_dir=(0, -1))
+    return GeometryFigure(
+        points=[o, a, b, m],
+        segments=[
+            Segment("O", "A"),
+            Segment("O", "B"),  # radii
+            Segment("O", "M"),  # the perpendicular from the centre
+            Segment("A", "M", ticks=1),
+            Segment("M", "B", ticks=1),  # the chord, shown bisected at M
+        ],
+        angles=[Angle("M", "O", "A", right=True)],  # OM ⊥ AB
+        circles=[Circle("O", _R)],
+        width=250,
+        height=230,
+    )
+
+
+def two_tangents_equal() -> GeometryFigure:
+    """Two tangents drawn to a circle from a common external point are equal. Tangents
+    PA, PB touch at A, B; radii OA, OB meet them at right angles; the line OP gives the
+    two congruent right triangles (RHS), so PA = PB."""
+    d = 2.3  # OP, the external point's distance from the centre
+    touch = math.degrees(math.acos(_R / d))  # ∠AOP at the contact
+    o = Point("O", 0.0, 0.0, label_dir=(-1, 0))
+    p = Point("P", d, 0.0, label_dir=(1, 0))
+    a = circle_point("A", 0, 0, _R, touch, label_dir=(0.2, 1))
+    b = circle_point("B", 0, 0, _R, -touch, label_dir=(0.2, -1))
+    return GeometryFigure(
+        points=[o, a, b, p],
+        segments=[
+            Segment("P", "A", ticks=1),
+            Segment("P", "B", ticks=1),  # the two tangents, shown equal
+            Segment("O", "A"),
+            Segment("O", "B"),  # radii to the contacts
+            Segment("O", "P", dashed=True),  # construction: join OP
+        ],
+        angles=[
+            Angle("A", "O", "P", right=True),  # radius ⊥ tangent at A
+            Angle("B", "O", "P", right=True),  # radius ⊥ tangent at B
+        ],
+        circles=[Circle("O", _R)],
+        width=260,
+        height=230,
+    )
+
+
+def angles_same_segment() -> GeometryFigure:
+    """Angles subtended by a chord (arc) in the same segment are equal. Chord AB
+    subtends AĈB and AD̂B at C, D on the major arc; radii OA, OB give the central
+    angle AÔB = 2AĈB = 2AD̂B used in the proof."""
+    o = Point("O", 0.0, 0.0, label_dir=(0.6, -0.2))
+    a = circle_point("A", 0, 0, _R, 215, label_dir=(-1, -0.2))
+    b = circle_point("B", 0, 0, _R, 325, label_dir=(1, -0.2))
+    c = circle_point("C", 0, 0, _R, 74, label_dir=(0.7, 0.7))
+    d = circle_point("D", 0, 0, _R, 116, label_dir=(-0.7, 0.7))
+    return GeometryFigure(
+        points=[o, a, b, c, d],
+        segments=[
+            Segment("A", "B"),  # the subtended chord
+            Segment("A", "C"),
+            Segment("B", "C"),  # AĈB
+            Segment("A", "D"),
+            Segment("B", "D"),  # AD̂B
+            Segment("O", "A", dashed=True),
+            Segment("O", "B", dashed=True),  # construction: radii to the chord
+        ],
+        angles=[
+            Angle("C", "A", "B", arcs=1),
+            Angle("D", "A", "B", arcs=1),  # equal angles in the same segment
+        ],
+        circles=[Circle("O", _R)],
+        width=260,
+        height=250,
+    )
+
+
+def angle_in_semicircle() -> GeometryFigure:
+    """The angle subtended by a diameter at the circumference is a right angle.
+    Diameter AB through the centre O; C on the circle; radius OC gives the two
+    isosceles triangles whose base angles sum to AĈB = 90°."""
+    o = Point("O", 0.0, 0.0, label_dir=(0, -1))
+    a = Point("A", -_R, 0.0, label_dir=(-1, 0))
+    b = Point("B", _R, 0.0, label_dir=(1, 0))
+    c = circle_point("C", 0, 0, _R, 68, label_dir=(0.3, 1))
+    return GeometryFigure(
+        points=[o, a, b, c],
+        segments=[
+            Segment("A", "B"),  # the diameter, through O
+            Segment("A", "C"),
+            Segment("B", "C"),  # the inscribed angle AĈB
+            Segment("O", "C", dashed=True),  # construction: the radius OC
+        ],
+        angles=[Angle("C", "A", "B", right=True)],  # AĈB = 90°
+        circles=[Circle("O", _R)],
+        width=250,
+        height=205,
+    )
+
+
 _FIGURES = {
     "angle_at_centre": angle_at_centre,
     "cyclic_quad_opposite": cyclic_quad_opposite,
@@ -199,6 +309,10 @@ _FIGURES = {
     "cyclic_quad_exterior": cyclic_quad_exterior,
     "equiangular_triangles": equiangular_triangles,
     "basic_proportionality": basic_proportionality,
+    "perp_from_centre_bisects_chord": perp_from_centre_bisects_chord,
+    "two_tangents_equal": two_tangents_equal,
+    "angles_same_segment": angles_same_segment,
+    "angle_in_semicircle": angle_in_semicircle,
 }
 
 

@@ -89,10 +89,27 @@ def test_geometry_proof_parts_carry_a_labelled_figure():
     # an NSC "prove the theorem" question provides a general diagram; every variant a
     # geometry proof pool can draw must ship one (else the proof names undrawn points).
     for proof_num in ("9.3", "10.3", "11.3"):
-        for seed in range(40):  # rotate through both variants of each pool
+        for seed in range(60):  # rotate through every variant of each pool
             rs = next(
                 s
                 for s in build_paper(PAPERS["2025_mj_p2"], seed=seed)
                 if s.slot.number == proof_num
             )
             assert rs.graph_svg and "<svg" in rs.graph_svg
+
+
+def test_geometry_proof_pools_rotate_through_every_variant():
+    # the two circle pools were widened to 4 variants each; the similarity pool holds
+    # the canonical equiangular/BPT pair. Every variant must be reachable across seeds
+    # (else it is dead weight and proofs recur more than intended across papers).
+    expected = {"9.3": 4, "10.3": 4, "11.3": 2}
+    for proof_num, count in expected.items():
+        shown = {
+            next(
+                s
+                for s in build_paper(PAPERS["2025_mj_p2"], seed=seed)
+                if s.slot.number == proof_num
+            ).instruction
+            for seed in range(60)
+        }
+        assert len(shown) == count

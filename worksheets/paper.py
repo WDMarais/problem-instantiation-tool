@@ -917,6 +917,37 @@ _Q9_CIRCLE_PROOFS = StaticPool(
                 r"$\hat{A}+\hat{C}=180^\circ$.",
             ),
         ),
+        StaticContent(
+            instruction=(
+                "Prove the theorem which states that the line drawn from the "
+                "centre of a circle perpendicular to a chord bisects the chord."
+            ),
+            figure_svg=_theorem_svg("perp_from_centre_bisects_chord"),
+            memo_steps=(
+                r"Given: $O$ the centre and $OM\perp$ chord $AB$, with $M$ on "
+                r"$AB$.",
+                r"Construction: join $OA$ and $OB$.",
+                r"In $\triangle OMA$ and $\triangle OMB$: $OA=OB$ (radii), "
+                r"$OM$ is common, and $O\hat{M}A=O\hat{M}B=90^\circ$ (given).",
+                r"$\triangle OMA\equiv\triangle OMB$ (RHS), so $AM=MB$ and "
+                r"$OM$ bisects $AB$.",
+            ),
+        ),
+        StaticContent(
+            instruction=(
+                "Prove the theorem which states that two tangents drawn to a "
+                "circle from a point outside the circle are equal in length."
+            ),
+            figure_svg=_theorem_svg("two_tangents_equal"),
+            memo_steps=(
+                r"Given: tangents $PA$ and $PB$ from an external point $P$, "
+                r"touching the circle (centre $O$) at $A$ and $B$.",
+                r"Construction: join $OA$, $OB$ and $OP$.",
+                r"$O\hat{A}P=O\hat{B}P=90^\circ$ (tangent $\perp$ radius), "
+                r"$OA=OB$ (radii), and $OP$ is common.",
+                r"$\triangle OAP\equiv\triangle OBP$ (RHS), so $PA=PB$.",
+            ),
+        ),
     )
 )
 
@@ -950,6 +981,39 @@ _Q10_CIRCLE_PROOFS = StaticPool(
                 r"quadrilateral).",
                 r"$D\hat{C}E+B\hat{C}D=180^\circ$ (angles on a straight line).",
                 r"Therefore $D\hat{C}E=\hat{A}$.",
+            ),
+        ),
+        StaticContent(
+            instruction=(
+                "Prove the theorem which states that angles subtended by a "
+                "chord of a circle, on the same side of the chord, are equal."
+            ),
+            figure_svg=_theorem_svg("angles_same_segment"),
+            memo_steps=(
+                r"Given: chord $AB$ subtends $A\hat{C}B$ and $A\hat{D}B$ at "
+                r"$C$ and $D$ in the same segment; $O$ the centre.",
+                r"$A\hat{O}B=2\,A\hat{C}B$ (angle at centre $=2\times$ angle "
+                r"at circumference, on arc $AB$).",
+                r"$A\hat{O}B=2\,A\hat{D}B$ (same, on arc $AB$).",
+                r"So $2\,A\hat{C}B=2\,A\hat{D}B$, giving "
+                r"$A\hat{C}B=A\hat{D}B$.",
+            ),
+        ),
+        StaticContent(
+            instruction=(
+                "Prove the theorem which states that the angle subtended by a "
+                "diameter at the circumference of a circle is a right angle."
+            ),
+            figure_svg=_theorem_svg("angle_in_semicircle"),
+            memo_steps=(
+                r"Given: $AB$ a diameter of the circle (centre $O$), and $C$ "
+                r"a point on the circle.",
+                r"Construction: join $OC$.",
+                r"$OA=OC=OB$ (radii), so $\triangle OAC$ and $\triangle OBC$ "
+                r"are isosceles: $\hat{A}=\hat{C}_1$ and $\hat{B}=\hat{C}_2$.",
+                r"$A\hat{C}B=\hat{C}_1+\hat{C}_2=\hat{A}+\hat{B}$, and "
+                r"$\hat{A}+\hat{B}+A\hat{C}B=180^\circ$ in $\triangle ABC$, "
+                r"so $2\,A\hat{C}B=180^\circ$ and $A\hat{C}B=90^\circ$.",
             ),
         ),
     )
