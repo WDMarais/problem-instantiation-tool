@@ -835,13 +835,36 @@ _MJ2025_P2 = PaperSpec(
         # one given ratio (cos θ) plus the quadrant drives three sub-parts (sin²θ, a
         # reduction-formula ratio, a compound-angle value). No diagram. The 9 headline
         # marks split 3 engine-graded (the final value of each) + 6 hand-marked (the
-        # Pythagoras/quadrant/expansion method). Q5.2 (identity simplify) and Q5.3
-        # (special tan-product) are a fixed-answer shape, deferred to a later slot.
+        # Pythagoras/quadrant/expansion method).
         PaperSlot(
             "5.1",
             9,
             "special ratios — sin²θ, a reduction ratio, a compound-angle value",
             problem_id="trig_given_ratio",
+        ),
+        # Question 5.2 — trig simplify (identity). A flat slot: a quotient of
+        # reduction/co-function terms in an unknown x collapses to a single ratio
+        # (±sin x, ±cos x, ±tan x, ±1). The final ratio is engine-graded (3 of the 6
+        # headline marks) via symbolic_equality; the reduction lines are hand-marked
+        # method. Faithful by construction — the printed expression is simplified to
+        # get the graded answer.
+        PaperSlot(
+            "5.2",
+            6,
+            "trig simplify — reduction/co-function expression to a single ratio",
+            problem_id="trig_simplify_reduce",
+            auto_marks=3,
+        ),
+        # Question 5.3 — trig simplify (special-angle product). A flat slot: a numeric
+        # product of trig ratios at reducible special angles (120°…330°) evaluates to
+        # an exact constant in ℚ[√2, √3]. The value is engine-graded (2 of the 4
+        # headline marks); rewriting each ratio at its reference angle is hand-marked.
+        PaperSlot(
+            "5.3",
+            4,
+            "trig simplify — special-angle product to an exact value",
+            problem_id="trig_simplify_product",
+            auto_marks=2,
         ),
         # Question 7 — trigonometric graphs. A COMPOUND (shared-stem) slot: two curves
         # f = a·cos x + q and g = sin(bx) drive six read-off-the-equation sub-parts

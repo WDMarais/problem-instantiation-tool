@@ -260,6 +260,10 @@ from content.examples.trig_graph_properties import (
     trig_graph_range,
     trig_graph_solve,
 )
+from content.examples.trig_simplify import (
+    trig_simplify_product,
+    trig_simplify_reduce,
+)
 from content.examples.zero_product_rule import (
     atomic_shuffled_n,
     zero_product_atomic,
@@ -4764,6 +4768,56 @@ def template_exponent_simplify_constant(
     )
 
 
+def template_trig_simplify_reduce(params: dict, detail: str = "full") -> ProblemCard:
+    from content.examples.trig_simplify import arg_latex, ratio_latex, reduced_latex
+
+    num, den = params["num"], params["den"]
+
+    def _factor(func: str, tkey: str) -> str:
+        return rf"\{func}\left({arg_latex(tkey)}\right)"
+
+    num_tex = r" \cdot ".join(_factor(f, t) for f, t in num)
+    den_tex = r" \cdot ".join(_factor(f, t) for f, t in den)
+    expr = rf"\dfrac{{{num_tex}}}{{{den_tex}}}"
+
+    # the method line: replace every factor by what it reduces to, then the answer
+    rnum = r" \cdot ".join(reduced_latex(f, t) for f, t in num)
+    rden = r" \cdot ".join(reduced_latex(f, t) for f, t in den)
+    steps = [
+        rf"{expr} = \dfrac{{{rnum}}}{{{rden}}}",
+        rf"= {ratio_latex(params['answer'])}",
+    ]
+    return ProblemCard(
+        instruction=(
+            "Simplify to a single trigonometric ratio, without using a calculator:"
+        ),
+        display_math=expr,
+        worked_steps=steps if detail == "full" else steps[-1:],
+    )
+
+
+def template_trig_simplify_product(params: dict, detail: str = "full") -> ProblemCard:
+    import sympy
+
+    from content.examples.trig_simplify import special_value_latex
+
+    factors = params["factors"]
+    expr = r" \cdot ".join(rf"\{f}\,{d}^\circ" for f, d in factors)
+    values = r" \cdot ".join(
+        rf"\left({special_value_latex(f, d)}\right)" for f, d in factors
+    )
+    steps = [
+        # rewrite each ratio at its reference angle (the reduction method line)
+        rf"{expr} = {values}",
+        rf"= {sympy.latex(params['answer'])}",
+    ]
+    return ProblemCard(
+        instruction="Evaluate the following without using a calculator:",
+        display_math=expr,
+        worked_steps=steps if detail == "full" else steps[-1:],
+    )
+
+
 def template_quadratic_formula(params: dict, detail: str = "full") -> ProblemCard:
     a, b = params["a"], params["b"]
     disc = params["discriminant"]
@@ -5763,6 +5817,14 @@ PROBLEMS: dict[str, WorksheetEntry] = {
     exponent_simplify_constant.id: WorksheetEntry(
         problem=exponent_simplify_constant,
         template=template_exponent_simplify_constant,
+    ),
+    trig_simplify_reduce.id: WorksheetEntry(
+        problem=trig_simplify_reduce,
+        template=template_trig_simplify_reduce,
+    ),
+    trig_simplify_product.id: WorksheetEntry(
+        problem=trig_simplify_product,
+        template=template_trig_simplify_product,
     ),
     exponential_common_base.id: WorksheetEntry(
         problem=exponential_common_base,
