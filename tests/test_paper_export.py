@@ -88,11 +88,18 @@ def _have_print_tools() -> bool:
         _deno_bin()
     except RuntimeError:
         return False
-    return bool(_find_chrome() and shutil.which("pdfunite") and shutil.which("pdfinfo"))
+    return bool(_find_chrome() and shutil.which("mutool") and shutil.which("pdfinfo"))
+
+
+def _repair_warnings(pdf) -> list[str]:
+    """Lines where mutool had to repair *pdf* on open (e.g. a broken xref table,
+    as pdfunite writes). A print-ready file opens clean."""
+    res = subprocess.run(["mutool", "info", str(pdf)], capture_output=True, text=True)
+    return [ln for ln in res.stderr.splitlines() if "repair" in ln or "broken" in ln]
 
 
 @pytest.mark.skipif(
-    not _have_print_tools(), reason="needs Deno + Chrome + poppler (pdfunite/pdfinfo)"
+    not _have_print_tools(), reason="needs Deno + Chrome + pdfinfo + mutool"
 )
 def test_class_set_writes_duplex_safe_combined_pdfs(tmp_path):
     seeds = [3, 4]
@@ -103,6 +110,7 @@ def test_class_set_writes_duplex_safe_combined_pdfs(tmp_path):
         padded = sum(n + n % 2 for n in map(_pdf_pages, singles))
         # every paper padded to an even page count → combined = sum of padded
         assert _pdf_pages(tmp_path / f"{kind}s.pdf") == padded
+        assert _repair_warnings(tmp_path / f"{kind}s.pdf") == []
 
 
 def _page_size_name(pdf) -> str:
@@ -115,7 +123,7 @@ def _page_size_name(pdf) -> str:
 
 
 @pytest.mark.skipif(
-    not _have_print_tools(), reason="needs Deno + Chrome + poppler (pdfunite/pdfinfo)"
+    not _have_print_tools(), reason="needs Deno + Chrome + pdfinfo + mutool"
 )
 def test_compact_class_set_prints_a5_papers_padded_to_whole_sheets(tmp_path):
     seeds = [3, 4]

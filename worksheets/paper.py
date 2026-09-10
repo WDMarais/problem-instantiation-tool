@@ -681,7 +681,7 @@ def export_class_set(
     per student, e.g. to email) plus the combined ``papers.pdf`` / ``memos.pdf`` to
     print. In the combined files every paper is padded to whole sheets, so a duplex
     print never starts one student's paper on the back of another's (Chrome ignores
-    ``break-before: right``, hence per-paper PDFs + ``pdfunite``).
+    ``break-before: right``, hence per-paper PDFs + ``mutool merge``).
 
     *compact* prints the student copies as A5 pages (see ``_compact_print_css``) to
     be printed 2 pages per sheet, double-sided: 4 pages per sheet, so each paper
@@ -692,10 +692,10 @@ def export_class_set(
         raise ValueError("a class set needs at least one seed")
     if len(set(seeds)) != len(seeds):
         raise ValueError(f"class-set seeds must be distinct, got {list(seeds)}")
-    for tool in ("pdfinfo", "pdfunite"):
+    for tool, package in (("pdfinfo", "poppler-utils"), ("mutool", "mupdf-tools")):
         if shutil.which(tool) is None:
             raise RuntimeError(
-                f"{tool} not found — install poppler-utils to print a class set"
+                f"{tool} not found — install {package} to print a class set"
             )
 
     # instantiate serially (engine work); the per-copy KaTeX + Chrome subprocesses
@@ -761,8 +761,16 @@ def export_class_set(
                 parts.append(pdf)
                 # pad to whole sheets: the next paper starts on a fresh sheet
                 parts.extend([blank] * (-_pdf_pages(pdf) % per_sheet))
+            # mutool, not pdfunite: pdfunite (poppler 24.02) writes a broken xref
+            # table that readers must repair — a risk for copiers printing from USB
             subprocess.run(
-                ["pdfunite", *map(str, parts), str(out_dir / f"{kind}s.pdf")],
+                [
+                    "mutool",
+                    "merge",
+                    "-o",
+                    str(out_dir / f"{kind}s.pdf"),
+                    *map(str, parts),
+                ],
                 check=True,
                 capture_output=True,
             )
