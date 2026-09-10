@@ -400,6 +400,12 @@ body.tabbed .qsection.active { display: block; }
 """
 
 
+# Compact page geometry, in mm: A5, and its margins as (top, right, bottom, left).
+# The wide right margin is the student's notes column; the text column is the rest.
+_COMPACT_PAGE_WIDTH_MM = 148
+_COMPACT_MARGINS_MM = (14, 38, 16, 12)
+
+
 def _compact_print_css(seed: int) -> str:
     """Print rules for the compact student copy: an A5 booklet page.
 
@@ -410,6 +416,7 @@ def _compact_print_css(seed: int) -> str:
     every page carries the paper ID and page number. Every rule is print-only: the
     screen and tabbed views are untouched.
     """
+    top, right, bottom, left = _COMPACT_MARGINS_MM
     return f"""
 @media print {{
     .work-space {{ display: none; }}
@@ -419,7 +426,7 @@ def _compact_print_css(seed: int) -> str:
     .slot-graph svg {{ max-width: 100%; height: auto; }}
     @page {{
         size: A5;
-        margin: 14mm 38mm 16mm 12mm;
+        margin: {top}mm {right}mm {bottom}mm {left}mm;
         @bottom-center {{
             content: "{_paper_id(seed)} · page " counter(page) " of " counter(pages);
             font: 8pt Georgia, 'Times New Roman', serif; color: #666;
