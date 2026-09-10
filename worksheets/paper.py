@@ -30,6 +30,12 @@ from __future__ import annotations
 
 import argparse
 import random
+import re
+import shutil
+import subprocess
+import tempfile
+from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -317,6 +323,12 @@ body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a;
 .disclaimer { font-size: 8pt; font-style: italic; color: #666; text-align: center;
               border: 1px solid #ddd; background: #fafafa; padding: 4px 8px;
               margin-bottom: 6mm; }
+/* printed paper ID (+ a name line on the student copy): matches a paper to its
+   memo in a class set and regenerates it via --seed */
+.paper-meta { display: flex; align-items: baseline; gap: 6mm; margin-top: 3mm;
+              font-size: 10pt; text-align: left; }
+.name-line { display: inline-block; width: 75mm; border-bottom: 1px solid #1a1a1a; }
+.paper-id { margin-left: auto; font-weight: bold; letter-spacing: .5px; }
 
 /* notebook tabs (screen only); with JS off the tabs are plain jump links and
    every question stays visible — i.e. it degrades to continuous scroll */
@@ -495,59 +507,216 @@ def _qhead_html(head: str, q_marks: int) -> str:
     )
 
 
-def render_paper_html(spec: PaperSpec, rendered: list[RenderedSlot]) -> str:
-    # group consecutive slots by their leading question number ("1" of "1.1.1")
+def _paper_id(seed: int) -> str:
+    """The printed paper ID — the seed, so a paper regenerates with ``--seed``."""
+    return f"Paper #{seed:04d}"
+
+
+def _masthead_html(
+    spec: PaperSpec, *, seed: int | None = None, name_line: bool = True
+) -> str:
+    """Title block. A known *seed* adds the printed paper ID (matching a student's
+    paper to its memo in a class set) and, on the student copy, a name line."""
+    meta = ""
+    if seed is not None:
+        name = '<span>Name: <span class="name-line"></span></span>' if name_line else ""
+        meta = (
+            f'<div class="paper-meta">{name}'
+            f'<span class="paper-id">{_paper_id(seed)}</span></div>'
+        )
+    return (
+        '<div class="paper-header">'
+        f'<div class="paper-title">{spec.title}</div>'
+        f'<div class="paper-sub">Variable instantiation of {spec.source} '
+        f"· {spec.total_marks} marks</div>"
+        f"{meta}"
+        "</div>"
+        f'<p class="disclaimer">{spec.disclaimer}</p>'
+    )
+
+
+def _question_sections(rendered: list[RenderedSlot]) -> list[tuple[str, str]]:
+    """One ``(head, section_html)`` per question, grouping consecutive slots by
+    their leading question number ("1" of "1.1.1")."""
     groups: list[tuple[str, list[RenderedSlot]]] = []
     for rs in rendered:
         head = rs.slot.number.split(".")[0]
         if not groups or groups[-1][0] != head:
             groups.append((head, []))
         groups[-1][1].append(rs)
-
-    masthead = (
-        '<div class="paper-header">'
-        f'<div class="paper-title">{spec.title}</div>'
-        f'<div class="paper-sub">Variable instantiation of {spec.source} '
-        f"· {spec.total_marks} marks</div>"
-        "</div>"
-        f'<p class="disclaimer">{spec.disclaimer}</p>'
-    )
-
-    # One continuous document: masthead, then a section per question, then the
-    # memo. Native paged media (print) or the notebook tabs (screen) decide how
-    # this flow is chunked — the renderer never estimates a single height.
-    nav_links: list[str] = []
-    sections: list[str] = []
+    sections: list[tuple[str, str]] = []
     for head, slots in groups:
         q_marks = sum(rs.slot.marks for rs in slots)
-        nav_links.append(f'<a href="#q{head}" data-target="q{head}">Q{head}</a>')
         body = "".join(_slot_html(rs) for rs in slots)
         sections.append(
-            f'<section class="qsection" id="q{head}">'
-            f"{_qhead_html(head, q_marks)}{body}</section>"
+            (
+                head,
+                f'<section class="qsection" id="q{head}">'
+                f"{_qhead_html(head, q_marks)}{body}</section>",
+            )
         )
+    return sections
 
-    nav_links.append('<a href="#memo" data-target="memo">Memo</a>')
+
+def _memo_section_html(rendered: list[RenderedSlot], *, seed: int | None = None) -> str:
     memo_rows = "".join(_memo_row_html(rs) for rs in rendered if not rs.is_stem)
-    sections.append(
+    heading = "Marking Memorandum"
+    if seed is not None:
+        heading += f" — {_paper_id(seed)}"
+    return (
         '<section class="qsection" id="memo">'
-        '<div class="memo"><h2>Marking Memorandum</h2>'
+        f'<div class="memo"><h2>{heading}</h2>'
         f"{memo_rows}</div></section>"
     )
 
-    nav = f'<nav class="qnav">{"".join(nav_links)}</nav>'
-    doc = f'<div class="doc">{masthead}{"".join(sections)}</div>'
+
+def _html_document(title: str, body: str, *, script: str = "") -> str:
+    """A self-contained page: KaTeX pre-rendered into *body*, fonts inlined."""
     return (
         "<!DOCTYPE html>\n"
         '<html lang="en">\n<head>\n<meta charset="UTF-8">\n'
-        f"<title>{spec.title}</title>\n"
+        f"<title>{title}</title>\n"
         f"{inline_style()}\n"
         f"<style>{_PAPER_CSS}</style>\n"
-        "</head>\n<body>\n"
-        + prerender_body(nav + doc)
-        + _TABS_JS
-        + "</body>\n</html>\n"
+        "</head>\n<body>\n" + prerender_body(body) + script + "</body>\n</html>\n"
     )
+
+
+def render_paper_html(
+    spec: PaperSpec, rendered: list[RenderedSlot], *, seed: int | None = None
+) -> str:
+    # One continuous document: masthead, then a section per question, then the
+    # memo. Native paged media (print) or the notebook tabs (screen) decide how
+    # this flow is chunked — the renderer never estimates a single height.
+    sections = _question_sections(rendered)
+    nav_links = [
+        f'<a href="#q{head}" data-target="q{head}">Q{head}</a>' for head, _ in sections
+    ]
+    nav_links.append('<a href="#memo" data-target="memo">Memo</a>')
+    nav = f'<nav class="qnav">{"".join(nav_links)}</nav>'
+    doc = (
+        f'<div class="doc">{_masthead_html(spec, seed=seed)}'
+        f"{''.join(html for _, html in sections)}"
+        f"{_memo_section_html(rendered, seed=seed)}</div>"
+    )
+    return _html_document(spec.title, nav + doc, script=_TABS_JS)
+
+
+# ── class set (print) ─────────────────────────────────────────────────────────
+
+
+def _paper_body(
+    spec: PaperSpec, rendered: list[RenderedSlot], *, seed: int | None = None
+) -> str:
+    """The student copy: masthead + questions — no memo, no tabs."""
+    sections = "".join(html for _, html in _question_sections(rendered))
+    return f'<div class="doc">{_masthead_html(spec, seed=seed)}{sections}</div>'
+
+
+def _memo_body(
+    spec: PaperSpec, rendered: list[RenderedSlot], *, seed: int | None = None
+) -> str:
+    """The marker copy: masthead (no name line) + memo — no questions."""
+    return (
+        f'<div class="doc">{_masthead_html(spec, seed=seed, name_line=False)}'
+        f"{_memo_section_html(rendered, seed=seed)}</div>"
+    )
+
+
+def _pdf_pages(pdf: Path) -> int:
+    """Page count via poppler's ``pdfinfo``."""
+    out = subprocess.run(
+        ["pdfinfo", str(pdf)], capture_output=True, text=True, check=True
+    ).stdout
+    m = re.search(r"^Pages:\s+(\d+)", out, re.MULTILINE)
+    if m is None:
+        raise RuntimeError(f"pdfinfo reported no page count for {pdf}")
+    return int(m.group(1))
+
+
+def export_class_set(
+    spec: PaperSpec, seeds: Sequence[int], out_dir: Path, *, jobs: int = 4
+) -> list[str]:
+    """Print a class set: one distinct paper per seed, as student + marker copies.
+
+    Writes ``papers/paper-NNNN.pdf`` and ``memos/memo-NNNN.pdf`` per seed (one file
+    per student, e.g. to email) plus the combined ``papers.pdf`` / ``memos.pdf`` to
+    print. In the combined files every paper is padded to an even page count, so a
+    duplex print never starts one student's paper on the back of another's
+    (Chrome ignores ``break-before: right``, hence per-paper PDFs + ``pdfunite``).
+    Returns the calibration warnings, each prefixed with its paper ID.
+    """
+    if not seeds:
+        raise ValueError("a class set needs at least one seed")
+    if len(set(seeds)) != len(seeds):
+        raise ValueError(f"class-set seeds must be distinct, got {list(seeds)}")
+    for tool in ("pdfinfo", "pdfunite"):
+        if shutil.which(tool) is None:
+            raise RuntimeError(
+                f"{tool} not found — install poppler-utils to print a class set"
+            )
+
+    # instantiate serially (engine work); the per-copy KaTeX + Chrome subprocesses
+    # below are what run in parallel
+    built = [(seed, build_paper(spec, seed=seed)) for seed in seeds]
+    warnings = [
+        f"{_paper_id(seed)}: {w}"
+        for seed, rendered in built
+        for rs in rendered
+        for w in rs.warnings
+    ]
+
+    out_dir = Path(out_dir)
+    (out_dir / "papers").mkdir(parents=True, exist_ok=True)
+    (out_dir / "memos").mkdir(parents=True, exist_ok=True)
+    inline_style()  # warm the cached KaTeX stylesheet before the pool shares it
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_dir = Path(tmp)
+
+        def print_copy(kind: str, seed: int, rendered: list[RenderedSlot]) -> Path:
+            if kind == "paper":
+                body = _paper_body(spec, rendered, seed=seed)
+            else:
+                body = _memo_body(spec, rendered, seed=seed)
+            html_path = tmp_dir / f"{kind}-{seed:04d}.html"
+            html_path.write_text(
+                _html_document(f"{spec.title} — {_paper_id(seed)}", body),
+                encoding="utf-8",
+            )
+            pdf_path = out_dir / f"{kind}s" / f"{kind}-{seed:04d}.pdf"
+            html_to_pdf(html_path, pdf_path)
+            return pdf_path
+
+        blank_html = tmp_dir / "blank.html"
+        blank_html.write_text("<style>@page { size: A4; }</style>", encoding="utf-8")
+        blank = tmp_dir / "blank.pdf"
+        html_to_pdf(blank_html, blank)
+
+        with ThreadPoolExecutor(max_workers=jobs) as pool:
+            papers = pool.map(lambda b: print_copy("paper", *b), built)
+            memos = pool.map(lambda b: print_copy("memo", *b), built)
+            copies = {"paper": list(papers), "memo": list(memos)}
+
+        for kind, pdfs in copies.items():
+            parts: list[Path] = []
+            for pdf in pdfs:
+                parts.append(pdf)
+                if _pdf_pages(pdf) % 2:
+                    parts.append(blank)  # the next paper starts on a fresh sheet
+            subprocess.run(
+                ["pdfunite", *map(str, parts), str(out_dir / f"{kind}s.pdf")],
+                check=True,
+                capture_output=True,
+            )
+    return warnings
+
+
+def _print_warnings(warnings: list[str]) -> None:
+    if warnings:
+        print(f"calibration warnings ({len(warnings)}):")
+        for w in warnings:
+            print(f"  ! {w}")
 
 
 # ── 2025 May/June P1 (accumulating, render-free questions) ────────────────────
@@ -1279,26 +1448,59 @@ PAPERS: dict[str, PaperSpec] = {
 def main() -> None:
     ap = argparse.ArgumentParser(description="Render a variable NSC-style paper.")
     ap.add_argument("--paper", default="2025_mj_p1", choices=list(PAPERS))
-    ap.add_argument("--seed", type=int, default=None)
+    ap.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="paper number to instantiate (random if omitted); printed on the "
+        "paper as its ID. A class set runs SEED..SEED+N-1",
+    )
     ap.add_argument("--output", default="paper.html")
     ap.add_argument("--pdf", action="store_true", help="Also render a PDF")
+    ap.add_argument(
+        "--class-set",
+        type=int,
+        metavar="N",
+        default=None,
+        help="print N distinct papers as a duplex-safe class set: papers.pdf "
+        "(student copies) + memos.pdf (marker copies), plus one PDF per paper",
+    )
+    ap.add_argument(
+        "--output-dir",
+        default=None,
+        help="class-set output directory (default out/class-set-<paper>-<seed>)",
+    )
     args = ap.parse_args()
 
     spec = PAPERS[args.paper]
-    rendered = build_paper(spec, seed=args.seed)
+    # Always pin a concrete seed: it is the paper's printed ID, so a paper can be
+    # matched to its memo and regenerated (Random(None) would be unrepeatable).
+    seed = args.seed
+    if seed is None:
+        seed = random.SystemRandom().randrange(1, 10_000)
 
-    warnings = [w for rs in rendered for w in rs.warnings]
-    if warnings:
-        print(f"calibration warnings ({len(warnings)}):")
-        for w in warnings:
-            print(f"  ! {w}")
+    if args.class_set is not None:
+        if args.class_set < 1:
+            ap.error("--class-set needs N >= 1")
+        seeds = list(range(seed, seed + args.class_set))
+        out_dir = Path(args.output_dir or f"out/class-set-{args.paper}-{seed:04d}")
+        _print_warnings(export_class_set(spec, seeds, out_dir))
+        print(
+            f"Wrote class set: {len(seeds)} × {spec.source} "
+            f"(papers {seeds[0]:04d}–{seeds[-1]:04d}) → "
+            f"{out_dir}/papers.pdf + {out_dir}/memos.pdf"
+        )
+        return
 
-    html = render_paper_html(spec, rendered)
+    rendered = build_paper(spec, seed=seed)
+    _print_warnings([w for rs in rendered for w in rs.warnings])
+
+    html = render_paper_html(spec, rendered, seed=seed)
     html_path = Path(args.output)
     html_path.write_text(html, encoding="utf-8")
     print(
-        f"Wrote {spec.source} ({len(rendered)} slots, {spec.total_marks} marks) "
-        f"→ {args.output}"
+        f"Wrote {spec.source} {_paper_id(seed)} ({len(rendered)} slots, "
+        f"{spec.total_marks} marks) → {args.output}"
     )
 
     if args.pdf:

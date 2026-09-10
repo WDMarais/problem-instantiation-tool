@@ -13,6 +13,7 @@ wheels/
 .pytest_cache/
 .ruff_cache/
 *.html
+*.pdf
 
 # Deno-materialised deps for the static-KaTeX build tool (tools/katex/).
 # The pin lives in tools/katex/deno.json (+ deno.lock); node_modules is a

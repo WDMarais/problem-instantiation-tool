@@ -99,3 +99,8 @@ Branch `main`, tree clean. Full suite green (1741 passed, 52 skipped). Recent co
 static-KaTeX pre-render (last stream-1 packaging TODO,
 `[[project-september-delivery-week]]`); (b) second/third pair (needs another year's
 skeleton ingested). This hyperbola enhancement sits below both in priority.
+
+> **Correction (2026-09-10, next session):** (a) was stale — the worksheet
+> pre-render shipped in `a8c0492` and the paper path (`render_paper_html`) already
+> pre-renders too. The packaging slot went to the class-set print export
+> (`--class-set N`) instead.
