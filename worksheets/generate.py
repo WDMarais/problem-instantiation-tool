@@ -2796,9 +2796,11 @@ def template_game_expected_payout(params: dict, detail: str = "full") -> Problem
             f"hour. If the owner wants a {int(profit * 100)}% profit on the hour's "
             "takings, calculate the maximum amount payable to each winner."
         ),
+        # two stacked lines, not one: the single-line summary overran an A5 print column
         display_math=(
-            rf"\text{{win: odd roll AND picture card}};\quad "
+            r"\begin{gathered}\text{win: odd roll AND picture card}\\ "
             rf"{players}\ \text{{players}} \times {_zar(float(price), 0)}"
+            r"\end{gathered}"
         ),
         worked_steps=full if detail == "full" else full[-3:],
     )
@@ -3017,7 +3019,7 @@ def template_premium_increase_analysis(
             "An insurance broker signed contracts with 15 people. The monthly premium "
             "(in rands) payable on each contract is given below."
         ),
-        display_math=_dataset_latex(data, per_row=8),
+        display_math=_dataset_latex(data, per_row=5),  # 3 × 5: fits an A5 column
         worked_steps=[],
         subparts=subparts,
     )
@@ -4776,8 +4778,17 @@ def template_trig_simplify_reduce(params: dict, detail: str = "full") -> Problem
     def _factor(func: str, tkey: str) -> str:
         return rf"\{func}\left({arg_latex(tkey)}\right)"
 
-    num_tex = r" \cdot ".join(_factor(f, t) for f, t in num)
-    den_tex = r" \cdot ".join(_factor(f, t) for f, t in den)
+    def _side(factors: list) -> str:
+        tex = [_factor(f, t) for f, t in factors]
+        if len(tex) < 3:
+            return r" \cdot ".join(tex)
+        # three factors on one line overran an A5 print column: split the side
+        # \splitfrac-style, the last factor hanging right on a second line
+        head = r" \cdot ".join(tex[:-1])
+        return rf"\begin{{aligned}}&{head}\\ &\qquad{{}}\cdot {tex[-1]}\end{{aligned}}"
+
+    num_tex = _side(num)
+    den_tex = _side(den)
     expr = rf"\dfrac{{{num_tex}}}{{{den_tex}}}"
 
     # the method line: replace every factor by what it reduces to, then the answer
@@ -5370,7 +5381,11 @@ def template_cubic_shared_analysis(params: dict, detail: str = "full") -> Proble
 
     return ProblemCard(
         instruction=("Given the cubic below, with $k$ a constant to be determined:"),
-        display_math=rf"f(x) = {fe} = (x {_signed(-p)})(x - k)^2",
+        # aligned on "=" over two lines: one line overran an A5 print column
+        display_math=(
+            rf"\begin{{aligned}} f(x) &= {fe} \\ &= (x {_signed(-p)})(x - k)^2"
+            r"\end{aligned}"
+        ),
         worked_steps=[],
         subparts=subparts,
     )

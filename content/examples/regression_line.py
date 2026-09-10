@@ -26,6 +26,7 @@ way the straight-line archetypes reject a vertical line.
 
 from __future__ import annotations
 
+import math
 import random
 
 import sympy
@@ -71,13 +72,20 @@ def _gen(rng: random.Random) -> dict:
     a, b = fit["a"], fit["b"]
     prediction = a + b * x_pred
 
-    header = " & ".join(str(x) for x in xs)
-    yrow = " & ".join(str(y) for y in ys)
-    table_latex = (
-        r"\begin{array}{c|" + "c" * n + "}"
-        rf"x & {header} \\ \hline y & {yrow}"
-        r"\end{array}"
-    )
+    # the x/y table as stacked blocks of at most 5 pairs (balanced: 10 → 5+5,
+    # 7 → 4+3), since one 10-column row overran an A5 print column
+    blocks = math.ceil(n / 5)
+    size = math.ceil(n / blocks)
+    tables = []
+    for i in range(0, n, size):
+        cx, cy = xs[i : i + size], ys[i : i + size]
+        tables.append(
+            r"\begin{array}{c|" + "c" * len(cx) + "}"
+            rf"x & {' & '.join(map(str, cx))} \\ \hline "
+            rf"y & {' & '.join(map(str, cy))}"
+            r"\end{array}"
+        )
+    table_latex = r"\begin{gathered}" + r" \\[1.5ex] ".join(tables) + r"\end{gathered}"
 
     return {
         "xs": xs,
