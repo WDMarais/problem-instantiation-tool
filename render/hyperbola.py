@@ -54,6 +54,13 @@ def hyperbola_scene(
     y_feat = [0.0, float(ya)] + ([float(point[1])] if point else [])
     half_x = max(max(abs(v - xa) for v in x_feat), 2.0) + width_pad
     half_y = max(max(abs(v - ya) for v in y_feat), 2.0) + 1.0
+    # A steep hyperbola (large |a|) leaves the window right beside the vertical
+    # asymptote, so only slivers near two corners show. Grow the window to ~2x the
+    # curve's "knee" (where |x + p| = |y - q| = sqrt|a|) so each branch shows its
+    # bend and its approach to BOTH asymptotes, not just the vertical shoot-up.
+    reach = 2.0 * (abs(a) ** 0.5)
+    half_x = max(half_x, reach)
+    half_y = max(half_y, reach)
     x_lo, x_hi = xa - half_x, xa + half_x
     y_lo, y_hi = ya - half_y, ya + half_y
     yspan = y_hi - y_lo
