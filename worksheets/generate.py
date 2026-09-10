@@ -3388,6 +3388,11 @@ def template_analytic_geometry_srt(params: dict, detail: str = "full") -> Proble
     area_l = sympy.latex(params["answer_area"])
     rr = params["r_refl"]
     kc = "" if k == 1 else str(k)
+    # squared lengths are bracketed, (RT)^2 not RT^2 (which reads as R·T²), and a
+    # unit coefficient prints as nothing, never "1(RT)^2"
+    qc = "" if q_c == 1 else str(q_c)
+    pc = "" if p_c == 1 else str(p_c)
+    q_rt2 = str(rt2) if q_c == 1 else rf"{q_c}({rt2})"
     diff = sr2 - s_y**2
     other_m = 2 * r - m
     vr_eq = rf"y = {vg_l}x {'+' if vc >= 0 else '-'} {sympy.latex(abs(vc))}"
@@ -3412,12 +3417,12 @@ def template_analytic_geometry_srt(params: dict, detail: str = "full") -> Proble
         ),
         SubPart(
             "3",
-            rf"If it is also given that ${q_c}RT^2 = {p_c}SR^2$, calculate the "
+            rf"If it is also given that ${qc}(RT)^2 = {pc}(SR)^2$, calculate the "
             r"value of $m$.",
             4,
             [
-                rf"{q_c}RT^2 = {p_c}SR^2:\ {q_c}({rt2}) = {p_c}\,SR^2 "
-                rf"\Rightarrow SR^2 = {sr2}",
+                rf"{qc}(RT)^2 = {pc}(SR)^2:\ {q_rt2} = {pc}(SR)^2 "
+                rf"\Rightarrow (SR)^2 = {sr2}",
                 rf"(m - ({r}))^2 + {s_y}^2 = {sr2} \Rightarrow (m - ({r}))^2 = {diff}",
                 rf"m = {m} \text{{ or }} m = {other_m};\ "
                 rf"S \text{{ left of }} R \Rightarrow m = {m}",
