@@ -399,6 +399,36 @@ body.tabbed .qsection.active { display: block; }
 }
 """
 
+
+def _compact_print_css(seed: int) -> str:
+    """Print rules for the compact student copy: an A5 booklet page.
+
+    No inline work space (answers go in a separate answer book); each question
+    still starts a new page. A wide blank right margin carries the student's own
+    notes. It sits on the same side of every page because the printer places the
+    pages two-up in reading order (1|2, 3|4, …), not as a folded booklet. A footer on
+    every page carries the paper ID and page number. Every rule is print-only: the
+    screen and tabbed views are untouched.
+    """
+    return f"""
+@media print {{
+    .work-space {{ display: none; }}
+    .name-line {{ width: 45mm; }}
+    .paper-id {{ white-space: nowrap; }}
+    .slot {{ padding: 2.5mm 10mm 2.5mm 11mm; }}
+    .slot-graph svg {{ max-width: 100%; height: auto; }}
+    @page {{
+        size: A5;
+        margin: 14mm 38mm 16mm 12mm;
+        @bottom-center {{
+            content: "{_paper_id(seed)} · page " counter(page) " of " counter(pages);
+            font: 8pt Georgia, 'Times New Roman', serif; color: #666;
+        }}
+    }}
+}}
+"""
+
+
 # Screen-only progressive enhancement: turn the question list into notebook tabs.
 # With JS disabled (or under a CSP that blocks it) the body never gets `.tabbed`,
 # so every .qsection stays visible and the page is a plain vertical scroll.
@@ -570,14 +600,17 @@ def _memo_section_html(rendered: list[RenderedSlot], *, seed: int | None = None)
     )
 
 
-def _html_document(title: str, body: str, *, script: str = "") -> str:
-    """A self-contained page: KaTeX pre-rendered into *body*, fonts inlined."""
+def _html_document(
+    title: str, body: str, *, script: str = "", extra_css: str = ""
+) -> str:
+    """A self-contained page: KaTeX pre-rendered into *body*, fonts inlined.
+    *extra_css* is appended after the base stylesheet (e.g. the compact print)."""
     return (
         "<!DOCTYPE html>\n"
         '<html lang="en">\n<head>\n<meta charset="UTF-8">\n'
         f"<title>{title}</title>\n"
         f"{inline_style()}\n"
-        f"<style>{_PAPER_CSS}</style>\n"
+        f"<style>{_PAPER_CSS}{extra_css}</style>\n"
         "</head>\n<body>\n" + prerender_body(body) + script + "</body>\n</html>\n"
     )
 
@@ -635,15 +668,24 @@ def _pdf_pages(pdf: Path) -> int:
 
 
 def export_class_set(
-    spec: PaperSpec, seeds: Sequence[int], out_dir: Path, *, jobs: int = 4
+    spec: PaperSpec,
+    seeds: Sequence[int],
+    out_dir: Path,
+    *,
+    jobs: int = 4,
+    compact: bool = False,
 ) -> list[str]:
     """Print a class set: one distinct paper per seed, as student + marker copies.
 
     Writes ``papers/paper-NNNN.pdf`` and ``memos/memo-NNNN.pdf`` per seed (one file
     per student, e.g. to email) plus the combined ``papers.pdf`` / ``memos.pdf`` to
-    print. In the combined files every paper is padded to an even page count, so a
-    duplex print never starts one student's paper on the back of another's
-    (Chrome ignores ``break-before: right``, hence per-paper PDFs + ``pdfunite``).
+    print. In the combined files every paper is padded to whole sheets, so a duplex
+    print never starts one student's paper on the back of another's (Chrome ignores
+    ``break-before: right``, hence per-paper PDFs + ``pdfunite``).
+
+    *compact* prints the student copies as A5 pages (see ``_compact_print_css``) to
+    be printed 2 pages per sheet, double-sided: 4 pages per sheet, so each paper
+    pads to a multiple of 4. Marker copies stay A4, padded to an even page count.
     Returns the calibration warnings, each prefixed with its paper ID.
     """
     if not seeds:
@@ -675,23 +717,37 @@ def export_class_set(
         tmp_dir = Path(tmp)
 
         def print_copy(kind: str, seed: int, rendered: list[RenderedSlot]) -> Path:
+            css = ""
             if kind == "paper":
                 body = _paper_body(spec, rendered, seed=seed)
+                if compact:
+                    css = _compact_print_css(seed)
             else:
                 body = _memo_body(spec, rendered, seed=seed)
             html_path = tmp_dir / f"{kind}-{seed:04d}.html"
             html_path.write_text(
-                _html_document(f"{spec.title} — {_paper_id(seed)}", body),
+                _html_document(
+                    f"{spec.title} — {_paper_id(seed)}", body, extra_css=css
+                ),
                 encoding="utf-8",
             )
             pdf_path = out_dir / f"{kind}s" / f"{kind}-{seed:04d}.pdf"
             html_to_pdf(html_path, pdf_path)
             return pdf_path
 
-        blank_html = tmp_dir / "blank.html"
-        blank_html.write_text("<style>@page { size: A4; }</style>", encoding="utf-8")
-        blank = tmp_dir / "blank.pdf"
-        html_to_pdf(blank_html, blank)
+        def blank_page(size: str) -> Path:
+            blank_html = tmp_dir / f"blank-{size}.html"
+            blank_html.write_text(
+                f"<style>@page {{ size: {size}; }}</style>", encoding="utf-8"
+            )
+            blank = tmp_dir / f"blank-{size}.pdf"
+            html_to_pdf(blank_html, blank)
+            return blank
+
+        # (blank page, pages per sheet) per copy: a compact paper prints 2 A5 pages
+        # per side, duplex → 4 per sheet; everything else prints 1 A4 page per side
+        a4 = (blank_page("A4"), 2)
+        sheet = {"paper": (blank_page("A5"), 4) if compact else a4, "memo": a4}
 
         with ThreadPoolExecutor(max_workers=jobs) as pool:
             papers = pool.map(lambda b: print_copy("paper", *b), built)
@@ -699,11 +755,12 @@ def export_class_set(
             copies = {"paper": list(papers), "memo": list(memos)}
 
         for kind, pdfs in copies.items():
+            blank, per_sheet = sheet[kind]
             parts: list[Path] = []
             for pdf in pdfs:
                 parts.append(pdf)
-                if _pdf_pages(pdf) % 2:
-                    parts.append(blank)  # the next paper starts on a fresh sheet
+                # pad to whole sheets: the next paper starts on a fresh sheet
+                parts.extend([blank] * (-_pdf_pages(pdf) % per_sheet))
             subprocess.run(
                 ["pdfunite", *map(str, parts), str(out_dir / f"{kind}s.pdf")],
                 check=True,
@@ -1470,7 +1527,17 @@ def main() -> None:
         default=None,
         help="class-set output directory (default out/class-set-<paper>-<seed>)",
     )
+    ap.add_argument(
+        "--compact",
+        action="store_true",
+        help="with --class-set: print the student copies as compact A5 pages (no "
+        "inline work space; answers go in a separate answer book), each paper "
+        "padded to whole sheets. Print papers.pdf at 2 pages per sheet, "
+        "double-sided (flip on short edge)",
+    )
     args = ap.parse_args()
+    if args.compact and args.class_set is None:
+        ap.error("--compact needs --class-set (use --class-set 1 for one paper)")
 
     spec = PAPERS[args.paper]
     # Always pin a concrete seed: it is the paper's printed ID, so a paper can be
@@ -1484,12 +1551,17 @@ def main() -> None:
             ap.error("--class-set needs N >= 1")
         seeds = list(range(seed, seed + args.class_set))
         out_dir = Path(args.output_dir or f"out/class-set-{args.paper}-{seed:04d}")
-        _print_warnings(export_class_set(spec, seeds, out_dir))
+        _print_warnings(export_class_set(spec, seeds, out_dir, compact=args.compact))
         print(
             f"Wrote class set: {len(seeds)} × {spec.source} "
             f"(papers {seeds[0]:04d}–{seeds[-1]:04d}) → "
             f"{out_dir}/papers.pdf + {out_dir}/memos.pdf"
         )
+        if args.compact:
+            print(
+                "Print papers.pdf at 2 pages per sheet, double-sided (flip on short "
+                "edge); memos.pdf as usual."
+            )
         return
 
     rendered = build_paper(spec, seed=seed)

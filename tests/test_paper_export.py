@@ -13,7 +13,9 @@ makes it usable on paper, and what these tests pin:
 
 from __future__ import annotations
 
+import re
 import shutil
+import subprocess
 
 import pytest
 
@@ -101,3 +103,30 @@ def test_class_set_writes_duplex_safe_combined_pdfs(tmp_path):
         padded = sum(n + n % 2 for n in map(_pdf_pages, singles))
         # every paper padded to an even page count → combined = sum of padded
         assert _pdf_pages(tmp_path / f"{kind}s.pdf") == padded
+
+
+def _page_size_name(pdf) -> str:
+    """The paper size pdfinfo names for the first page, e.g. ``A5``."""
+    out = subprocess.run(
+        ["pdfinfo", str(pdf)], capture_output=True, text=True, check=True
+    ).stdout
+    m = re.search(r"^Page size:.*\((\w+)\)", out, re.MULTILINE)
+    return m.group(1) if m else "?"
+
+
+@pytest.mark.skipif(
+    not _have_print_tools(), reason="needs Deno + Chrome + poppler (pdfunite/pdfinfo)"
+)
+def test_compact_class_set_prints_a5_papers_padded_to_whole_sheets(tmp_path):
+    seeds = [3, 4]
+    export_class_set(_P1, seeds, tmp_path, compact=True)
+    papers = [tmp_path / "papers" / f"paper-{s:04d}.pdf" for s in seeds]
+    memos = [tmp_path / "memos" / f"memo-{s:04d}.pdf" for s in seeds]
+    assert _page_size_name(papers[0]) == "A5"
+    assert _page_size_name(memos[0]) == "A4"  # marker copies are unchanged
+    # 2 A5 pages per side, duplex → 4 per sheet: each paper pads to a multiple of 4
+    padded = sum(n + -n % 4 for n in map(_pdf_pages, papers))
+    assert _pdf_pages(tmp_path / "papers.pdf") == padded
+    assert _pdf_pages(tmp_path / "memos.pdf") == sum(
+        n + n % 2 for n in map(_pdf_pages, memos)
+    )
