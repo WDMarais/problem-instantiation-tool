@@ -37,7 +37,7 @@ class LinearGenerator(ABC):
     make_sheet() assembles SheetData using the shared A/B/C pattern:
       Section A — n_detailed examples, ordered by kind (int → frac → sym)
       Section B — 12 collapsed examples, cycling kinds
-      Section C — 16 practice problems, cycling kinds, alternating starred
+      Section C — 24 practice problems, cycling kinds, alternating starred
     """
 
     title: str
@@ -77,7 +77,7 @@ class LinearGenerator(ABC):
             collapsed.append(CollapsedEx(s.equation, s.result))
 
         practice: list[PracticeEx] = []
-        for i in range(16):
+        for i in range(24):
             s = self.gen(active[i % len(active)], rng)
             practice.append(PracticeEx(s.equation, s.result if i % 2 == 0 else None))
 

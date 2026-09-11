@@ -62,9 +62,9 @@ body { font-family: Georgia, "Times New Roman", serif; background: #ddd; color: 
     display: flex; flex-direction: column; gap: 1.5mm;
     padding: 2mm 3mm; border-left: 2px solid #ddd;
 }
-.worked-step { font-size: 9.5pt; line-height: 1.4; }
+.worked-step { font-size: 12pt; line-height: 1.4; }
 .worked-step.intermediate {
-    color: #888; font-style: italic; font-size: 8.5pt;
+    color: #888; font-style: italic; font-size: 10.5pt;
     display: flex; align-items: baseline; gap: 3mm;
 }
 .model-ref {
@@ -81,7 +81,7 @@ body { font-family: Georgia, "Times New Roman", serif; background: #ddd; color: 
     gap: 3.5mm 6mm; flex-shrink: 0;
 }
 .collapsed-ex {
-    font-size: 9.5pt; line-height: 1.55;
+    font-size: 11.5pt; line-height: 1.55;
     display: flex; align-items: baseline;
 }
 .collapsed-num {
@@ -97,23 +97,23 @@ body { font-family: Georgia, "Times New Roman", serif; background: #ddd; color: 
     display: grid; grid-template-columns: repeat(4, 1fr);
     gap: 3mm 5mm; flex-shrink: 0;
 }
-.practice-item { display: flex; flex-direction: column; gap: 0.5mm; }
+.practice-item { display: flex; flex-direction: column; gap: 1mm; }
 .practice-num { font-size: 7.5pt; font-weight: bold; color: #bbb; }
 .practice-num.starred { color: #2563EB; }
 .star { font-size: 10pt; }
-.practice-eq { font-size: 9pt; line-height: 1.3; }
+.practice-eq { font-size: 11pt; line-height: 1.3; }
 .answer-box {
-    height: 8mm; border: 1px solid #bbb; border-radius: 1px;
-    margin-top: 1mm; background: #fafafa;
+    height: 10mm; border: 1px solid #bbb; border-radius: 1px;
+    margin-top: auto; background: #fafafa;  /* auto: boxes line up along a row */
 }
 
-.practice-def { font-size: 9pt; line-height: 1.3; }
+.practice-def { font-size: 11pt; line-height: 1.3; }
 .practice-call {
     display: flex; align-items: center; gap: 1.5mm;
-    margin-top: 1.5mm; font-size: 9pt;
+    margin-top: 1.5mm; font-size: 11pt;
 }
 .answer-box-inline {
-    height: 6mm; width: 18mm; flex-shrink: 0;
+    height: 8mm; width: 20mm; flex-shrink: 0;
     border: 1px solid #bbb; border-radius: 1px; background: #fafafa;
 }
 
@@ -129,7 +129,7 @@ body { font-family: Georgia, "Times New Roman", serif; background: #ddd; color: 
     display: grid; grid-template-columns: repeat(4, 1fr);
     gap: 1.5mm 6mm;
 }
-.answer-entry { font-size: 9pt; display: flex; gap: 2mm; align-items: baseline; }
+.answer-entry { font-size: 11pt; display: flex; gap: 2mm; align-items: baseline; }
 .answer-entry .n { font-weight: bold; color: #bbb; min-width: 5mm; }
 
 @media print {

@@ -91,7 +91,7 @@ _MAX_DETAILED_FOUR = 6  # 2-col × 3 rows, 4-step entries
 _MAX_DETAILED_FIVE = 4  # 2-col × 2 rows, 5-step entries
 _MAX_DETAILED_SIX = 4  # 2-col × 2 rows, 6-step entries (verify visually)
 _MAX_COLLAPSED = 12  # 3-col × 4 rows
-_MAX_PRACTICE = 18  # 4-col × 4 rows default; 3-col × 6 rows with practice_cols=3
+_MAX_PRACTICE = 24  # 4-col × 6 rows default; 3-col × 8 rows with practice_cols=3
 
 
 @dataclass
