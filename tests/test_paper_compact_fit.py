@@ -16,12 +16,11 @@ from __future__ import annotations
 import html
 import json
 import re
-import subprocess
 
 import pytest
 
 from content.renderers.katex_static import _deno_bin
-from worksheets.generate import _find_chrome
+from worksheets.generate import _find_chrome, run_chrome
 from worksheets.paper import (
     _COMPACT_MARGINS_MM,
     _COMPACT_PAGE_WIDTH_MM,
@@ -107,16 +106,8 @@ def _overflows(tmp_path, body: str, compact_css: str) -> list[str]:
         _html_document("fit probe", body, script=_PROBE_JS, extra_css=css),
         encoding="utf-8",
     )
-    dom = subprocess.run(
-        [
-            _find_chrome(),
-            "--headless",
-            "--disable-gpu",
-            "--no-sandbox",
-            "--virtual-time-budget=5000",
-            "--dump-dom",
-            page.as_uri(),
-        ],
+    dom = run_chrome(
+        ["--virtual-time-budget=5000", "--dump-dom", page.as_uri()],
         capture_output=True,
         text=True,
         check=True,

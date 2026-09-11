@@ -17,14 +17,19 @@ Extensibility:
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
 import math
+import os
 import random
 import subprocess
 import sys
+import tempfile
+import time
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Iterator
 
 import sympy
 
@@ -6690,24 +6695,65 @@ def _find_chrome() -> str | None:
     return None
 
 
+# A headless Chrome print or DOM dump peaks at ~0.5GB (measured PSS). With
+# $PIT_CHROME_SLOTS set, at most that many run at once across every process on
+# the machine; the test suite sets it from its memory budget (tests/conftest.py).
+_CHROME_SLOTS_DIR = Path(tempfile.gettempdir()) / "pit-chrome-slots"
+
+
+@contextlib.contextmanager
+def _chrome_slot(
+    slots: int | None = None, lock_dir: Path = _CHROME_SLOTS_DIR
+) -> Iterator[None]:
+    """Hold one of *slots* lock files for the block, waiting until one is free.
+
+    *slots* defaults to ``$PIT_CHROME_SLOTS``; unset or 0 means no cap. The
+    locks are ``flock``s, so a crashed holder frees its slot.
+    """
+    if slots is None:
+        slots = int(os.environ.get("PIT_CHROME_SLOTS", "0"))
+    if slots <= 0:
+        yield
+        return
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    while True:
+        for i in range(slots):
+            with open(lock_dir / f"slot-{i}", "w") as f:
+                try:
+                    fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    continue
+                yield  # closing f on the way out releases the lock
+                return
+        time.sleep(0.1)
+
+
+def run_chrome(args: list[str], **run_kwargs) -> subprocess.CompletedProcess:
+    """Run headless Chrome with *args*, holding a Chrome slot while it runs.
+
+    Every Chrome launch goes through here, so the slot cap covers them all.
+    """
+    chrome = _find_chrome()
+    if chrome is None:
+        raise RuntimeError(
+            "no Chrome/Chromium found; install chromium or run "
+            "'playwright install chromium'"
+        )
+    with _chrome_slot():
+        return subprocess.run(
+            [chrome, "--headless", "--disable-gpu", "--no-sandbox", *args],
+            **run_kwargs,
+        )
+
+
 def html_to_pdf(html_path: Path, pdf_path: Path) -> None:
     """Render an HTML worksheet to PDF via headless Chrome.
 
     The HTML is fully self-contained (KaTeX inlined), so no network is needed;
     a virtual-time budget lets KaTeX finish typesetting before the print snapshot.
     """
-    chrome = _find_chrome()
-    if chrome is None:
-        raise RuntimeError(
-            "no Chrome/Chromium found for --pdf; install chromium or run "
-            "'playwright install chromium'"
-        )
-    subprocess.run(
+    run_chrome(
         [
-            chrome,
-            "--headless",
-            "--disable-gpu",
-            "--no-sandbox",
             "--no-pdf-header-footer",
             "--virtual-time-budget=5000",
             f"--print-to-pdf={pdf_path}",
