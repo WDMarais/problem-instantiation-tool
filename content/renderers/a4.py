@@ -80,8 +80,15 @@ body { font-family: Georgia, "Times New Roman", serif; background: #ddd; color: 
     display: grid; grid-template-columns: 1fr 1fr 1fr;
     gap: 3.5mm 6mm; flex-shrink: 0;
 }
-.collapsed-ex { font-size: 9.5pt; line-height: 1.55; }
-.collapsed-num { font-size: 7.5pt; font-weight: bold; color: #bbb; margin-right: 1mm; }
+.collapsed-ex {
+    font-size: 9.5pt; line-height: 1.55;
+    display: flex; align-items: baseline;
+}
+.collapsed-num {
+    font-size: 7.5pt; font-weight: bold; color: #bbb;
+    width: 5mm; flex-shrink: 0;
+}
+.nowrap { white-space: nowrap; }
 
 .practice-intro {
     font-size: 8.5pt; color: #555; margin-bottom: 3mm; flex-shrink: 0;
@@ -126,6 +133,9 @@ body { font-family: Georgia, "Times New Roman", serif; background: #ddd; color: 
 .answer-entry .n { font-weight: bold; color: #bbb; min-width: 5mm; }
 
 @media print {
+    /* .page carries its own margins as padding; Chrome's default page margins
+       on top would push each 297mm .page onto two sheets */
+    @page { size: A4; margin: 0; }
     body { background: none; }
     .page { margin: 0; }
 }
@@ -200,10 +210,15 @@ def _render_detailed(ex: ThreeStep | FourStep | FiveStep | SixStep) -> str:
 
 def _render_collapsed(ex: CollapsedEx, n: int | None = None) -> str:
     num_html = f'<span class="collapsed-num">{n}.</span>' if n is not None else ""
+    # Two unbreakable halves: a line too long for its column wraps at the arrow,
+    # never inside the equation or the answer. The number hangs in its own gutter
+    # so a wrapped arrow lines up under the equation.
     return (
-        f'<div class="collapsed-ex">'
-        f"{num_html}${ex.equation} \\;\\Rightarrow\\; {ex.answer}$"
-        f"</div>"
+        f'<div class="collapsed-ex">{num_html}<div>'
+        # the arrow opens a new formula, so it loses its left relation space: \;\;
+        f'<span class="nowrap">${ex.equation} \\;\\;$</span><wbr>'
+        f'<span class="nowrap">$\\Rightarrow\\; {ex.answer}$</span>'
+        f"</div></div>"
     )
 
 
